@@ -66,6 +66,26 @@ function activeOpenAiModelsUrl(ctx: RuntimeContext) {
   return `${(ctx.openaiBaseUrl || defaultOpenAIBaseUrl()).replace(/\/$/, "")}/models`;
 }
 
+function openAiUsesDefaultBaseUrl(ctx: RuntimeContext) {
+  return (ctx.openaiBaseUrl || defaultOpenAIBaseUrl()).replace(/\/$/, "") === defaultOpenAIBaseUrl();
+}
+
+function validateKeyFormat(provider: KeyProvider, key: string, ctx: RuntimeContext) {
+  if (/[\u0000-\u001f\u007f]/.test(key)) {
+    return {
+      ok: false,
+      error: `Invalid key format for ${provider}: control characters are not allowed`,
+    };
+  }
+  if (provider === "openai" && !openAiUsesDefaultBaseUrl(ctx)) return { ok: true };
+  const validPrefix = KEY_PREFIX_MAP[provider].some((p) => key.startsWith(p));
+  if (validPrefix) return { ok: true };
+  return {
+    ok: false,
+    error: `Invalid key format for ${provider}: expected prefix ${KEY_PREFIX_MAP[provider].join(" or ")}`,
+  };
+}
+
 export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
   app.get("/api/keys/status", (_req: Request, res: Response) => {
     const status: Record<string, unknown> = {};
@@ -272,12 +292,11 @@ export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
       return res.status(400).json({ ok: false, error: "API key too large", code: "KEY_TOO_LARGE" });
     }
 
-    // Format check
-    const validPrefix = KEY_PREFIX_MAP[provider].some((p) => trimmed.startsWith(p));
-    if (!validPrefix) {
+    const formatCheck = validateKeyFormat(provider, trimmed, ctx);
+    if (!formatCheck.ok) {
       return res.status(400).json({
         ok: false,
-        error: `Invalid key format for ${provider}: expected prefix ${KEY_PREFIX_MAP[provider].join(" or ")}`,
+        error: formatCheck.error,
         code: "INVALID_KEY_FORMAT",
       });
     }

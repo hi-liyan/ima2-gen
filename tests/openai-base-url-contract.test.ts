@@ -140,6 +140,43 @@ describe("OpenAI base URL contract", () => {
     });
   });
 
+  it("accepts proxy-owned OpenAI keys when a custom baseUrl is active", async () => {
+    const calls: Array<{ url: string; auth: string | null }> = [];
+    globalThis.fetch = async (url, init) => {
+      if (String(url).startsWith("http://127.0.0.1:")) return originalFetch(url, init);
+      const headers = new Headers(init?.headers as HeadersInit);
+      calls.push({ url: String(url), auth: headers.get("authorization") });
+      if (String(url).endsWith("/models")) {
+        return Response.json({ data: [{ id: "gpt-5.4-mini" }] });
+      }
+      return sseResponse(imageEvents());
+    };
+
+    await withOpenAiConfigApp(async ({ baseUrl }) => {
+      const saveRes = await fetch(`${baseUrl}/api/keys/openai`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: "cp_PROXY_9y" }),
+      });
+      assert.equal(saveRes.status, 200);
+
+      const genRes = await fetch(`${baseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "proxy owned key", provider: "api" }),
+      });
+      assert.equal(genRes.status, 200);
+      assert.deepEqual(calls.map((call) => call.url), [
+        "https://relay.example.com/v1/models",
+        "https://relay.example.com/v1/responses",
+      ]);
+      assert.deepEqual(calls.map((call) => call.auth), [
+        "Bearer cp_PROXY_9y",
+        "Bearer cp_PROXY_9y",
+      ]);
+    }, { apiKey: null, openaiBaseUrl: "https://relay.example.com/v1", openaiBaseUrlSource: "config" });
+  });
+
   it("/api/providers exposes openai base URL metadata", async () => {
     await withOpenAiConfigApp(async ({ baseUrl }) => {
       const res = await fetch(`${baseUrl}/api/providers`);

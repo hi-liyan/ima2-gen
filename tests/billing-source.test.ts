@@ -108,4 +108,30 @@ describe("/api/billing apiKeySource", () => {
     assert.strictEqual(res.body.apiKeySource, "config");
     assert.strictEqual(res.body.apiKeyValid, true);
   });
+
+  it("checks API key validity against a custom OpenAI base URL", async () => {
+    const urls: string[] = [];
+    globalThis.fetch = (async (url) => {
+      urls.push(String(url));
+      return {
+        ok: String(url) === "https://relay.example.com/v1/models",
+        json: async () => ({}),
+      };
+    }) as unknown as typeof fetch;
+    const app = express();
+    registerHealthRoutes(app, makeCtx({
+      hasApiKey: true,
+      apiKey: "cp_PROXY_9y",
+      apiKeySource: "config",
+      openaiBaseUrl: "https://relay.example.com/v1",
+      openaiBaseUrlSource: "config",
+    }));
+
+    const res = await getJson(app, "/api/billing");
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.apiKeySource, "config");
+    assert.strictEqual(res.body.apiKeyValid, true);
+    assert.ok(urls.includes("https://relay.example.com/v1/models"));
+  });
 });
