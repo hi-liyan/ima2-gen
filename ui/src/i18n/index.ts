@@ -1,10 +1,11 @@
 import ko from "./ko.json";
 import en from "./en.json";
+import zhCN from "./zh-CN.json";
 import { useAppStore } from "../store/useAppStore";
 
-export type Locale = "ko" | "en";
+export type Locale = "ko" | "en" | "zh-CN";
 
-const dictionaries = { ko, en } as const;
+const dictionaries = { ko, en, "zh-CN": zhCN } as const;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRec = Record<string, any>;
@@ -57,19 +58,20 @@ export function useI18n() {
   };
 }
 
-export const SUPPORTED_LOCALES: readonly Locale[] = ["ko", "en"];
+export const SUPPORTED_LOCALES: readonly Locale[] = ["ko", "en", "zh-CN"];
 
 export function loadLocale(): Locale {
   try {
     const raw = localStorage.getItem("ima2.locale");
-    if (raw === "ko" || raw === "en") return raw;
+    if (raw === "ko" || raw === "en" || raw === "zh-CN") return raw;
   } catch {
     /* storage disabled */
   }
-  // Browser default — fall back to Korean if the user is on a Korean locale.
+  // Browser default — prefer Korean or Simplified Chinese when clearly requested.
   if (typeof navigator !== "undefined") {
     const nav = navigator.language || "";
     if (nav.toLowerCase().startsWith("ko")) return "ko";
+    if (nav.toLowerCase().startsWith("zh")) return "zh-CN";
   }
   return "en";
 }
