@@ -33,6 +33,9 @@ export function registerHealthRoutes(app: Express, ctxRaw: RouteRuntimeContext) 
       oauthUrl: ctx.oauthUrl,
       apiKeyDisabled: false,
       apiKeySource: ctx.apiKeySource ?? "none",
+      openaiBaseUrl: ctx.openaiBaseUrl,
+      openaiBaseUrlSource: ctx.openaiBaseUrlSource,
+      openaiCustomBaseUrl: ctx.openaiBaseUrl !== "https://api.openai.com/v1",
       runtime: runtimePorts(),
     });
   });

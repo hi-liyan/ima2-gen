@@ -1,6 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { readFile, writeFile, rename } from "node:fs/promises";
 import type { RuntimeContext } from "../lib/runtimeContext.js";
+import { defaultOpenAIBaseUrl, normalizeOpenAIBaseUrl } from "../lib/openaiBaseUrl.js";
 import { initVertexAuth, clearVertexAuth } from "../lib/vertexAuth.js";
 
 // Atomic + 0600 config write: temp file then rename, so a crash or concurrent
@@ -48,6 +49,23 @@ function keySourceForProvider(ctx: RuntimeContext, provider: KeyProvider): { key
   return { key: undefined, source: "none" };
 }
 
+async function rebuildOpenAiClient(ctx: RuntimeContext) {
+  if (!ctx.apiKey) {
+    (ctx as any).openai = null;
+    return;
+  }
+  try {
+    const OpenAI = (await import("openai")).default;
+    (ctx as any).openai = new OpenAI({ apiKey: ctx.apiKey, baseURL: ctx.openaiBaseUrl || defaultOpenAIBaseUrl() });
+  } catch {
+    (ctx as any).openai = null;
+  }
+}
+
+function activeOpenAiModelsUrl(ctx: RuntimeContext) {
+  return `${(ctx.openaiBaseUrl || defaultOpenAIBaseUrl()).replace(/\/$/, "")}/models`;
+}
+
 export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
   app.get("/api/keys/status", (_req: Request, res: Response) => {
     const status: Record<string, unknown> = {};
@@ -73,6 +91,78 @@ export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
     status.geminiAuthMode = (ctx as any).geminiAuthMode
       || (vertexJson && !ctx.geminiApiKey ? "vertex" : "apikey");
     res.json(status);
+  });
+
+  app.get("/api/providers/openai/config", (_req: Request, res: Response) => {
+    return res.json({
+      baseUrl: ctx.openaiBaseUrl || defaultOpenAIBaseUrl(),
+      source: ctx.openaiBaseUrlSource || "default",
+      isDefault: (ctx.openaiBaseUrl || defaultOpenAIBaseUrl()) === defaultOpenAIBaseUrl(),
+      hasApiKey: !!ctx.apiKey,
+      apiKeySource: ctx.apiKeySource || "none",
+    });
+  });
+
+  app.put("/api/providers/openai/config", async (req: Request, res: Response) => {
+    const { baseUrl } = req.body as { baseUrl?: string };
+    const normalized = normalizeOpenAIBaseUrl(baseUrl);
+    if (normalized.ok === false) {
+      return res.status(400).json({ ok: false, error: normalized.error, code: normalized.code });
+    }
+    if (ctx.openaiBaseUrlSource === "env") {
+      return res.status(400).json({ ok: false, error: "Cannot overwrite env-sourced OpenAI base URL", code: "ENV_KEY_IMMUTABLE" });
+    }
+    if (ctx.apiKey) {
+      try {
+        const validateRes = await fetch(`${normalized.baseUrl}/models`, {
+          headers: { Authorization: `Bearer ${ctx.apiKey}` },
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (!validateRes.ok) throw new Error(`HTTP ${validateRes.status}`);
+      } catch (e: any) {
+        return res.status(400).json({
+          ok: false,
+          error: `OpenAI base URL validation failed: ${e.message || "unknown"}`,
+          code: "OPENAI_BASE_URL_VALIDATION_FAILED",
+        });
+      }
+    }
+
+    const cfgPath = ctx.config.storage.configFile;
+    let existing: Record<string, any> = {};
+    try {
+      existing = JSON.parse(await readFile(cfgPath, "utf-8"));
+    } catch { /* new file */ }
+    existing.apiProvider = { ...(existing.apiProvider || {}), baseUrl: normalized.baseUrl };
+    await writeConfigAtomic(cfgPath, existing);
+
+    (ctx as any).openaiBaseUrl = normalized.baseUrl;
+    (ctx as any).openaiBaseUrlSource = "config";
+    await rebuildOpenAiClient(ctx);
+
+    return res.json({ ok: true, baseUrl: normalized.baseUrl, source: "config", isDefault: normalized.baseUrl === defaultOpenAIBaseUrl() });
+  });
+
+  app.delete("/api/providers/openai/config/base-url", async (_req: Request, res: Response) => {
+    if (ctx.openaiBaseUrlSource === "env") {
+      return res.status(400).json({ ok: false, error: "Cannot remove env-sourced OpenAI base URL", code: "ENV_KEY_IMMUTABLE" });
+    }
+    const cfgPath = ctx.config.storage.configFile;
+    let existing: Record<string, any> = {};
+    try {
+      existing = JSON.parse(await readFile(cfgPath, "utf-8"));
+    } catch { /* ignore */ }
+    if (existing.apiProvider && typeof existing.apiProvider === "object") {
+      delete existing.apiProvider.baseUrl;
+      if (Object.keys(existing.apiProvider).length === 0) delete existing.apiProvider;
+    }
+    await writeConfigAtomic(cfgPath, existing);
+
+    (ctx as any).openaiBaseUrl = defaultOpenAIBaseUrl();
+    (ctx as any).openaiBaseUrlSource = "default";
+    await rebuildOpenAiClient(ctx);
+
+    return res.json({ ok: true, removed: true, baseUrl: ctx.openaiBaseUrl, source: ctx.openaiBaseUrlSource });
   });
 
   // Persist the Gemini auth mode chosen in the settings dropdown, so reopening
@@ -194,7 +284,7 @@ export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
 
     // Validate against provider API
     try {
-      const url = VALIDATE_URL_MAP[provider];
+      const url = provider === "openai" ? activeOpenAiModelsUrl(ctx) : VALIDATE_URL_MAP[provider];
       const opts: RequestInit = { signal: AbortSignal.timeout(10_000) };
       if (provider === "gemini") {
         opts.headers = { "x-goog-api-key": trimmed };
@@ -228,10 +318,7 @@ export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
       (ctx as any).apiKey = trimmed;
       (ctx as any).apiKeySource = "config";
       (ctx as any).hasApiKey = true;
-      try {
-        const OpenAI = (await import("openai")).default;
-        (ctx as any).openai = new OpenAI({ apiKey: trimmed });
-      } catch { /* ignore */ }
+      await rebuildOpenAiClient(ctx);
     } else if (provider === "xai") {
       (ctx as any).xaiApiKey = trimmed;
       (ctx as any).xaiApiKeySource = "config";
@@ -270,7 +357,7 @@ export function mountKeyRoutes(app: Express, ctx: RuntimeContext) {
       (ctx as any).apiKey = undefined;
       (ctx as any).apiKeySource = "none";
       (ctx as any).hasApiKey = false;
-      (ctx as any).openai = null;
+      await rebuildOpenAiClient(ctx);
     } else if (provider === "xai") {
       (ctx as any).xaiApiKey = undefined;
       (ctx as any).xaiApiKeySource = "none";

@@ -265,6 +265,11 @@ export const config = {
     validReasoningEfforts: new Set(["none", "low", "medium", "high", "xhigh"]),
   },
   apiProvider: {
+    baseUrl: pickStr(
+      env.IMA2_OPENAI_BASE_URL,
+      fileCfg.apiProvider?.baseUrl,
+      "https://api.openai.com/v1",
+    ),
     defaultImageModel: pickStr(
       env.IMA2_API_IMAGE_MODEL_DEFAULT,
       fileCfg.apiProvider?.defaultImageModel,

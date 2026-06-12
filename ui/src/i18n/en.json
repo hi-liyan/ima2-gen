@@ -972,9 +972,13 @@
       "accordionTitle": "API Keys",
       "envSource": "Loaded from environment",
       "configSource": "Loaded from config",
+      "defaultSource": "Using default",
       "openai": {
         "label": "GPT API Key (OpenAI)",
-        "placeholder": "Paste your OpenAI API key (sk-...)"
+        "placeholder": "Paste your OpenAI API key (sk-...)",
+        "baseUrlPlaceholder": "Optional relay URL (defaults to https://api.openai.com/v1)",
+        "baseUrlHelp": "Supports only OpenAI official API relays. Leave blank to use the default OpenAI endpoint.",
+        "baseUrlStatus": "Base URL source: {source}"
       },
       "xai": {
         "label": "Grok API Key (xAI)",

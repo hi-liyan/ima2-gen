@@ -139,8 +139,9 @@ function isKnownResponsesError(value: unknown) {
 
 async function getEndpoint(ctx: RouteRuntimeContext, provider: string | undefined, _scope: string) {
   if (provider === "api") {
+    const baseUrl = safeBaseUrl(ctx.openaiBaseUrl || ctx?.config?.apiProvider?.baseUrl || "https://api.openai.com/v1");
     return {
-      url: "https://api.openai.com/v1/responses",
+      url: `${baseUrl}/responses`,
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",

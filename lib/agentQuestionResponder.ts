@@ -1,5 +1,6 @@
 import { errInfo } from "./errInfo.js";
 import { logEvent } from "./logger.js";
+import { defaultOpenAIBaseUrl } from "./openaiBaseUrl.js";
 import { waitForOAuthReady } from "./oauthProxy/runtime.js";
 import { requireRuntimeContext, type RouteRuntimeContext } from "./runtimeContext.js";
 
@@ -115,8 +116,9 @@ async function resolveQuestionEndpoint(
   try {
     if (provider === "api") {
       if (!ctx.apiKey) throw questionError("API key is required for Agent question mode", "API_KEY_REQUIRED", 401);
+      const baseUrl = (ctx.openaiBaseUrl || defaultOpenAIBaseUrl()).replace(/\/$/, "");
       return {
-        url: "https://api.openai.com/v1/responses",
+        url: `${baseUrl}/responses`,
         headers: {
           "Content-Type": "application/json",
           Accept: "text/event-stream",

@@ -972,9 +972,13 @@
       "accordionTitle": "API Keys",
       "envSource": "환경 변수에서 로드됨",
       "configSource": "설정 파일에서 로드됨",
+      "defaultSource": "기본값 사용 중",
       "openai": {
         "label": "GPT API Key (OpenAI)",
-        "placeholder": "OpenAI API 키 붙여넣기 (sk-...)"
+        "placeholder": "OpenAI API 키 붙여넣기 (sk-...)",
+        "baseUrlPlaceholder": "선택 사항: 중계 URL (기본값 https://api.openai.com/v1)",
+        "baseUrlHelp": "OpenAI 공식 API 중계 주소만 지원합니다. 비워 두면 기본 OpenAI 엔드포인트를 사용합니다.",
+        "baseUrlStatus": "Base URL 출처: {source}"
       },
       "xai": {
         "label": "Grok API Key (xAI)",

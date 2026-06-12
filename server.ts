@@ -24,6 +24,7 @@ import { configureRoutes } from "./routes/index.js";
 import { config } from "./config.js";
 import { getServerPort, listenWithPortFallback } from "./lib/runtimePorts.js";
 import type { RuntimeContext, RuntimeContextOverrides, ApiKeySource } from "./lib/runtimeContext.js";
+import { loadOpenAIBaseUrlFromSources } from "./lib/openaiBaseUrl.js";
 
 import { closeDb } from "./lib/db.js";
 import { stopAgentQueueWorker } from "./lib/agentQueueWorker.js";
@@ -38,6 +39,7 @@ type BootRuntimeContext = RuntimeContext & {
 };
 
 type ApiKeyLoadResult = { apiKey: string | null; apiKeySource: ApiKeySource };
+type OpenAIBaseUrlLoadResult = { baseUrl: string; source: "env" | "config" | "default" };
 
 const rootDir = dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +59,21 @@ async function loadApiKey(): Promise<ApiKeyLoadResult> {
     } catch {}
   }
   return { apiKey: null, apiKeySource: "none" };
+}
+
+async function loadOpenAIBaseUrl(): Promise<OpenAIBaseUrlLoadResult> {
+  const candidates = [
+    config.storage.configFile,
+    join(rootDir, ".ima2", "config.json"),
+  ];
+  for (const cfgPath of candidates) {
+    if (!existsSync(cfgPath)) continue;
+    try {
+      const cfg = JSON.parse(await readFile(cfgPath, "utf-8")) as { apiProvider?: { baseUrl?: string } };
+      return loadOpenAIBaseUrlFromSources(process.env.IMA2_OPENAI_BASE_URL, cfg.apiProvider?.baseUrl);
+    } catch {}
+  }
+  return loadOpenAIBaseUrlFromSources(process.env.IMA2_OPENAI_BASE_URL, undefined);
 }
 
 async function loadXaiApiKey(): Promise<ApiKeyLoadResult> {
@@ -139,10 +156,10 @@ async function loadGeminiAuthMode(): Promise<string | undefined> {
   return undefined;
 }
 
-async function createOpenAI(apiKey: string | null | undefined) {
+async function createOpenAI(apiKey: string | null | undefined, openaiBaseUrl: string) {
   if (!apiKey) return null;
   const OpenAI = (await import("openai")).default;
-  return new OpenAI({ apiKey });
+  return new OpenAI({ apiKey, baseURL: openaiBaseUrl });
 }
 
 function readPackageVersion(): string {
@@ -253,8 +270,11 @@ export async function createRuntimeContext(overrides: StartServerOverrides = {})
   const loadedGeminiKey = await loadGeminiApiKey();
   const loadedVertexKey = await loadVertexKey();
   const geminiAuthMode = await loadGeminiAuthMode();
+  const loadedOpenAIBaseUrl = await loadOpenAIBaseUrl();
   const apiKey = loadedKey.apiKey;
-  const openai = overrides.openai ?? await createOpenAI(apiKey);
+  const openaiBaseUrl = (overrides as RuntimeContextOverrides & { openaiBaseUrl?: string }).openaiBaseUrl ?? loadedOpenAIBaseUrl.baseUrl;
+  const openaiBaseUrlSource = (overrides as RuntimeContextOverrides & { openaiBaseUrlSource?: "env" | "config" | "default" }).openaiBaseUrlSource ?? loadedOpenAIBaseUrl.source;
+  const openai = overrides.openai ?? await createOpenAI(apiKey, openaiBaseUrl);
   const oauthPort = config.oauth.proxyPort;
   const grokPort = config.grokProvider.proxyPort;
   let resolveOAuthReady: (value: string | null) => void = () => {};
@@ -274,6 +294,8 @@ export async function createRuntimeContext(overrides: StartServerOverrides = {})
     oauthActualPort: oauthPort,
     oauthUrl: `http://127.0.0.1:${oauthPort}`,
     oauthReadyState: config.oauth.autoStart ? "starting" : "disabled",
+    openaiBaseUrl,
+    openaiBaseUrlSource,
     hasApiKey: !!apiKey,
     apiKey: apiKey ?? undefined,
     apiKeySource: loadedKey.apiKeySource as ApiKeySource,

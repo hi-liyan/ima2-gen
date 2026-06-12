@@ -18,6 +18,8 @@ export interface RuntimeContext {
   oauthReadyPromise: Promise<void> | null;
   oauthReadyState: OAuthReadyState;
   oauthUrl: string;
+  openaiBaseUrl: string;
+  openaiBaseUrlSource: "env" | "config" | "default";
   openai: OpenAI | null;
   packageVersion: string;
   rootDir: string;
@@ -90,6 +92,10 @@ export function requireRuntimeContext(ctx: RouteRuntimeContext | undefined): Run
     target.oauthUrl = `http://127.0.0.1:${(target.config as AppConfig).oauth?.proxyPort ?? target.oauthPort ?? 11782}`;
   }
   if (target.openai === undefined) target.openai = null;
+  if (target.openaiBaseUrl === undefined) {
+    target.openaiBaseUrl = (target.config as AppConfig).apiProvider?.baseUrl ?? "https://api.openai.com/v1";
+  }
+  if (target.openaiBaseUrlSource === undefined) target.openaiBaseUrlSource = "default";
   if (target.packageVersion === undefined) target.packageVersion = "0.0.0";
   if (target.rootDir === undefined) target.rootDir = process.cwd();
   if (target.serverConfiguredPort === undefined) {
@@ -153,6 +159,8 @@ export function createTestRuntimeContext(over: RuntimeContextOverrides = {}): Ru
     oauthReadyPromise: null,
     oauthReadyState: undefined,
     oauthUrl: "http://127.0.0.1:11782",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    openaiBaseUrlSource: "default",
     openai: null,
     packageVersion: "0.0.0-test",
     rootDir: process.cwd(),

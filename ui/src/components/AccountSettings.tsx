@@ -7,6 +7,8 @@ import { useI18n } from "../i18n";
 import { ApiKeyInput } from "./ApiKeyInput";
 import { GeminiKeySection } from "./GeminiKeySection";
 import { useKeyStatus } from "../hooks/useKeyStatus";
+import { useOpenAIProviderConfig } from "../hooks/useOpenAIProviderConfig";
+import { OpenAIKeyConfig } from "./OpenAIKeyConfig";
 
 function statusLabel(t: (key: string) => string, status?: string): string {
   if (status === "ready") return t("settings.account.status.ready");
@@ -25,6 +27,7 @@ export function AccountSettings() {
   const agy = useAgyStatus();
   const { data, error } = useBilling();
   const { data: keyStatus, mutate: mutateKeys } = useKeyStatus();
+  const { data: openaiConfig, mutate: mutateOpenAIConfig } = useOpenAIProviderConfig();
   const [keysOpen, setKeysOpen] = useState(false);
   const showApiKeyCard =
     data?.apiKeySource === "env" ||
@@ -37,6 +40,11 @@ export function AccountSettings() {
       : t("settings.account.apiSourceEnv");
   const apiReady = data?.apiKeyValid === true;
   const grokReady = grok?.status === "ready";
+
+  const refreshOpenAISettings = () => {
+    void mutateKeys();
+    void mutateOpenAIConfig();
+  };
 
   return (
     <>
@@ -122,14 +130,12 @@ export function AccountSettings() {
           </button>
           {keysOpen && (
             <div className="settings-accordion__body">
-              <ApiKeyInput
-                provider="openai"
-                label={t("settings.apiKeys.openai.label")}
-                placeholder={t("settings.apiKeys.openai.placeholder")}
+              <OpenAIKeyConfig
                 maskedKey={keyStatus.openai?.maskedKey ?? null}
-                source={keyStatus.openai?.source ?? "none"}
+                keySource={keyStatus.openai?.source ?? "none"}
                 configured={keyStatus.openai?.configured ?? false}
-                onSaved={mutateKeys}
+                config={openaiConfig ?? null}
+                onSaved={refreshOpenAISettings}
               />
               <ApiKeyInput
                 provider="xai"
