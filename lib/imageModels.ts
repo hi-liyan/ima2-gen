@@ -1,7 +1,7 @@
 import type { RouteRuntimeContext } from "./runtimeContext.js";
 
 const FALLBACK_IMAGE_MODEL = "gpt-5.4-mini";
-const VALID_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"]);
+const VALID_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-image-2"]);
 const UNSUPPORTED_IMAGE_MODELS = new Set(["gpt-5.3-codex-spark"]);
 const FALLBACK_REASONING_EFFORT = "none";
 const VALID_REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh"]);
@@ -50,13 +50,17 @@ export function normalizeImageModel(ctx: RouteRuntimeContext | null | undefined,
 
   if (!valid.has(rawModel)) {
     return {
-      error: "model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini",
+      error: "model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-image-2",
       code: "INVALID_IMAGE_MODEL",
       status: 400,
     };
   }
 
   return { model: rawModel };
+}
+
+export function isApiOnlyImageModel(value: unknown): value is "gpt-image-2" {
+  return value === "gpt-image-2";
 }
 
 export function normalizeGrokImageModel(rawModel: unknown) {

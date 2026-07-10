@@ -1,5 +1,5 @@
 import { useI18n } from "../../i18n";
-import { DEFAULT_IMAGE_MODEL, IMAGE_MODEL_OPTIONS, isGrokImageModel } from "../../lib/imageModels";
+import { DEFAULT_IMAGE_MODEL, IMAGE_MODEL_OPTIONS, isApiOnlyImageModel, isGrokImageModel } from "../../lib/imageModels";
 import type { AgentGenerationSettings } from "./agentTypes";
 
 type Props = {
@@ -22,11 +22,19 @@ export function AgentModelSelector({ settings, onChange }: Props) {
       onChange({ provider, model: DEFAULT_IMAGE_MODEL });
       return;
     }
+    if (provider !== "api" && isApiOnlyImageModel(settings.model)) {
+      onChange({ provider, model: DEFAULT_IMAGE_MODEL });
+      return;
+    }
     onChange({ provider });
   };
   const setModel = (model: string) => {
     if (isGrokImageModel(model)) {
       onChange({ model, provider: "grok" });
+      return;
+    }
+    if (isApiOnlyImageModel(model)) {
+      onChange({ model, provider: "api" });
       return;
     }
     if (settings.provider === "grok") {

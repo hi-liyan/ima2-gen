@@ -1,6 +1,6 @@
 import type { Provider, Quality, SizePreset, Format, Moderation, ImageModel, Count } from "../types";
 import type { ReasoningEffort } from "../lib/reasoning";
-import { DEFAULT_IMAGE_MODEL, isGrokImageModel, isGeminiImageModel } from "../lib/imageModels";
+import { DEFAULT_IMAGE_MODEL, isApiOnlyImageModel, isGrokImageModel, isGeminiImageModel } from "../lib/imageModels";
 import { parseRequestedCustomSide } from "../lib/size";
 import { getSelectedNodeIds } from "../lib/nodeSelection";
 import {
@@ -29,6 +29,9 @@ export function setProviderImpl(provider: Provider, set: StoreSet, get: StoreGet
     const geminiModel = provider === "gemini-api" ? "nano-banana-pro" : "nano-banana-2";
     saveImageModel(geminiModel);
     set({ provider, imageModel: geminiModel });
+  } else if (provider !== "api" && isApiOnlyImageModel(currentModel)) {
+    set({ provider, imageModel: DEFAULT_IMAGE_MODEL });
+    saveImageModel(DEFAULT_IMAGE_MODEL);
   } else if (provider !== "grok" && provider !== "grok-api" && provider !== "agy" && provider !== "gemini-api" && (isGrokImageModel(currentModel) || isGeminiImageModel(currentModel))) {
     set({ provider, imageModel: DEFAULT_IMAGE_MODEL });
     saveImageModel(DEFAULT_IMAGE_MODEL);
@@ -91,6 +94,11 @@ export function setImageModelImpl(imageModel: ImageModel, set: StoreSet, get: St
     } else {
       set({ imageModel });
     }
+    return;
+  }
+  if (isApiOnlyImageModel(imageModel)) {
+    saveGenerationDefaultsPatch({ provider: "api" });
+    set({ provider: "api", imageModel });
     return;
   }
   if (get().provider === "grok" || get().provider === "agy" || get().provider === "gemini-api") {

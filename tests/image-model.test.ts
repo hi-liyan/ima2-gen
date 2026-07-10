@@ -13,6 +13,7 @@ describe("image model normalization", () => {
     assert.deepEqual(normalizeImageModel({}, "gpt-5.5"), { model: "gpt-5.5" });
     assert.deepEqual(normalizeImageModel({}, "gpt-5.4"), { model: "gpt-5.4" });
     assert.deepEqual(normalizeImageModel({}, "gpt-5.4-mini"), { model: "gpt-5.4-mini" });
+    assert.deepEqual(normalizeImageModel({}, "gpt-image-2"), { model: "gpt-image-2" });
   });
 
   it("rejects known unsupported OAuth models", () => {

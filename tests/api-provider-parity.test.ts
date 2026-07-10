@@ -132,6 +132,40 @@ describe("API provider parity", () => {
     });
   });
 
+  it("uses gpt-image-2 as the image tool model", async () => {
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+      if (String(url).startsWith("http://127.0.0.1:")) return originalFetch(url, init);
+      calls.push({ url, init, body: JSON.parse(String(init?.body || "{}")) });
+      return sseResponse(imageEvents());
+    };
+    await withApp(async ({ baseUrl }) => {
+      const res = await fetch(`${baseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "api image tool", provider: "api", model: "gpt-image-2" }),
+      });
+      const body = await res.json();
+      assert.equal(res.status, 200);
+      assert.equal(body.model, "gpt-image-2");
+      assert.equal(calls[0].body.model, "gpt-5.4-mini");
+      assert.equal(calls[0].body.tools.at(-1).model, "gpt-image-2");
+    });
+  });
+
+  it("rejects gpt-image-2 for the OAuth provider", async () => {
+    await withApp(async ({ baseUrl }) => {
+      const res = await fetch(`${baseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "oauth image tool", provider: "oauth", model: "gpt-image-2" }),
+      });
+      const body = await res.json();
+      assert.equal(res.status, 400);
+      assert.equal(body.code, "IMAGE_MODEL_API_ONLY");
+    });
+  });
+
   it("generate provider=grok reports one search call for n>1 plan reuse", async () => {
     const calls = [];
     globalThis.fetch = async (url, init) => {

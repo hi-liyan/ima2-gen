@@ -41,6 +41,17 @@ interface MakeErrorOptions {
   [key: string]: unknown;
 }
 
+const DEFAULT_RESPONSES_IMAGE_MODEL = "gpt-5.4-mini";
+
+function resolveImageToolModel(selectedModel: string | undefined) {
+  return selectedModel === "gpt-image-2" ? selectedModel : undefined;
+}
+
+function resolveResponsesModel(ctx: RouteRuntimeContext, selectedModel: string | undefined) {
+  const configured = selectedModel || ctx.config?.imageModels?.default || DEFAULT_RESPONSES_IMAGE_MODEL;
+  return resolveImageToolModel(configured) ? DEFAULT_RESPONSES_IMAGE_MODEL : configured;
+}
+
 interface ResponsesError extends Error {
   status: number;
   code: string;
@@ -290,9 +301,11 @@ interface GenerateOptions {
 
 export async function generateViaResponses(provider: string | undefined, prompt: string | undefined, quality: string | undefined, size: string | undefined, moderation: string = "low", references: ReferenceRef[] = [], requestId: string | null = null, mode: string = "auto", ctxRaw: RouteRuntimeContext = {}, options: GenerateOptions = {}) {
   const ctx = requireRuntimeContext(ctxRaw);
-  const model = options.model || ctx.config?.imageModels?.default || "gpt-5.4-mini";
+  const selectedModel = options.model || ctx.config?.imageModels?.default;
+  const model = resolveResponsesModel(ctx, selectedModel);
+  const imageToolModel = resolveImageToolModel(selectedModel);
   const webSearchEnabled = options.webSearchEnabled !== false && options.searchMode !== "off";
-  const requestTools = tools(webSearchEnabled, { quality, size, moderation, ...(options.partialImages ? { partial_images: options.partialImages } : {}) });
+  const requestTools = tools(webSearchEnabled, { quality, size, moderation, ...(imageToolModel ? { model: imageToolModel } : {}), ...(options.partialImages ? { partial_images: options.partialImages } : {}) });
   const toolChoice = imageToolChoice(options.forceImageToolChoice ?? ctx.config?.oauth?.forceImageToolChoice !== false);
   const toolChoiceKind = imageToolChoiceKind(toolChoice);
   const referenceInputs = references.map(normalizeRef);
@@ -369,9 +382,11 @@ export async function generateMultimodeViaResponses(provider: string | undefined
     maxGeneratedImages,
     Math.max(1, Math.trunc(Number(options.maxImages) || 1)),
   );
-  const model = options.model || ctx.config?.imageModels?.default || "gpt-5.4-mini";
+  const selectedModel = options.model || ctx.config?.imageModels?.default;
+  const model = resolveResponsesModel(ctx, selectedModel);
+  const imageToolModel = resolveImageToolModel(selectedModel);
   const webSearchEnabled = options.webSearchEnabled !== false && options.searchMode !== "off";
-  const requestTools = tools(webSearchEnabled, { quality, size, moderation, ...(options.partialImages ? { partial_images: options.partialImages } : {}) });
+  const requestTools = tools(webSearchEnabled, { quality, size, moderation, ...(imageToolModel ? { model: imageToolModel } : {}), ...(options.partialImages ? { partial_images: options.partialImages } : {}) });
   const userText = buildMultimodeSequencePrompt(
     mode === "direct"
       ? `${prompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`
@@ -408,9 +423,11 @@ export async function generateMultimodeViaResponses(provider: string | undefined
 
 export async function editViaResponses(provider: string | undefined, prompt: string | undefined, imageB64: string | undefined, quality: string | undefined, size: string | undefined, moderation: string = "low", mode: string = "auto", ctxRaw: RouteRuntimeContext = {}, requestId: string | null = null, options: GenerateOptions = {}) {
   const ctx = requireRuntimeContext(ctxRaw);
-  const model = options.model || ctx.config?.imageModels?.default || "gpt-5.4-mini";
+  const selectedModel = options.model || ctx.config?.imageModels?.default;
+  const model = resolveResponsesModel(ctx, selectedModel);
+  const imageToolModel = resolveImageToolModel(selectedModel);
   const webSearchEnabled = options.webSearchEnabled !== false && options.searchMode !== "off";
-  const requestTools = tools(webSearchEnabled, { quality, size, moderation });
+  const requestTools = tools(webSearchEnabled, { quality, size, moderation, ...(imageToolModel ? { model: imageToolModel } : {}) });
   const toolChoice = imageToolChoice(options.forceImageToolChoice ?? ctx.config?.oauth?.forceImageToolChoice !== false);
   const toolChoiceKind = imageToolChoiceKind(toolChoice);
   const imageForRequest = await compressReferenceB64ForOAuth(imageB64, {

@@ -1,5 +1,5 @@
 import type { RuntimeContext } from "./runtimeContext.js";
-import { normalizeImageModel, normalizeReasoningEffort, normalizeGrokImageModel, normalizeGeminiApiModel } from "./imageModels.js";
+import { isApiOnlyImageModel, normalizeImageModel, normalizeReasoningEffort, normalizeGrokImageModel, normalizeGeminiApiModel } from "./imageModels.js";
 
 export function resolveProviderOptions(ctx: RuntimeContext | null | undefined, {
   provider = "oauth",
@@ -66,6 +66,13 @@ export function resolveProviderOptions(ctx: RuntimeContext | null | undefined, {
     : rawModel;
   const modelCheck = normalizeImageModel(ctx, modelInput);
   if (modelCheck.error) return { error: modelCheck.error, code: modelCheck.code, status: modelCheck.status };
+  if (activeProvider !== "api" && isApiOnlyImageModel(modelCheck.model)) {
+    return {
+      error: "gpt-image-2 is available only with the OpenAI API provider",
+      code: "IMAGE_MODEL_API_ONLY",
+      status: 400,
+    };
+  }
 
   const reasoningInput = activeProvider === "api"
     ? (rawReasoningEffort || apiConfig.defaultReasoningEffort || "low")

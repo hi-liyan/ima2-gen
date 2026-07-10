@@ -959,6 +959,7 @@
       "gpt54Mini": "GPT-5.4 Mini",
       "gpt54": "GPT-5.4",
       "gpt55": "GPT-5.5",
+      "gptImage2": "GPT Image 2 (API)",
       "grokImagine": "Grok Imagine",
       "grokImagineQuality": "Grok Imagine Quality",
       "nanoBanana2": "Nano Banana 2",

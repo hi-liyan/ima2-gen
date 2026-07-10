@@ -12,6 +12,7 @@ export const IMAGE_MODEL_OPTIONS: Array<{
   { value: "gpt-5.4-mini", shortLabel: "5.4m", fullLabelKey: "settings.imageModel.gpt54Mini" },
   { value: "gpt-5.4", shortLabel: "5.4", fullLabelKey: "settings.imageModel.gpt54" },
   { value: "gpt-5.5", shortLabel: "5.5", fullLabelKey: "settings.imageModel.gpt55" },
+  { value: "gpt-image-2", shortLabel: "image2", fullLabelKey: "settings.imageModel.gptImage2", providerHint: "api" },
   { value: "grok-imagine-image", shortLabel: "grok", fullLabelKey: "settings.imageModel.grokImagine" },
   { value: "grok-imagine-image-quality", shortLabel: "grok+", fullLabelKey: "settings.imageModel.grokImagineQuality" },
   { value: "nano-banana-2", shortLabel: "nb2 agy", fullLabelKey: "settings.imageModel.nanoBanana2", providerHint: "agy" },
@@ -22,7 +23,7 @@ export const IMAGE_MODEL_OPTIONS: Array<{
 const GEMINI_MODEL_VALUES = new Set<string>(["nano-banana-2", "nano-banana-pro"]);
 
 export const OPENAI_IMAGE_MODEL_OPTIONS = IMAGE_MODEL_OPTIONS.filter(
-  (option): option is { value: OpenAIImageModel; shortLabel: string; fullLabelKey: string } =>
+  (option): option is { value: OpenAIImageModel; shortLabel: string; fullLabelKey: string; providerHint?: Provider } =>
     !option.value.startsWith("grok-") && !GEMINI_MODEL_VALUES.has(option.value),
 );
 
@@ -52,6 +53,10 @@ export function isGrokImageModel(value: unknown): boolean {
 
 export function isGeminiImageModel(value: unknown): boolean {
   return typeof value === "string" && GEMINI_MODEL_VALUES.has(value);
+}
+
+export function isApiOnlyImageModel(value: unknown): boolean {
+  return value === "gpt-image-2";
 }
 
 export function getImageModelOptionsForProvider(provider: Provider) {

@@ -1,11 +1,12 @@
 export interface ImageGenOptions {
+  model?: string;
   quality?: string;
   size?: string;
   moderation?: string;
   partial_images?: number;
 }
 
-export type ResponseTool = { type: string; quality?: string; size?: string; moderation?: string; partial_images?: number };
+export type ResponseTool = { type: string; model?: string; quality?: string; size?: string; moderation?: string; partial_images?: number };
 export type ImageToolChoice = "required" | { type: "image_generation" };
 
 export function tools(webSearchEnabled: boolean, imageOptions: ImageGenOptions): ResponseTool[] {

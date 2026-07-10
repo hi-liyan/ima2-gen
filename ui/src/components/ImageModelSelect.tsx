@@ -2,7 +2,7 @@ import type { ImageModel } from "../types";
 import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { IMAGE_MODEL_OPTIONS, OPENAI_IMAGE_MODEL_OPTIONS, GROK_IMAGE_MODEL_OPTIONS, GEMINI_IMAGE_MODEL_OPTIONS, UNSUPPORTED_IMAGE_MODELS, VIDEO_MODEL_OPTIONS, isGeminiImageModel } from "../lib/imageModels";
+import { IMAGE_MODEL_OPTIONS, OPENAI_IMAGE_MODEL_OPTIONS, GROK_IMAGE_MODEL_OPTIONS, GEMINI_IMAGE_MODEL_OPTIONS, UNSUPPORTED_IMAGE_MODELS, VIDEO_MODEL_OPTIONS, isApiOnlyImageModel, isGeminiImageModel } from "../lib/imageModels";
 import { REASONING_EFFORT_OPTIONS, type ReasoningEffort } from "../lib/reasoning";
 import { useAppStore } from "../store/useAppStore";
 import { useI18n } from "../i18n";
@@ -42,7 +42,9 @@ export function ImageModelSelect({ variant }: ImageModelSelectProps) {
 
 
   const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setImageModel(event.target.value as ImageModel);
+    const model = event.target.value as ImageModel;
+    if (isApiOnlyImageModel(model)) setProvider("api");
+    setImageModel(model);
   };
 
   const getMenuItems = () => menuItemRefs.current.filter(
@@ -221,6 +223,7 @@ export function ImageModelSelect({ variant }: ImageModelSelectProps) {
                   aria-checked={option.value === imageModel && !videoModelSelected}
                   tabIndex={-1}
                   onClick={() => {
+                    if (option.providerHint) setProvider(option.providerHint);
                     setImageModel(option.value);
                     setOpen(false);
                   }}

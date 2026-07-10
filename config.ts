@@ -255,7 +255,7 @@ export const config = {
   },
   imageModels: {
     default: pickStr(env.IMA2_IMAGE_MODEL_DEFAULT, fileCfg.imageModels?.default, "gpt-5.4-mini"),
-    valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"]),
+    valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-image-2"]),
     unsupported: new Set(["gpt-5.3-codex-spark"]),
     reasoningEffort: pickStr(
       env.IMA2_REASONING_EFFORT,

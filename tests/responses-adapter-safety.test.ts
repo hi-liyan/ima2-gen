@@ -76,6 +76,41 @@ test("Responses adapter rejects malformed API keys without echoing token materia
   );
 });
 
+test("Responses adapter sends gpt-image-2 as the image tool model", async () => {
+  const originalFetch = globalThis.fetch;
+  let request: Record<string, any> | null = null;
+  const encoder = new TextEncoder();
+  globalThis.fetch = (async (_url, init) => {
+    request = JSON.parse(String(init?.body || "{}"));
+    return new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"type":"response.output_item.done","item":{"type":"image_generation_call","result":"ZmFrZQ=="}}\n\n'));
+        controller.enqueue(encoder.encode('data: {"type":"response.completed","response":{"usage":{}}}\n\n'));
+        controller.close();
+      },
+    }), { status: 200, headers: { "Content-Type": "text/event-stream" } });
+  }) as typeof fetch;
+  try {
+    const result = await generateViaResponses(
+      "api",
+      "cat",
+      "low",
+      "1024x1024",
+      "low",
+      [],
+      null,
+      "auto",
+      testContext({ apiKey: "sk-test" }),
+      { model: "gpt-image-2", webSearchEnabled: false },
+    );
+    assert.equal(result.b64, "ZmFrZQ==");
+    assert.equal(request?.model, "gpt-5.4-mini");
+    assert.deepEqual(request?.tools, [{ type: "image_generation", quality: "low", size: "1024x1024", moderation: "low", model: "gpt-image-2" }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Responses adapter wraps coded fetch failures without echoing token material", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () => {
