@@ -33,7 +33,7 @@
     "refTooLarge": "Image is too large. Convert to JPEG/PNG or lower the resolution and try again.",
     "refNotBase64": "Image file is corrupted or uses an unsupported encoding.",
     "refEmpty": "Empty image file. Please pick a different file.",
-    "refHeicUnsupported": "HEIC/HEIF is not supported. Convert to JPEG or PNG and try again.",
+    "refHeicConversionFailed": "无法将此 HEIC/HEIF 照片转换为 JPEG。请尝试其他照片。",
     "noCurrentImageForRef": "No current image to use as reference.",
     "refSlotFull": "Reference slots are full (max 5).",
     "currentImageLoadFailed": "Failed to load current image.",

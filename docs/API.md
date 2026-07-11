@@ -323,7 +323,7 @@ Fetch stored node metadata and asset URL.
 
 ## Reference Images
 
-Reference uploads are capped at 5 items. The frontend compresses large JPEG/PNG files before sending them. HEIC/HEIF files are rejected with a user-facing conversion hint.
+Reference uploads are capped at 5 items. The frontend compresses large files before sending them and converts HEIC/HEIF photos to JPEG. A conversion error is shown only when the selected photo cannot be decoded.
 
 Server-side validation may return these reference codes:
 

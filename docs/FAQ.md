@@ -217,7 +217,7 @@ Up to 5.
 
 ### What formats work best?
 
-Use JPEG or PNG. The browser path does not support HEIC/HEIF directly, so convert those images before attaching them.
+JPEG and PNG are always supported. HEIC/HEIF photos are converted to JPEG automatically before they are attached.
 
 ### What if a reference image is too large?
 

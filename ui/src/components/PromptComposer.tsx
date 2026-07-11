@@ -5,6 +5,7 @@ import { SavePromptPopover } from "./SavePromptPopover";
 import { WebSearchToggle } from "./WebSearchToggle";
 import { continueFromItem } from "../lib/continueFromItem";
 import { isVideoItem, extractLastFrame } from "../lib/videoMedia";
+import { isImageFile } from "../lib/compress";
 import type { VideoReferenceDragPayload } from "../lib/videoContinuity";
 
 type PromptComposerProps = {
@@ -108,9 +109,7 @@ export function PromptComposer({ variant = "sidebar" }: PromptComposerProps) {
       } catch { /* ignore malformed */ }
       return;
     }
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.type.startsWith("image/"),
-    );
+    const files = Array.from(e.dataTransfer.files).filter(isImageFile);
     if (files.length > 0) void handleImageFiles(files);
   };
 
@@ -129,9 +128,8 @@ export function PromptComposer({ variant = "sidebar" }: PromptComposerProps) {
     const files: File[] = [];
     for (const it of Array.from(items)) {
       if (it.kind !== "file") continue;
-      if (!it.type.startsWith("image/")) continue;
       const f = it.getAsFile();
-      if (f) files.push(f);
+      if (f && isImageFile(f)) files.push(f);
     }
     return files;
   };
@@ -412,7 +410,7 @@ export function PromptComposer({ variant = "sidebar" }: PromptComposerProps) {
       <input
         ref={fileInput}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         multiple
         hidden
         onChange={(e) => {

@@ -84,19 +84,41 @@ function b64LengthOfDataUrl(dataUrl: string): number {
   return i < 0 ? dataUrl.length : dataUrl.length - i - 1;
 }
 
+function jpegFilename(filename: string): string {
+  const stem = filename.replace(/\.[^/.]+$/, "").trim();
+  return `${stem || "reference"}.jpg`;
+}
+
+async function convertHeicToJpeg(file: File): Promise<File> {
+  try {
+    const { default: heic2any } = await import("heic2any");
+    const converted = await heic2any({
+      blob: file,
+      toType: "image/jpeg",
+      quality: 0.92,
+    });
+    const jpeg = Array.isArray(converted) ? converted[0] : converted;
+    if (!jpeg) throw new Error("HEIC decoder produced no image");
+    return new File([jpeg], jpegFilename(file.name), { type: "image/jpeg" });
+  } catch (err) {
+    throw new Error("HEIC/HEIF JPEG conversion failed", { cause: err });
+  }
+}
+
 export async function compressToBase64(file: File, opts: CompressOptions = {}): Promise<string> {
   const cfg = { ...DEFAULTS, ...opts };
+  const source = isHeic(file) ? await convertHeicToJpeg(file) : file;
 
   // Fast path: if already small enough and we're not forced to re-encode,
   // reuse the original bytes.
-  const rawDataUrl = await blobToDataUrl(file);
+  const rawDataUrl = await blobToDataUrl(source);
   if (b64LengthOfDataUrl(rawDataUrl) <= cfg.maxB64Bytes) {
     return rawDataUrl;
   }
 
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(source);
   } catch (err) {
     throw new Error("이미지 디코드 실패. JPEG/PNG로 변환 후 다시 시도해 주세요.", { cause: err });
   }
@@ -150,6 +172,10 @@ export function isHeic(file: File): boolean {
   if (t.includes("heic") || t.includes("heif")) return true;
   const n = (file.name || "").toLowerCase();
   return n.endsWith(".heic") || n.endsWith(".heif");
+}
+
+export function isImageFile(file: File): boolean {
+  return file.type.startsWith("image/") || isHeic(file);
 }
 
 export function hasAlphaChannel(file: File): boolean {

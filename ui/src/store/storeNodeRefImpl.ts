@@ -25,10 +25,8 @@ export async function addNodeReferencesImpl(
     return;
   }
   const toAdd = files.slice(0, Math.max(0, allowed));
-  const heicSkipped = toAdd.filter(isHeic);
-  const usable = toAdd.filter((f) => !isHeic(f));
   const results = await Promise.all(
-    usable.map(async (f) => {
+    toAdd.map(async (f) => {
       try {
         return await compressToBase64(f, {
           preserveTransparency: hasAlphaChannel(f),
@@ -40,6 +38,8 @@ export async function addNodeReferencesImpl(
     }),
   );
   const valid = results.filter((x): x is string => !!x);
+  const heicFailed = toAdd.some((file, index) => isHeic(file) && !results[index]);
+  const otherFailed = toAdd.some((file, index) => !isHeic(file) && !results[index]);
   if (valid.length > 0) {
     const sessionId = get().activeSessionId;
     set({
@@ -58,8 +58,8 @@ export async function addNodeReferencesImpl(
     });
     get().scheduleGraphSave();
   }
-  if (heicSkipped.length > 0) get().showToast(t("toast.refHeicUnsupported"), true);
-  if (usable.length - valid.length > 0) get().showToast(t("toast.refTooLarge"), true);
+  if (heicFailed) get().showToast(t("toast.refHeicConversionFailed"), true);
+  if (otherFailed) get().showToast(t("toast.refTooLarge"), true);
   if (files.length > allowed) get().showToast(t("toast.refLimitExceeded"), true);
 }
 

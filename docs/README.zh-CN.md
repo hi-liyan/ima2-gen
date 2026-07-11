@@ -193,7 +193,7 @@ environment variables > ~/.ima2/config.json > built-in defaults
 `provider: "api"` 请求没有可用 API key。请配置 API key，或切换到 OAuth provider。
 
 **大参考图上传失败**
-JPEG/PNG 会在上传前自动压缩。如果仍然失败，请转成更低分辨率的 JPEG/PNG。HEIC/HEIF 不支持浏览器路径。
+参考图会在上传前自动压缩。HEIC/HEIF 照片会自动转换为 JPEG；如果仍然失败，请降低分辨率后重试。
 
 **更新后看不到旧图库图片**
 新版本把生成图片目录从已安装的 package 文件夹移到了 `~/.ima2/generated`。请运行 `ima2 doctor`，并查看[旧图片恢复指南](RECOVER_OLD_IMAGES.md)。

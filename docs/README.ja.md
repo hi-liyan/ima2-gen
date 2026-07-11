@@ -190,7 +190,7 @@ Endpoint 一覧は [API Reference](API.md) に分離しました。
 `provider: "api"` request に使う API key が設定されていません。API key を設定するか OAuth provider に切り替えてください。
 
 **大きな参照画像が失敗する**
-JPEG/PNG は送信前に自動圧縮されます。それでも失敗する場合は、解像度を下げた JPEG/PNG に変換してください。HEIC/HEIF は browser path ではサポートしていません。
+参照画像は送信前に自動圧縮されます。HEIC/HEIF 写真は JPEG に自動変換されます。それでも失敗する場合は、解像度を下げて再試行してください。
 
 **更新後に以前のギャラリー画像が見えない**
 最近のバージョンでは、生成画像の保存先がインストール済みパッケージ内から `~/.ima2/generated` に移動しました。`ima2 doctor` を実行し、[古い画像の復旧ガイド](RECOVER_OLD_IMAGES.md) を確認してください。

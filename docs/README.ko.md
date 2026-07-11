@@ -270,7 +270,7 @@ environment variables > ~/.ima2/config.json > built-in defaults
 `provider: "api"` 요청에 사용할 API 키가 설정되어 있지 않다는 뜻입니다. API 키를 설정하거나 GPT OAuth 공급자로 전환하세요.
 
 **큰 레퍼런스 이미지가 실패해요**
-JPEG/PNG는 업로드 전에 자동 압축됩니다. 그래도 실패하면 해상도를 낮춘 JPEG/PNG로 바꿔 다시 시도하세요. HEIC/HEIF는 브라우저 경로에서 지원하지 않습니다.
+참조 이미지는 업로드 전에 자동 압축됩니다. HEIC/HEIF 사진은 JPEG로 자동 변환되며, 그래도 실패하면 해상도를 낮춰 다시 시도하세요.
 
 **업데이트 후 예전 갤러리 이미지가 안 보여요**
 최근 버전에서 생성 이미지 위치가 설치 폴더에서 `~/.ima2/generated`로 이동했습니다. `ima2 doctor`를 실행하고 [예전 이미지 복구 안내](RECOVER_OLD_IMAGES.md)를 확인하세요.

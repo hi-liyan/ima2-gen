@@ -6,6 +6,8 @@ import { readStoreBundle } from "./_storeBundle.mjs";
 const store = readStoreBundle();
 const api = readFileSync("ui/src/lib/nodeApi.ts", "utf-8");
 const refs = readFileSync("ui/src/lib/nodeRefStorage.ts", "utf-8");
+const compression = readFileSync("ui/src/lib/compress.ts", "utf-8");
+const promptComposer = readFileSync("ui/src/components/PromptComposer.tsx", "utf-8");
 
 describe("node child reference payload contract", () => {
   it("sends node references even when parentNodeId is present", () => {
@@ -36,5 +38,12 @@ describe("node child reference payload contract", () => {
     assert.match(store, /dataUrl = await compressReferenceSource\(cur\.image,\s*cur\.filename \|\| "current-reference\.png"\)/);
     assert.match(store, /const dataUrl = await compressReferenceSource\(sourceUrl,\s*"node-reference\.png"\)/);
     assert.doesNotMatch(store, /useCurrentAsReference:[\s\S]*?readAsDataURL\(blob\);[\s\S]*?addedCurrentAsRef/);
+  });
+
+  it("converts HEIC and HEIF uploads to JPEG before reference compression", () => {
+    assert.match(compression, /await import\("heic2any"\)/);
+    assert.match(compression, /toType:\s*"image\/jpeg"/);
+    assert.match(compression, /const source = isHeic\(file\) \? await convertHeicToJpeg\(file\) : file/);
+    assert.match(promptComposer, /accept="image\/\*,\.heic,\.heif"/);
   });
 });

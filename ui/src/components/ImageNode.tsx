@@ -5,6 +5,7 @@ import { useI18n } from "../i18n";
 import { getImageModelShortLabel } from "../lib/imageModels";
 import { formatReasoningLabel } from "../lib/reasoning";
 import { isVideoUrl } from "../lib/videoMedia";
+import { isImageFile } from "../lib/compress";
 import { SavePromptPopover } from "./SavePromptPopover";
 
 const MAX_NODE_REFS = 5;
@@ -97,9 +98,8 @@ function ImageNodeImpl({ id, data, selected }: NodeProps<GraphNode>) {
     const files: File[] = [];
     for (const it of Array.from(items)) {
       if (it.kind !== "file") continue;
-      if (!it.type.startsWith("image/")) continue;
       const f = it.getAsFile();
-      if (f) files.push(f);
+      if (f && isImageFile(f)) files.push(f);
     }
     return files;
   };
@@ -128,9 +128,7 @@ function ImageNodeImpl({ id, data, selected }: NodeProps<GraphNode>) {
       } catch { /* ignore malformed */ }
       return;
     }
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.type.startsWith("image/"),
-    );
+    const files = Array.from(e.dataTransfer.files).filter(isImageFile);
     if (files.length === 1) {
       const handled = await readDroppedImageMetadata(files[0], id);
       if (handled) return;
@@ -294,7 +292,7 @@ function ImageNodeImpl({ id, data, selected }: NodeProps<GraphNode>) {
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           multiple
           hidden
           onChange={(e) => {

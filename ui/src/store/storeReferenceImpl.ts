@@ -1,7 +1,7 @@
 import type { EmbeddedGenerationMetadata, GenerateItem } from "../types";
 import { readImageMetadata } from "../lib/api";
 import { readFileAsDataURL } from "../lib/image";
-import { compressToBase64, isHeic, hasAlphaChannel } from "../lib/compress";
+import { compressToBase64, isHeic, isImageFile, hasAlphaChannel } from "../lib/compress";
 import { parseRequestedCustomSide } from "../lib/size";
 import { isImageModel } from "../lib/imageModels";
 import { t } from "../i18n";
@@ -50,10 +50,8 @@ export async function addReferencesImpl(
   const maxReferences = get().referenceLimit;
   const allowed = maxReferences - get().referenceImages.length;
   const toAdd = files.slice(0, Math.max(0, allowed));
-  const heicSkipped = toAdd.filter(isHeic);
-  const usable = toAdd.filter((f) => !isHeic(f));
   const results = await Promise.all(
-    usable.map(async (f) => {
+    toAdd.map(async (f) => {
       try {
         return await compressToBase64(f, {
           preserveTransparency: hasAlphaChannel(f),
@@ -65,12 +63,14 @@ export async function addReferencesImpl(
     }),
   );
   const valid = results.filter((x): x is string => !!x);
+  const heicFailed = toAdd.some((file, index) => isHeic(file) && !results[index]);
+  const otherFailed = toAdd.some((file, index) => !isHeic(file) && !results[index]);
   set((s) => ({
     referenceImages: [...s.referenceImages, ...valid].slice(0, s.referenceLimit),
     providerUrlReference: valid.length > 0 ? null : s.providerUrlReference,
   }));
-  if (heicSkipped.length > 0) get().showToast(t("toast.refHeicUnsupported"), true);
-  if (usable.length - valid.length > 0) get().showToast(t("toast.refTooLarge"), true);
+  if (heicFailed) get().showToast(t("toast.refHeicConversionFailed"), true);
+  if (otherFailed) get().showToast(t("toast.refTooLarge"), true);
   if (files.length > allowed) get().showToast(t("toast.refLimitExceeded"), true);
 }
 
@@ -80,7 +80,7 @@ export async function readDroppedImageMetadataImpl(
   set: StoreSet,
   get: StoreGet,
 ): Promise<boolean> {
-  if (!file.type.startsWith("image/")) return false;
+  if (isHeic(file) || !isImageFile(file)) return false;
   let dataUrl = "";
   try {
     dataUrl = await readFileAsDataURL(file);

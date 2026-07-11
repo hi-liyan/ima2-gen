@@ -310,7 +310,7 @@ Set `OPENAI_API_KEY` or configure an API key before using `provider: "api"`. The
 Run `ima2 doctor image-probe --json > ima2-image-probe.json` and attach the safe JSON when opening an issue. For GPT OAuth cases, also capture `ima2 gen "고양이" --no-web-search --json` and `ima2 gen "고양이" --json` while `ima2 serve` is running. Do not share ChatGPT cookies, OAuth token files, API keys, raw upstream responses, prompt history, or generated base64. See the [FAQ support bundle](docs/FAQ.md#what-should-i-share-when-oauth-image-generation-returns-no-image).
 
 **A large reference image fails**
-The app compresses large JPEG/PNG references before upload. If a file still fails, convert it to JPEG or PNG at a lower resolution and try again. HEIC/HEIF files are not supported by the browser path.
+The app compresses large references before upload. HEIC/HEIF photos are automatically converted to JPEG; if a file still fails, lower its resolution and try again.
 
 **Old gallery images are missing after updating**
 Recent versions moved generated images from the installed package folder to `~/.ima2/generated`. Run `ima2 doctor` and see [Recover old images](docs/RECOVER_OLD_IMAGES.md).
