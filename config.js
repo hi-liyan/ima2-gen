@@ -156,12 +156,13 @@ export const config = {
     },
     imageModels: {
         default: pickStr(env.IMA2_IMAGE_MODEL_DEFAULT, fileCfg.imageModels?.default, "gpt-5.4-mini"),
-        valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]),
+        valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-image-2"]),
         unsupported: new Set(["gpt-5.3-codex-spark"]),
         reasoningEffort: pickStr(env.IMA2_REASONING_EFFORT, fileCfg.imageModels?.reasoningEffort, "medium"),
         validReasoningEfforts: new Set(["none", "low", "medium", "high", "xhigh", "max"]),
     },
     apiProvider: {
+        baseUrl: pickStr(env.IMA2_OPENAI_BASE_URL, fileCfg.apiProvider?.baseUrl, "https://api.openai.com/v1"),
         defaultImageModel: pickStr(env.IMA2_API_IMAGE_MODEL_DEFAULT, fileCfg.apiProvider?.defaultImageModel, "gpt-5.4-mini"),
         defaultReasoningEffort: pickStr(env.IMA2_API_REASONING_EFFORT, fileCfg.apiProvider?.defaultReasoningEffort, "low"),
         defaultSize: pickStr(env.IMA2_API_IMAGE_SIZE, fileCfg.apiProvider?.defaultSize, "1024x1024"),
