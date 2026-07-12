@@ -6,7 +6,7 @@ import {
   loadNodeMeta,
   loadAssetB64,
 } from "../lib/nodeStore.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "../lib/inflight.js";
+import { startJob, finishJob, markGenerationLogSubmitted, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "../lib/inflight.js";
 import {
   isGenerationCanceledError,
   makeGenerationCanceledError,
@@ -23,6 +23,7 @@ import { generateViaGeminiApi } from "../lib/geminiApiImageAdapter.js";
 import { isNonRetryableGenerationError, normalizeGenerationFailure, type UpstreamErr } from "../lib/generationErrors.js";
 import { logEvent, logError } from "../lib/logger.js";
 import { errInfo } from "../lib/errInfo.js";
+import { startGenerationLog } from "../lib/generationLogStore.js";
 import { requireRuntimeContext, type RouteRuntimeContext } from "../lib/runtimeContext.js";
 import { validateModeration, imageFormatFromMime, writeSse, dataUrlFromB64 } from "../lib/routeHelpers.js";
 import { publish } from "../lib/eventBus.js";
@@ -40,6 +41,13 @@ export function registerNodeRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
     const streamResponse = !asyncMode && wantsSse(req);
     const parentNodeId = (typeof body.parentNodeId === "string" ? body.parentNodeId : null);
     const requestId = typeof body.requestId === "string" ? body.requestId : (req.id ?? "");
+    startGenerationLog({
+      requestId,
+      kind: "node",
+      prompt: body.prompt,
+      meta: { ...body },
+      startedAt: Date.now(),
+    });
     const sessionId = typeof body.sessionId === "string" ? body.sessionId : null;
     const clientNodeId = typeof body.clientNodeId === "string" ? body.clientNodeId : null;
     let finishMeta: Record<string, unknown> = {};
@@ -175,6 +183,18 @@ export function registerNodeRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
           sessionId,
           parentNodeId,
           clientNodeId,
+          provider: activeProvider,
+          model: effectiveImageModel,
+          quality,
+          size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
+          operation,
+          contextMode,
+          searchMode,
           refsCount: referencePayload.refsCount,
           referenceBytes: referencePayload.referenceBytes,
           referenceB64Chars: referencePayload.referenceB64Chars,
@@ -200,7 +220,10 @@ export function registerNodeRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         );
       }
       registerJobAbortController(requestId, cancelController);
-      if (asyncMode) res.status(202).json({ requestId });
+      if (asyncMode) {
+        res.status(202).json({ requestId });
+        markGenerationLogSubmitted(requestId, 202);
+      }
       logEvent("node", "request", {
         requestId,
         operation,
@@ -481,6 +504,7 @@ export function registerNodeRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         finishCanceled = true;
         finishHttpStatus = canceled.status;
         finishErrorCode = canceled.code;
+        finishMeta = { error: canceled.message };
         return writeNodeError(
           res,
           canceled.status,
@@ -494,6 +518,12 @@ export function registerNodeRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
       finishStatus = "error";
       finishHttpStatus = err.status || 500;
       finishErrorCode = code;
+      finishMeta = {
+        error: err.message,
+        upstreamCode: ext.upstreamCode || null,
+        upstreamType: ext.upstreamType || null,
+        upstreamParam: ext.upstreamParam || null,
+      };
       logError("node", "error", err.raw, { requestId, code, parentNodeId, sessionId, clientNodeId });
       writeNodeError(res, err.status || 500, code, err.message, parentNodeId, {
         upstreamCode: ext.upstreamCode || null,

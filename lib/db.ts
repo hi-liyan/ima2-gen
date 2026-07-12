@@ -258,6 +258,50 @@ function migrate(database: Database.Database) {
       UNIQUE(browser_id, filename)
     );
 
+    CREATE TABLE IF NOT EXISTS generation_logs (
+      request_id         TEXT PRIMARY KEY,
+      kind               TEXT NOT NULL,
+      session_id         TEXT,
+      provider           TEXT,
+      model              TEXT,
+      status             TEXT NOT NULL DEFAULT 'running',
+      prompt             TEXT NOT NULL DEFAULT '',
+      request_json       TEXT NOT NULL DEFAULT '{}',
+      response_json      TEXT NOT NULL DEFAULT '{}',
+      submit_http_status INTEGER,
+      final_http_status  INTEGER,
+      error_code         TEXT,
+      started_at         INTEGER NOT NULL,
+      finished_at        INTEGER,
+      duration_ms        INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_generation_logs_started
+      ON generation_logs(started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_generation_logs_status
+      ON generation_logs(status, started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_generation_logs_session
+      ON generation_logs(session_id, started_at DESC);
+
+    CREATE TABLE IF NOT EXISTS generation_log_calls (
+      call_id           TEXT PRIMARY KEY,
+      operation_id      TEXT NOT NULL,
+      provider          TEXT,
+      model             TEXT,
+      stage             TEXT NOT NULL,
+      status            TEXT NOT NULL DEFAULT 'running',
+      request_json      TEXT NOT NULL DEFAULT '{}',
+      response_json     TEXT NOT NULL DEFAULT '{}',
+      http_status       INTEGER,
+      error_code        TEXT,
+      started_at        INTEGER NOT NULL,
+      finished_at       INTEGER,
+      duration_ms       INTEGER
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_generation_log_calls_operation
+      ON generation_log_calls(operation_id, started_at ASC);
+
     CREATE INDEX IF NOT EXISTS idx_image_annotations_filename
       ON image_annotations(filename);
 
@@ -268,10 +312,10 @@ function migrate(database: Database.Database) {
 
   const row = database.prepare("SELECT value FROM _meta WHERE key = 'schema_version'").get() as { value?: string } | undefined;
   if (!row) {
-    database.prepare("INSERT INTO _meta (key, value) VALUES ('schema_version', '5')").run();
-  } else if (row.value !== "5") {
+    database.prepare("INSERT INTO _meta (key, value) VALUES ('schema_version', '6')").run();
+  } else if (row.value !== "6") {
     database
-      .prepare("UPDATE _meta SET value = '5' WHERE key = 'schema_version'")
+      .prepare("UPDATE _meta SET value = '6' WHERE key = 'schema_version'")
       .run();
   }
 }

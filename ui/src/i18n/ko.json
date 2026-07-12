@@ -907,6 +907,10 @@
         "title": "언어",
         "hint": "UI 문구"
       },
+      "logs": {
+        "title": "생성 로그",
+        "hint": "요청 및 결과"
+      },
       "future": {
         "title": "예정",
         "hint": "확장 공간"
@@ -1049,6 +1053,28 @@
     "language": {
       "title": "언어",
       "body": "생성 프롬프트와 무관하게 인터페이스 언어만 바꿉니다."
+    },
+    "logs": {
+      "title": "생성 로그",
+      "body": "생성 버튼을 누를 때마다 하나의 작업으로 저장하고, 그 안의 모든 공급자 호출에 요청, 안전하게 처리된 응답 요약, 결과, HTTP 상태를 기록합니다.",
+      "refresh": "새로고침",
+      "clear": "로그 지우기",
+      "clearConfirm": "로컬에 저장된 생성 로그를 모두 삭제할까요?",
+      "loadFailed": "생성 로그를 불러오지 못했습니다.",
+      "empty": "아직 기록된 이미지 생성 작업이 없습니다.",
+      "listAria": "생성 로그 항목",
+      "http": "HTTP {status}",
+      "duration": "{ms}ms",
+      "calls": "호출 {count}회, 실패 {failed}회",
+      "operation": "생성 작업",
+      "providerCalls": "공급자 호출 ({count})",
+      "noCalls": "이전 기록에는 공급자 호출 세부 정보가 없습니다.",
+      "call": "호출 {index}",
+      "noPrompt": "프롬프트 없음",
+      "request": "요청",
+      "response": "응답",
+      "status": { "running": "진행 중", "completed": "완료", "error": "실패", "canceled": "취소됨" },
+      "kind": { "classic": "생성", "edit": "편집", "multimode": "시퀀스", "node": "노드", "agent_queue": "Agent 큐" }
     },
     "future": {
       "title": "나중을 위한 자리",

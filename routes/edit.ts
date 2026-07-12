@@ -23,6 +23,7 @@ import { hasPngAlphaChannel, parsePngInfo } from "../lib/pngInfo.js";
 import { invalidateHistoryIndex } from "../lib/historyIndex.js";
 
 import { errInfo } from "../lib/errInfo.js";
+import { startGenerationLog } from "../lib/generationLogStore.js";
 import { requireRuntimeContext, type RouteRuntimeContext, type RuntimeContext } from "../lib/runtimeContext.js";
 function validateModeration(ctx: RuntimeContext, moderation: unknown) {
   if (typeof moderation !== "string" || !ctx.config.oauth.validModeration.has(moderation)) {
@@ -99,6 +100,13 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
   const ctx = requireRuntimeContext(ctxRaw);
   app.post("/api/edit", async (req: Request, res: Response) => {
     const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : req.id;
+    startGenerationLog({
+      requestId,
+      kind: "edit",
+      prompt: req.body?.prompt,
+      meta: req.body ?? {},
+      startedAt: Date.now(),
+    });
     let finishStatus = "completed";
     let finishHttpStatus;
     let finishErrorCode;
@@ -148,9 +156,16 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         meta: {
           kind: "edit",
           sessionId,
+          provider: activeProvider,
           quality,
           model: imageModel,
           size: effectiveSize,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
+          hasMask: Boolean(rawMask),
+          inputImage: "[redacted:image-data]",
         },
       });
       registerJobAbortController(requestId, cancelController);
@@ -343,6 +358,7 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         finishCanceled = true;
         finishHttpStatus = canceled.status;
         finishErrorCode = canceled.code;
+        finishMeta = { error: canceled.message };
         return res.status(canceled.status).json({
           error: canceled.message,
           code: canceled.code,
@@ -352,6 +368,13 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
       finishStatus = "error";
       finishHttpStatus = err.status || 500;
       finishErrorCode = fallbackCode || "EDIT_FAILED";
+      finishMeta = {
+        error: err.message,
+        upstreamCode: ext.upstreamCode || null,
+        upstreamType: ext.upstreamType || null,
+        upstreamParam: ext.upstreamParam || null,
+        diagnosticReason: ext.diagnosticReason || null,
+      };
       logError("edit", "error", err.raw, { requestId, code: finishErrorCode });
       res.status(err.status || 500).json({
         error: err.message,

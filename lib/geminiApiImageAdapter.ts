@@ -2,6 +2,7 @@ import { logEvent } from "./logger.js";
 import type { RuntimeContext } from "./runtimeContext.js";
 import { detectImageMimeFromB64 } from "./refs.js";
 import { getVertexAccessToken, getVertexProjectId, isVertexInitialized } from "./vertexAuth.js";
+import { finishGenerationLogCall, startGenerationLogCall } from "./generationLogStore.js";
 
 export interface GeminiApiGenerateResult {
   b64: string;
@@ -137,6 +138,13 @@ export async function generateViaGeminiApi(
       };
   const configKey = useVertex ? "generationConfig" : "generation_config";
   const body = { contents: buildContents(prompt, references), [configKey]: generationConfig };
+  const callId = startGenerationLogCall({
+    operationId: options.requestId,
+    provider: useVertex ? "vertex-ai" : "gemini-api",
+    model: apiModelId,
+    stage: "generate-content",
+    request: { method: "POST", endpoint: endpointLabel(url), body },
+  });
 
   logEvent("gemini-api", "generate:start", {
     requestId: options.requestId,
@@ -150,6 +158,8 @@ export async function generateViaGeminiApi(
   const combinedSignal = options.signal
     ? AbortSignal.any([options.signal, timeoutSignal])
     : timeoutSignal;
+  let httpStatus: number | undefined;
+  let response: Record<string, unknown> = {};
 
   try {
     const res = await fetch(url, {
@@ -158,9 +168,12 @@ export async function generateViaGeminiApi(
       body: JSON.stringify(body),
       signal: combinedSignal,
     });
+    httpStatus = res.status;
+    response = { contentType: res.headers.get("content-type") || null };
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      response = { ...response, body: text };
       if (res.status === 429) {
         throw geminiApiError(`Gemini API rate limited: ${text.slice(0, 200)}`, 429, "GEMINI_API_RATE_LIMITED");
       }
@@ -202,6 +215,18 @@ export async function generateViaGeminiApi(
     }
 
     const usageMetadata = json?.usageMetadata || {};
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus,
+      response: {
+        ...response,
+        finishReason: json?.candidates?.[0]?.finishReason || null,
+        imageCount: 1,
+        text: textResponse,
+        usage: usageMetadata,
+      },
+    });
 
     logEvent("gemini-api", "generate:done", {
       requestId: options.requestId,
@@ -223,6 +248,15 @@ export async function generateViaGeminiApi(
       mime,
     };
   } catch (e: any) {
+    const errorCode = typeof e?.code === "string" ? e.code : "GEMINI_API_NETWORK_FAILED";
+    const status = typeof e?.status === "number" ? e.status : httpStatus;
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: status,
+      errorCode,
+      response: { ...response, error: e instanceof Error ? e.message : String(e) },
+    });
     if (e.name === "AbortError") {
       if (options.signal?.aborted) {
         throw geminiApiError("Generation canceled", 499, "GENERATION_CANCELED");
@@ -231,5 +265,14 @@ export async function generateViaGeminiApi(
     }
     if (e.code && e.status) throw e;
     throw geminiApiError(`Gemini API request failed: ${e.message}`, 502, "GEMINI_API_NETWORK_FAILED");
+  }
+}
+
+function endpointLabel(value: string): string {
+  try {
+    const endpoint = new URL(value);
+    return `${endpoint.origin}${endpoint.pathname}`;
+  } catch {
+    return "[invalid endpoint]";
   }
 }

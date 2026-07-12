@@ -46,7 +46,7 @@ export function OpenAIKeyConfig({ maskedKey, keySource, configured, config, onSa
         if (baseUrl.trim().length === 0) {
           const resetRes = await fetch("/api/providers/openai/config/base-url", { method: "DELETE" });
           const resetJson = await resetRes.json();
-          if (!resetRes.ok || !resetJson.ok) throw new Error(resetJson.error || "Failed to reset base URL");
+          if (!resetRes.ok || !resetJson.ok) throw new Error(resetJson.error || t("settings.apiKeys.resetBaseUrlFailed"));
         } else {
           const urlRes = await fetch("/api/providers/openai/config", {
             method: "PUT",
@@ -54,7 +54,7 @@ export function OpenAIKeyConfig({ maskedKey, keySource, configured, config, onSa
             body: JSON.stringify({ baseUrl: baseUrl.trim() }),
           });
           const urlJson = await urlRes.json();
-          if (!urlRes.ok || !urlJson.ok) throw new Error(urlJson.error || "Failed to save base URL");
+          if (!urlRes.ok || !urlJson.ok) throw new Error(urlJson.error || t("settings.apiKeys.saveBaseUrlFailed"));
         }
       }
 
@@ -65,7 +65,7 @@ export function OpenAIKeyConfig({ maskedKey, keySource, configured, config, onSa
           body: JSON.stringify({ apiKey: key.trim() }),
         });
         const keyJson = await keyRes.json();
-        if (!keyRes.ok || !keyJson.ok) throw new Error(keyJson.error || "Failed to save API key");
+        if (!keyRes.ok || !keyJson.ok) throw new Error(keyJson.error || t("settings.apiKeys.saveApiKeyFailed"));
       }
 
       setKey("");
@@ -74,26 +74,26 @@ export function OpenAIKeyConfig({ maskedKey, keySource, configured, config, onSa
       onSaved();
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
-      setError(e.message || "Failed to save OpenAI settings");
+      setError(e.message || t("settings.apiKeys.saveOpenAISettingsFailed"));
     } finally {
       setSaving(false);
     }
-  }, [baseUrl, baseUrlDirty, key, keyDirty, onSaved]);
+  }, [baseUrl, baseUrlDirty, key, keyDirty, onSaved, t]);
 
   const handleDeleteKey = useCallback(async () => {
     try {
       const res = await fetch("/api/keys/openai", { method: "DELETE" });
       if (!res.ok) {
-        setError("Failed to remove key");
+        setError(t("settings.apiKeys.removeFailed"));
         return;
       }
       setKey("");
       setEditingKey(false);
       onSaved();
     } catch (e: any) {
-      setError(e.message || "Failed to remove key");
+      setError(e.message || t("settings.apiKeys.removeFailed"));
     }
-  }, [onSaved]);
+  }, [onSaved, t]);
 
   return (
     <article className="settings-row">

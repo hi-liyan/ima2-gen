@@ -3,6 +3,7 @@ import { SAFETY_INTENT_POLICY } from "./promptSafetyPolicy.js";
 import type { RouteRuntimeContext } from "./runtimeContext.js";
 import { mapSizeToGrokImageParams, type GrokImageSizeParams } from "./grokSizeMapper.js";
 import { detectImageMimeFromB64 } from "./refs.js";
+import { finishGenerationLogCall, startGenerationLogCall } from "./generationLogStore.js";
 import {
   grokError,
   grokStageError,
@@ -308,7 +309,16 @@ export async function planGrokImage(
     options.references || options.referenceCount || 0,
   );
   const { url, headers } = getGrokEndpoint(ctx, "/v1/chat/completions", options.directApiKey);
+  const callId = startGenerationLogCall({
+    operationId: options.requestId,
+    provider: options.directApiKey ? "grok-api" : "grok",
+    model: planner.model,
+    stage: "plan-image",
+    request: { method: "POST", endpoint: endpointLabel(url), body: payload },
+  });
   const { combinedSignal, timer } = withTimeoutSignal(options.signal, planner.timeoutMs);
+  let httpStatus: number | undefined;
+  let response: Record<string, unknown> = {};
 
   logEvent("grok", "planner:start", { requestId: options.requestId, plannerModel: planner.model, imageModel, size: options.size });
   try {
@@ -318,10 +328,13 @@ export async function planGrokImage(
       body: JSON.stringify(payload),
       signal: combinedSignal,
     });
+    httpStatus = res.status;
+    response = { contentType: res.headers.get("content-type") || null };
     clearTimeout(timer);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      response = { ...response, body: text };
       let parsed: any;
       try { parsed = JSON.parse(text); } catch { /* ignore */ }
       const msg = parsed?.error || text || `HTTP ${res.status}`;
@@ -329,6 +342,12 @@ export async function planGrokImage(
     }
 
     const plan = parseGrokImagePlan(await res.json() as GrokChatResponse, imageModel);
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus,
+      response: { ...response, prompt: plan.prompt, webSearchCalls: plan.webSearchCalls },
+    });
     logEvent("grok", "planner:done", {
       requestId: options.requestId,
       plannerModel: planner.model,
@@ -340,6 +359,14 @@ export async function planGrokImage(
     return plan;
   } catch (e: any) {
     clearTimeout(timer);
+    const errorCode = typeof e?.code === "string" ? e.code : "GROK_PLANNER_NETWORK_FAILED";
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: typeof e?.status === "number" ? e.status : httpStatus,
+      errorCode,
+      response: { ...response, error: e instanceof Error ? e.message : String(e) },
+    });
     if (e.name === "AbortError") {
       if (options.signal?.aborted) throw grokError("Generation canceled", 499, "GENERATION_CANCELED");
       throw grokError("Grok planner timed out", 504, "GROK_PLANNER_TIMEOUT");
@@ -374,6 +401,14 @@ export async function generateViaGrok(
     : imagePayload(model, plan.prompt, options.size);
   const endpoint = hasReferences ? "/v1/images/edits" : "/v1/images/generations";
   const logStage = hasReferences ? "generate:edit-start" : "generate:start";
+  const { url } = getGrokEndpoint(ctx, endpoint, options.directApiKey);
+  const callId = startGenerationLogCall({
+    operationId: options.requestId,
+    provider: options.directApiKey ? "grok-api" : "grok",
+    model,
+    stage: hasReferences ? "edit-image" : "generate-image",
+    request: { method: "POST", endpoint: endpointLabel(url), body: payload },
+  });
 
   logEvent("grok", logStage, {
     requestId: options.requestId,
@@ -382,24 +417,49 @@ export async function generateViaGrok(
     size: options.size,
     refs: references.length,
   });
-  const result = await postGrokImages(ctx, payload, options.signal, endpoint, options.directApiKey);
-
-  const imageUrl = result.data?.[0]?.url;
-  if (!imageUrl) {
-    throw grokError("Grok returned no image URL", 502, "GROK_EMPTY_RESPONSE");
+  try {
+    const result = await postGrokImages(ctx, payload, options.signal, endpoint, options.directApiKey);
+    const imageUrl = result.data?.[0]?.url;
+    if (!imageUrl) {
+      throw grokError("Grok returned no image URL", 502, "GROK_EMPTY_RESPONSE");
+    }
+    const downloaded = await downloadGrokImageUrl(imageUrl, options.signal);
+    const usage = result.usage ? { grok_cost_usd_ticks: result.usage.cost_in_usd_ticks ?? 0 } : null;
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus: 200,
+      response: { imageUrl, mime: downloaded.mime, usage, webSearchCalls: plan.webSearchCalls },
+    });
+    logEvent("grok", "generate:done", {
+      requestId: options.requestId,
+      model,
+      endpoint,
+      refs: references.length,
+      b64Len: downloaded.b64.length,
+    });
+    return { b64: downloaded.b64, providerUrl: imageUrl, usage, webSearchCalls: plan.webSearchCalls, mime: downloaded.mime, revisedPrompt: plan.prompt };
+  } catch (e) {
+    const failure = e as { code?: unknown; status?: unknown };
+    const errorCode = typeof failure?.code === "string" ? failure.code : "GROK_NETWORK_FAILED";
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: typeof failure?.status === "number" ? failure.status : undefined,
+      errorCode,
+      response: { error: e instanceof Error ? e.message : String(e) },
+    });
+    throw e;
   }
-  const downloaded = await downloadGrokImageUrl(imageUrl, options.signal);
+}
 
-  const usage = result.usage ? { grok_cost_usd_ticks: result.usage.cost_in_usd_ticks ?? 0 } : null;
-  logEvent("grok", "generate:done", {
-    requestId: options.requestId,
-    model,
-    endpoint,
-    refs: references.length,
-    b64Len: downloaded.b64.length,
-  });
-
-  return { b64: downloaded.b64, providerUrl: imageUrl, usage, webSearchCalls: plan.webSearchCalls, mime: downloaded.mime, revisedPrompt: plan.prompt };
+function endpointLabel(value: string): string {
+  try {
+    const endpoint = new URL(value);
+    return `${endpoint.origin}${endpoint.pathname}`;
+  } catch {
+    return "[invalid endpoint]";
+  }
 }
 
 export async function editViaGrok(
@@ -412,14 +472,41 @@ export async function editViaGrok(
   const detectedInputMime = detectImageMimeFromB64(imageB64) || "image/png";
   const imageUrl = imageB64.startsWith("data:") ? imageB64 : `data:${detectedInputMime};base64,${imageB64}`;
   const payload: Record<string, unknown> = { model, prompt, n: 1, response_format: "url", image: { type: "image_url", url: imageUrl }, ...mapSizeToGrokImageParams(options.size) };
+  const { url } = getGrokEndpoint(ctx, "/v1/images/edits", options.directApiKey);
+  const callId = startGenerationLogCall({
+    operationId: options.requestId,
+    provider: options.directApiKey ? "grok-api" : "grok",
+    model,
+    stage: "edit-image",
+    request: { method: "POST", endpoint: endpointLabel(url), body: payload },
+  });
   logEvent("grok", "edit:start", { requestId: options.requestId, model, promptChars: prompt.length });
-  const result = await postGrokImages(ctx, payload, options.signal, "/v1/images/edits", options.directApiKey);
-  const editResultUrl = result.data?.[0]?.url;
-  if (!editResultUrl) {
-    throw grokError("Grok edit returned no image URL", 502, "GROK_EMPTY_RESPONSE");
+  try {
+    const result = await postGrokImages(ctx, payload, options.signal, "/v1/images/edits", options.directApiKey);
+    const editResultUrl = result.data?.[0]?.url;
+    if (!editResultUrl) {
+      throw grokError("Grok edit returned no image URL", 502, "GROK_EMPTY_RESPONSE");
+    }
+    const downloaded = await downloadGrokImageUrl(editResultUrl, options.signal);
+    const usage = result.usage ? { grok_cost_usd_ticks: result.usage.cost_in_usd_ticks ?? 0 } : null;
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus: 200,
+      response: { imageUrl: editResultUrl, mime: downloaded.mime, usage },
+    });
+    logEvent("grok", "edit:done", { requestId: options.requestId, model, b64Len: downloaded.b64.length });
+    return { b64: downloaded.b64, providerUrl: editResultUrl, usage, webSearchCalls: 0, mime: downloaded.mime, revisedPrompt: result.data[0].revised_prompt || prompt };
+  } catch (e) {
+    const failure = e as { code?: unknown; status?: unknown };
+    const errorCode = typeof failure?.code === "string" ? failure.code : "GROK_NETWORK_FAILED";
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: typeof failure?.status === "number" ? failure.status : undefined,
+      errorCode,
+      response: { error: e instanceof Error ? e.message : String(e) },
+    });
+    throw e;
   }
-  const downloaded = await downloadGrokImageUrl(editResultUrl, options.signal);
-  const usage = result.usage ? { grok_cost_usd_ticks: result.usage.cost_in_usd_ticks ?? 0 } : null;
-  logEvent("grok", "edit:done", { requestId: options.requestId, model, b64Len: downloaded.b64.length });
-  return { b64: downloaded.b64, providerUrl: editResultUrl, usage, webSearchCalls: 0, mime: downloaded.mime, revisedPrompt: result.data[0].revised_prompt || prompt };
 }

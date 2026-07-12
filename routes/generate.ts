@@ -19,6 +19,7 @@ import {
   registerJobAbortController,
   isJobCanceled,
   isStartJobFailure,
+  markGenerationLogSubmitted,
   setJobPhase,
   INFLIGHT_RETRY_AFTER_SECONDS,
 } from "../lib/inflight.js";
@@ -41,11 +42,19 @@ import { STORYBOARD_PREFIX } from "../lib/storyboardPrefix.js";
 import { validateModeration, imageFormatFromMime, upstreamErrorFields } from "../lib/routeHelpers.js";
 import { publish } from "../lib/eventBus.js";
 import { publishJobEvent } from "../lib/ssePublish.js";
+import { startGenerationLog } from "../lib/generationLogStore.js";
 
 export function registerGenerateRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
   const ctx = requireRuntimeContext(ctxRaw);
   app.post("/api/generate", async (req: Request, res: Response) => {
     const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : req.id;
+    startGenerationLog({
+      requestId,
+      kind: "classic",
+      prompt: req.body?.prompt,
+      meta: req.body ?? {},
+      startedAt: Date.now(),
+    });
     const asyncMode = req.body?.async === true;
     let finishStatus = "completed";
     let finishHttpStatus: number | undefined;
@@ -152,9 +161,15 @@ export function registerGenerateRoutes(app: Express, ctxRaw: RouteRuntimeContext
           sessionId,
           parentNodeId: null,
           clientNodeId,
+          provider: activeProvider,
           quality,
           model: imageModel,
           size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
           n: count,
           refsCount: providerRefCount,
           referenceBytes: referencePayload.referenceBytes,
@@ -179,6 +194,7 @@ export function registerGenerateRoutes(app: Express, ctxRaw: RouteRuntimeContext
       registerJobAbortController(requestId, cancelController);
       if (asyncMode) {
         res.status(202).json({ requestId, async: true });
+        markGenerationLogSubmitted(requestId, 202);
       }
       setJobPhase(requestId, "streaming");
       if (asyncMode) publish(requestId, "phase", { requestId, phase: "streaming" });
@@ -510,6 +526,7 @@ export function registerGenerateRoutes(app: Express, ctxRaw: RouteRuntimeContext
       if (isGenerationCanceledError(err.raw) || isJobCanceled(requestId)) {
         const canceled = makeGenerationCanceledError();
         finishCanceled = true;
+        finishMeta = { error: canceled.message };
         return fail(canceled.status, {
           error: canceled.message,
           code: canceled.code,
@@ -517,6 +534,7 @@ export function registerGenerateRoutes(app: Express, ctxRaw: RouteRuntimeContext
         });
       }
       finishErrorCode = fallbackCode || "GENERATE_FAILED";
+      finishMeta = { error: err.message, ...upstreamErrorFields(ext) };
       logError("generate", "error", err.raw, { requestId, code: finishErrorCode });
       fail(err.status || 500, {
         error: err.message,

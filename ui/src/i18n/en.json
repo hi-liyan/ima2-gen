@@ -907,6 +907,10 @@
         "title": "Language",
         "hint": "Interface copy"
       },
+      "logs": {
+        "title": "Generation logs",
+        "hint": "Requests and outcomes"
+      },
       "future": {
         "title": "Future",
         "hint": "Reserved"
@@ -951,7 +955,18 @@
       "codexNotLoggedIn": "Not logged in",
       "fetchError": "Could not load quota",
       "noData": "No usage data",
-      "grokUsageLink": "View Grok usage →"
+      "grokUsageLink": "View Grok usage →",
+      "switchAccount": "Switch {provider} account",
+      "loginStarting": "Starting login...",
+      "enterCode": "Enter this code in the opened tab:",
+      "retry": "Retry",
+      "copyLink": "Copy link",
+      "copied": "Copied!",
+      "waitingForApproval": "Waiting for approval...",
+      "accountSwitched": "Account switched! Refreshing...",
+      "switchFailed": "Switch failed",
+      "tryAgain": "Try again",
+      "requestFailed": "Request failed"
     },
     "imageModel": {
       "title": "Image model",
@@ -993,12 +1008,20 @@
         "label": "Vertex AI (Service Account)",
         "placeholder": "Paste your Google Cloud service account JSON { \"type\": \"service_account\", ... }",
         "authModeApiKey": "API Key",
-        "authModeVertex": "Vertex JSON"
+        "authModeVertex": "Vertex JSON",
+        "maskedValue": "●●● (configured — click to replace)"
       },
       "save": "Save",
       "saved": "Saved ✓",
       "saving": "Validating...",
       "remove": "Remove",
+      "saveFailed": "Failed to save",
+      "networkError": "Network error",
+      "removeFailed": "Failed to remove key",
+      "resetBaseUrlFailed": "Failed to reset base URL",
+      "saveBaseUrlFailed": "Failed to save base URL",
+      "saveApiKeyFailed": "Failed to save API key",
+      "saveOpenAISettingsFailed": "Failed to save OpenAI settings",
       "status": {
         "valid": "Valid",
         "notConfigured": "Not configured"
@@ -1049,6 +1072,28 @@
     "language": {
       "title": "Language",
       "body": "Switch the UI language without changing generated content."
+    },
+    "logs": {
+      "title": "Generation logs",
+      "body": "Each Generate click is stored as one operation, with every provider call inside it retaining its request, safe response summary, outcome, and HTTP status.",
+      "refresh": "Refresh",
+      "clear": "Clear logs",
+      "clearConfirm": "Delete all locally stored generation logs?",
+      "loadFailed": "Could not load generation logs.",
+      "empty": "No image-generation operations have been logged yet.",
+      "listAria": "Generation log entries",
+      "http": "HTTP {status}",
+      "duration": "{ms} ms",
+      "calls": "{count} calls, {failed} failed",
+      "operation": "Generation operation",
+      "providerCalls": "Provider calls ({count})",
+      "noCalls": "This older record has no provider-call details.",
+      "call": "Call {index}",
+      "noPrompt": "No prompt",
+      "request": "Request",
+      "response": "Response",
+      "status": { "running": "Running", "completed": "Completed", "error": "Failed", "canceled": "Canceled" },
+      "kind": { "classic": "Generate", "edit": "Edit", "multimode": "Sequence", "node": "Node", "agent_queue": "Agent queue" }
     },
     "future": {
       "title": "Reserved for later",

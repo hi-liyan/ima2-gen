@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { logEvent } from "./logger.js";
 import { SAFETY_INTENT_POLICY } from "./promptSafetyPolicy.js";
 import { detectImageMimeFromB64 } from "./refs.js";
+import { finishGenerationLogCall, startGenerationLogCall } from "./generationLogStore.js";
 
 export interface AgyGenerateResult {
   b64: string;
@@ -243,6 +244,13 @@ export async function generateViaAgy(
   const refDetails = (options.references || []).slice(0, 3);
   const { paths: refPaths, cleanup } = await writeRefsToTempFiles(refDetails);
   const agyPrompt = buildAgyPrompt(prompt, refPaths);
+  const callId = startGenerationLogCall({
+    operationId: options.requestId,
+    provider: "agy",
+    model: "antigravity-cli",
+    stage: "generate",
+    request: { prompt, referenceCount: refPaths.length },
+  });
 
   logEvent("agy", "generate:start", {
     requestId: options.requestId,
@@ -306,6 +314,13 @@ export async function generateViaAgy(
       fileBytes: buffer.length,
     });
 
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus: 200,
+      response: { artifactPath, mime, fileBytes: buffer.length },
+    });
+
     await cleanupAgyArtifact(resolvedPath);
 
     return {
@@ -317,6 +332,15 @@ export async function generateViaAgy(
     };
   } catch (err) {
     logEvent("agy", "generate:failed_cleanup", { requestId: options.requestId });
+    const failure = err as { code?: unknown; status?: unknown };
+    const errorCode = typeof failure?.code === "string" ? failure.code : "AGY_GENERATE_FAILED";
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: typeof failure?.status === "number" ? failure.status : undefined,
+      errorCode,
+      response: { error: err instanceof Error ? err.message : String(err) },
+    });
     throw err;
   } finally {
     await cleanup();

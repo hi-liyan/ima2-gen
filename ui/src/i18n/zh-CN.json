@@ -210,21 +210,21 @@
     "skip": "I'll set it up myself"
   },
   "readiness": {
-    "title": "Generation readiness",
-    "open": "Check readiness",
-    "openTitle": "Check provider, auth, model, and web-search readiness",
-    "settingsTitle": "Generation readiness",
-    "settingsBody": "Open a compact popup with provider, auth, model, reasoning, and web-search state.",
-    "ready": "Ready to generate",
-    "readyBody": "The selected provider is available.",
-    "blocked": "Provider needs attention",
-    "provider": "Provider",
-    "model": "Model",
-    "reasoning": "Reasoning",
-    "webSearch": "Web search",
+    "title": "生成就绪状态",
+    "open": "检查就绪状态",
+    "openTitle": "检查提供商、认证、模型和网页搜索的就绪状态",
+    "settingsTitle": "生成就绪状态",
+    "settingsBody": "打开一个紧凑弹窗，查看提供商、认证、模型、推理和网页搜索状态。",
+    "ready": "可以生成",
+    "readyBody": "所选提供商可用。",
+    "blocked": "提供商需要处理",
+    "provider": "提供商",
+    "model": "模型",
+    "reasoning": "推理",
+    "webSearch": "网页搜索",
     "grokApi": "Grok API",
-    "grokApiBody": "Runs through bundled progrok: mandatory search, grok-4.3 image+text tool planning in English, then xAI Images API. Attached references use xAI image editing so i2i context is preserved.",
-    "openAccount": "Open account settings"
+    "grokApiBody": "通过内置 progrok 运行：强制搜索，使用 grok-4.3 以英文进行图像和文本工具规划，然后调用 xAI Images API。附加参考图使用 xAI 图像编辑，以保留图生图上下文。",
+    "openAccount": "打开账户设置"
   },
   "generate": {
     "button": "Generate",
@@ -445,8 +445,8 @@
     "unfavoriteAria": "Remove from favorites",
     "scopeAria": "Gallery scope",
     "scope": {
-      "current": "Current session",
-      "all": "All images"
+      "current": "当前会话",
+      "all": "所有图像"
     },
     "empty": {
       "currentSession": "No images in this session yet."
@@ -520,8 +520,8 @@
     "parentConflict": "A node can only have one parent connection."
   },
   "provider": {
-    "authTitle": "Provider",
-    "apiLabel": "API Key",
+    "authTitle": "提供商",
+    "apiLabel": "API 密钥",
     "oauthNotReady": "GPT OAuth proxy is not ready yet.",
     "codexLoginRequired": "Codex login required.",
     "codexLoginHint": "Run `codex login` in your terminal, then refresh this page.",
@@ -548,10 +548,10 @@
     "comingSoon": "Coming soon",
     "agyCompatTitle": "Gemini (agy)",
     "agyCompatBody": "1024x1024 fixed, JPEG output, max 3 refs. No quality/size control.",
-    "agyCompatBodyLong": "1024x1024 fixed output, JPEG format, max 3 reference images. No web search, no quality/size control.",
+    "agyCompatBodyLong": "固定输出 1024x1024、JPEG 格式，最多 3 张参考图。不支持网页搜索、质量或尺寸控制。",
     "geminiApiCompatTitle": "Gemini API",
     "geminiApiCompatBody": "Google Gemini API. Supports aspect ratio and resolution control from 512px to 4K.",
-    "geminiApiCompatBodyLong": "Google Gemini API direct. Supports nano-banana-2 (Flash) and nano-banana-pro (Pro), with aspect ratio and resolution control from 512px to 4K.",
+    "geminiApiCompatBodyLong": "直接使用 Google Gemini API。支持 nano-banana-2（Flash）和 nano-banana-pro（Pro），可设置 512px 至 4K 的宽高比与分辨率。",
     "gptCompatTitle": "GPT Image",
     "gptCompatBody": "OpenAI image generation via Responses API. Supports quality, size, format, moderation, and web search settings."
   },
@@ -876,86 +876,101 @@
     "nodeModeHint": "In node mode, click a node to edit its prompt and generate. Settings on the right panel (quality/size) apply to every new result."
   },
   "settings": {
-    "openAria": "Open settings",
-    "openTitle": "Settings",
-    "closeAria": "Close settings",
-    "closeTitle": "Return to canvas",
-    "navAria": "Settings sections",
-    "contentAria": "Settings content",
-    "jumpTo": "Jump to {section}",
-    "eyebrow": "Workspace settings",
-    "title": "Settings",
-    "subtitle": "Account, display, and future workspace controls live here so the generator stays focused.",
+    "openAria": "打开设置",
+    "openTitle": "设置",
+    "closeAria": "关闭设置",
+    "closeTitle": "返回画布",
+    "navAria": "设置分类",
+    "contentAria": "设置内容",
+    "jumpTo": "跳转到{section}",
+    "eyebrow": "工作区设置",
+    "title": "设置",
+    "subtitle": "账户、显示和工作区控制集中于此，让创作界面保持专注。",
     "sections": {
       "account": {
-        "title": "Account",
-        "hint": "GPT OAuth status"
+        "title": "账户",
+        "hint": "GPT OAuth 状态"
       },
       "generation": {
-        "title": "Generation",
-        "hint": "Model defaults"
+        "title": "生成",
+        "hint": "模型默认值"
       },
       "appearance": {
-        "title": "Appearance",
-        "hint": "Light and dark"
+        "title": "外观",
+        "hint": "明暗模式"
       },
       "workspace": {
-        "title": "Workspace",
-        "hint": "Profile"
+        "title": "工作区",
+        "hint": "布局配置"
       },
       "language": {
         "title": "语言",
         "hint": "界面文案"
       },
+      "logs": {
+        "title": "生成日志",
+        "hint": "请求和结果"
+      },
       "future": {
-        "title": "Future",
-        "hint": "Reserved"
+        "title": "后续功能",
+        "hint": "预留"
       }
     },
     "account": {
-      "primaryEyebrow": "Active provider",
-      "oauthTitle": "GPT OAuth is active",
-      "oauthBody": "GPT OAuth generation runs through your Codex OAuth session. You can switch to API-key mode when a valid key is configured.",
-      "apiSourceEnv": "OPENAI_API_KEY detected",
-      "apiSourceConfig": "config.json API key detected",
-      "apiTitle": "API key provider available",
-      "apiBody": "ima2-gen can use this API key for generation, edit, multimode, and node requests through the Responses API.",
-      "apiDisabled": "Unavailable",
-      "apiReady": "Ready",
-      "apiUnavailable": "Unavailable",
-      "apiUnknown": "Status unknown",
-      "grokEyebrow": "Local xAI proxy",
-      "grokTitle": "Grok image provider",
-      "grokBody": "Uses progrok at the configured local port for xAI Images API generation.",
+      "primaryEyebrow": "当前提供商",
+      "oauthTitle": "GPT OAuth 已启用",
+      "oauthBody": "GPT OAuth 通过您的 Codex OAuth 会话执行生成。配置有效密钥后，可以切换到 API 密钥模式。",
+      "apiSourceEnv": "已检测到 OPENAI_API_KEY",
+      "apiSourceConfig": "已检测到 config.json 中的 API 密钥",
+      "apiTitle": "可使用 API 密钥提供商",
+      "apiBody": "ima2-gen 可通过 Responses API 使用此密钥进行生成、编辑、序列和节点请求。",
+      "apiDisabled": "不可用",
+      "apiReady": "就绪",
+      "apiUnavailable": "不可用",
+      "apiUnknown": "状态未知",
+      "grokEyebrow": "本地 xAI 代理",
+      "grokTitle": "Grok 图像提供商",
+      "grokBody": "通过配置的本地端口运行 progrok，并使用 xAI Images API 生成图像。",
       "agyEyebrow": "Antigravity CLI",
       "agyTitle": "Gemini (agy)",
-      "agyInstalledBody": "Login status can't be detected. Run `agy login` in your terminal if generation fails.",
-      "agyMissingBody": "Not installed. Get the",
+      "agyInstalledBody": "无法检测登录状态。若生成失败，请在终端运行 `agy login`。",
+      "agyMissingBody": "尚未安装。获取",
       "agyMissingLink": "Antigravity CLI",
-      "agyFineprint": "Antigravity models and image quota are billed separately.",
-      "agyInstalled": "Installed",
-      "agyMissing": "Not installed",
+      "agyFineprint": "Antigravity 模型和图像额度单独计费。",
+      "agyInstalled": "已安装",
+      "agyMissing": "未安装",
       "status": {
-        "ready": "Ready",
-        "authRequired": "Login required",
-        "starting": "Starting",
-        "offline": "Offline",
-        "noImageModel": "No image model",
-        "error": "Error",
-        "checking": "Checking"
+        "ready": "就绪",
+        "authRequired": "需要登录",
+        "starting": "正在启动",
+        "offline": "离线",
+        "noImageModel": "无可用图像模型",
+        "error": "错误",
+        "checking": "正在检查"
       }
     },
     "quota": {
-      "eyebrow": "Usage quota",
-      "title": "Rate limits",
-      "codexNotLoggedIn": "Not logged in",
-      "fetchError": "Could not load quota",
-      "noData": "No usage data",
-      "grokUsageLink": "View Grok usage →"
+      "eyebrow": "用量配额",
+      "title": "速率限制",
+      "codexNotLoggedIn": "未登录",
+      "fetchError": "无法加载配额",
+      "noData": "暂无用量数据",
+      "grokUsageLink": "查看 Grok 用量 →",
+      "switchAccount": "切换 {provider} 账户",
+      "loginStarting": "正在开始登录...",
+      "enterCode": "请在打开的页面中输入此代码：",
+      "retry": "重试",
+      "copyLink": "复制链接",
+      "copied": "已复制！",
+      "waitingForApproval": "等待授权...",
+      "accountSwitched": "账户已切换，正在刷新...",
+      "switchFailed": "切换失败",
+      "tryAgain": "再次尝试",
+      "requestFailed": "请求失败"
     },
     "imageModel": {
-      "title": "Image model",
-      "body": "Choose the image model used for future generations. Selecting a Grok model switches the provider to Grok.",
+      "title": "图像模型",
+      "body": "选择后续生成使用的图像模型。选择 Grok 模型会自动切换到 Grok 提供商。",
       "gpt54Mini": "GPT-5.4 Mini",
       "gpt54": "GPT-5.4",
       "gpt55": "GPT-5.5",
@@ -966,42 +981,50 @@
       "nanoBanana2Api": "Nano Banana 2",
       "nanoBananaPro": "Nano Banana Pro",
       "agy": "Antigravity (agy)",
-      "gpt53CodexSpark": "GPT-5.3 Codex Spark — unsupported for images",
-      "unsupportedHelp": "Grok models use xAI's Images API through the bundled local proxy. GPT models use OpenAI Responses image generation."
+      "gpt53CodexSpark": "GPT-5.3 Codex Spark — 不支持图像",
+      "unsupportedHelp": "Grok 模型通过内置本地代理使用 xAI Images API；GPT 模型使用 OpenAI Responses 图像生成。"
     },
     "apiKeys": {
-      "accordionTitle": "API Keys",
-      "envSource": "Loaded from environment",
-      "configSource": "Loaded from config",
-      "defaultSource": "Using default",
+      "accordionTitle": "API 密钥",
+      "envSource": "从环境变量加载",
+      "configSource": "从配置加载",
+      "defaultSource": "使用默认值",
       "openai": {
-        "label": "GPT API Key (OpenAI)",
-        "placeholder": "Paste your OpenAI API key (sk-...)",
-        "baseUrlPlaceholder": "Optional relay URL (defaults to https://api.openai.com/v1)",
-        "baseUrlHelp": "Supports only OpenAI official API relays. Leave blank to use the default OpenAI endpoint.",
-        "baseUrlStatus": "Base URL source: {source}"
+        "label": "GPT API 密钥（OpenAI）",
+        "placeholder": "粘贴 OpenAI API 密钥（sk-...）",
+        "baseUrlPlaceholder": "可选中继 URL（默认 https://api.openai.com/v1）",
+        "baseUrlHelp": "仅支持 OpenAI 官方 API 中继。留空则使用默认 OpenAI 端点。",
+        "baseUrlStatus": "基础 URL 来源：{source}"
       },
       "xai": {
-        "label": "Grok API Key (xAI)",
-        "placeholder": "Paste your xAI API key (xai-...)"
+        "label": "Grok API 密钥（xAI）",
+        "placeholder": "粘贴 xAI API 密钥（xai-...）"
       },
       "gemini": {
-        "label": "Gemini (Google)",
-        "placeholder": "Paste your Gemini API key (AI...)"
+        "label": "Gemini（Google）",
+        "placeholder": "粘贴 Gemini API 密钥（AI...）"
       },
       "vertex": {
-        "label": "Vertex AI (Service Account)",
-        "placeholder": "Paste your Google Cloud service account JSON { \"type\": \"service_account\", ... }",
-        "authModeApiKey": "API Key",
-        "authModeVertex": "Vertex JSON"
+        "label": "Vertex AI（服务账号）",
+        "placeholder": "粘贴 Google Cloud 服务账号 JSON { \"type\": \"service_account\", ... }",
+        "authModeApiKey": "API 密钥",
+        "authModeVertex": "Vertex JSON",
+        "maskedValue": "●●●（已配置，点击替换）"
       },
-      "save": "Save",
-      "saved": "Saved ✓",
-      "saving": "Validating...",
-      "remove": "Remove",
+      "save": "保存",
+      "saved": "已保存 ✓",
+      "saving": "正在验证...",
+      "remove": "移除",
+      "saveFailed": "保存失败",
+      "networkError": "网络错误",
+      "removeFailed": "移除密钥失败",
+      "resetBaseUrlFailed": "重置基础 URL 失败",
+      "saveBaseUrlFailed": "保存基础 URL 失败",
+      "saveApiKeyFailed": "保存 API 密钥失败",
+      "saveOpenAISettingsFailed": "保存 OpenAI 设置失败",
       "status": {
-        "valid": "Valid",
-        "notConfigured": "Not configured"
+        "valid": "有效",
+        "notConfigured": "未配置"
       }
     },
     "videoModel": {
@@ -1009,50 +1032,72 @@
       "grokImagine15": "Grok Imagine Video 1.5"
     },
     "reasoning": {
-      "title": "Reasoning effort",
-      "body": "Higher effort spends more reasoning tokens on planning, web search, and prompt enrichment before generating.",
-      "none": "Off — no extra reasoning",
-      "low": "Low — fastest, minimal reasoning",
-      "medium": "Medium — balanced default",
-      "high": "High — deeper research and synthesis",
-      "xhigh": "Xhigh — maximum reasoning, slowest"
+      "title": "推理强度",
+      "body": "更高的强度会在生成前投入更多推理令牌，用于规划、网页搜索和提示词扩充。",
+      "none": "关闭 — 不进行额外推理",
+      "low": "低 — 最快，最少推理",
+      "medium": "中 — 均衡的默认选项",
+      "high": "高 — 更深入的研究和综合",
+      "xhigh": "最高 — 最大推理量，速度最慢"
     },
     "webSearch": {
-      "title": "Web search",
-      "body": "Use live search before generation for real people, brands, products, places, and recent events.",
-      "on": "Search on",
-      "off": "Search off"
+      "title": "网页搜索",
+      "body": "在生成前使用实时搜索，适用于真实人物、品牌、产品、地点和近期事件。",
+      "on": "搜索已开启",
+      "off": "搜索已关闭"
     },
     "grokCompatibility": {
-      "title": "Grok compatibility",
-      "body": "Grok image generation first runs mandatory web search, then sends text and attached images to a local image-tool planner that writes the final image prompt in English. Attached references route through xAI image editing; size is mapped to aspect ratio/resolution. Output format, moderation, and reasoning are only used by GPT OAuth and API key providers."
+      "title": "Grok 兼容性",
+      "body": "Grok 图像生成会先强制执行网页搜索，然后将文本和附加图像发送至本地图像工具规划器，并用英文编写最终图像提示词。附加参考图会通过 xAI 图像编辑处理；尺寸会映射为宽高比和分辨率。输出格式、审核和推理仅适用于 GPT OAuth 与 API 密钥提供商。"
     },
     "grokPlanner": {
-      "title": "Grok planner model",
-      "body": "The model used for search and image/video prompt planning. grok-4.3 is the default and supports image input for I2V/Ref2V planning."
+      "title": "Grok 规划模型",
+      "body": "用于搜索以及图像/视频提示词规划的模型。默认使用 grok-4.3，支持 I2V/Ref2V 规划的图像输入。"
     },
     "gallery": {
-      "defaultScopeTitle": "Default gallery view",
-      "defaultScopeBody": "Choose what the gallery shows when you open it."
+      "defaultScopeTitle": "图库默认视图",
+      "defaultScopeBody": "选择打开图库时显示的内容。"
     },
     "appearance": {
-      "themeTitle": "Theme",
-      "themeBody": "Pick a theme style and brightness for this device.",
-      "historyStripLayoutTitle": "History thumbnails",
-      "historyStripLayoutBody": "Choose how the compact history strip sits beside the workspace.",
+      "themeTitle": "主题",
+      "themeBody": "为此设备选择主题风格和亮度。",
+      "historyStripLayoutTitle": "历史缩略图",
+      "historyStripLayoutBody": "选择紧凑历史记录栏在工作区旁的布局方式。",
       "historyStripLayout": {
-        "rail": "Rail",
-        "horizontal": "Top row",
-        "sidebar": "Sidebar"
+        "rail": "侧边栏",
+        "horizontal": "顶部行",
+        "sidebar": "边栏"
       }
     },
     "language": {
       "title": "语言",
       "body": "只切换界面语言，不会影响生成内容。"
     },
+    "logs": {
+      "title": "生成日志",
+      "body": "每次点击生成会作为一个操作保存；操作中的每次供应商调用都会记录请求、经安全处理的响应摘要、结果和 HTTP 状态。",
+      "refresh": "刷新",
+      "clear": "清空日志",
+      "clearConfirm": "删除所有本地保存的生成日志吗？",
+      "loadFailed": "无法加载生成日志。",
+      "empty": "尚未记录图像生成操作。",
+      "listAria": "生成日志条目",
+      "http": "HTTP {status}",
+      "duration": "{ms} 毫秒",
+      "calls": "{count} 次调用，{failed} 次失败",
+      "operation": "生成操作",
+      "providerCalls": "供应商调用（{count}）",
+      "noCalls": "此旧记录没有供应商调用明细。",
+      "call": "调用 {index}",
+      "noPrompt": "无提示词",
+      "request": "请求",
+      "response": "响应",
+      "status": { "running": "进行中", "completed": "已完成", "error": "失败", "canceled": "已取消" },
+      "kind": { "classic": "生成", "edit": "编辑", "multimode": "序列", "node": "节点", "agent_queue": "Agent 队列" }
+    },
     "future": {
-      "title": "Reserved for later",
-      "body": "Future provider repair and workspace controls will appear here when they become useful."
+      "title": "为后续功能预留",
+      "body": "未来有实际用途时，提供商修复和工作区控制会显示在这里。"
     }
   },
   "nodeCanvas": {
@@ -1072,14 +1117,14 @@
     "zh-CN": "简体中文"
   },
   "theme": {
-    "label": "Theme",
-    "modeLabel": "Brightness",
-    "styleLabel": "Theme style",
-    "system": "System",
-    "dark": "Dark",
-    "light": "Light",
+    "label": "主题",
+    "modeLabel": "亮度",
+    "styleLabel": "主题风格",
+    "system": "跟随系统",
+    "dark": "深色",
+    "light": "浅色",
     "family": {
-      "default": "Default",
+      "default": "默认",
       "gpt": "GPT",
       "claude": "Claude",
       "gemini": "Gemini",
@@ -1316,13 +1361,13 @@
     "attachmentOnlyMessage": "Use the attached file as context and help with the prompt"
   },
   "workspace": {
-    "sectionTitle": "Workspace",
-    "sectionBody": "Choose a workspace layout profile.",
-    "profileLabel": "Workspace profile",
-    "defaultLabel": "Default",
-    "defaultDesc": "Standard generation workflow with sidebar composer.",
+    "sectionTitle": "工作区",
+    "sectionBody": "选择工作区布局配置。",
+    "profileLabel": "工作区配置",
+    "defaultLabel": "默认",
+    "defaultDesc": "带侧边栏编辑器的标准生成流程。",
     "promptStudioLabel": "Prompt Studio",
-    "promptStudioDesc": "Prompt builder panel, grouped history, and enhanced viewer."
+    "promptStudioDesc": "提示词构建面板、分组历史记录和增强查看器。"
   },
   "viewer": {
     "controls": "Image zoom controls",

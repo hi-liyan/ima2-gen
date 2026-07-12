@@ -35,7 +35,7 @@ export function ApiKeyInput({ provider, label, placeholder, maskedKey, source, c
       });
       const json = await res.json();
       if (!json.ok) {
-        setError(json.error || "Failed to save");
+        setError(json.error || t("settings.apiKeys.saveFailed"));
       } else {
         setKey("");
         setEditing(false);
@@ -44,26 +44,26 @@ export function ApiKeyInput({ provider, label, placeholder, maskedKey, source, c
         setTimeout(() => setSuccess(false), 3000);
       }
     } catch (e: any) {
-      setError(e.message || "Network error");
+      setError(e.message || t("settings.apiKeys.networkError"));
     } finally {
       setSaving(false);
     }
-  }, [key, provider, dirty, onSaved]);
+  }, [key, provider, dirty, onSaved, t]);
 
   const handleDelete = useCallback(async () => {
     try {
       const res = await fetch(`/api/keys/${provider}`, { method: "DELETE" });
       if (!res.ok) {
-        setError("Failed to remove key");
+        setError(t("settings.apiKeys.removeFailed"));
         return;
       }
       setKey("");
       setEditing(false);
       onSaved();
     } catch (e: any) {
-      setError(e.message || "Failed to remove key");
+      setError(e.message || t("settings.apiKeys.removeFailed"));
     }
-  }, [provider, onSaved]);
+  }, [provider, onSaved, t]);
 
   const handleFocus = useCallback(() => {
     if (configured) {

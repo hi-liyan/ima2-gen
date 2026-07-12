@@ -195,7 +195,7 @@ async function serve(serveArgs: string[] = []) {
   }
 
   const serverPath = join(ROOT, "server.js");
-  const child = spawn("node", [serverPath], {
+  const child = spawn(process.execPath, [serverPath], {
     stdio: "inherit",
     env,
     cwd: ROOT,

@@ -12,7 +12,7 @@ import { generateMultimodeViaResponses } from "../lib/responsesImageAdapter.js";
 import { generateMultimodeViaGrok } from "../lib/grokMultimodeAdapter.js";
 import { generateViaAgy } from "../lib/agyImageAdapter.js";
 import { generateViaGeminiApi } from "../lib/geminiApiImageAdapter.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "../lib/inflight.js";
+import { startJob, finishJob, markGenerationLogSubmitted, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "../lib/inflight.js";
 import {
   isGenerationCanceledError,
   makeGenerationCanceledError,
@@ -27,6 +27,7 @@ import {
 } from "../lib/composerSnapshot.js";
 
 import { errInfo } from "../lib/errInfo.js";
+import { startGenerationLog } from "../lib/generationLogStore.js";
 import { requireRuntimeContext, type RouteRuntimeContext } from "../lib/runtimeContext.js";
 import { validateModeration, imageFormatFromMime, writeSse } from "../lib/routeHelpers.js";
 import { publish } from "../lib/eventBus.js";
@@ -66,6 +67,13 @@ export function registerMultimodeRoutes(app: Express, ctxRaw: RouteRuntimeContex
   const ctx = requireRuntimeContext(ctxRaw);
   app.post("/api/generate/multimode", async (req: Request, res: Response) => {
     const requestId = typeof req.body?.requestId === "string" ? req.body.requestId : req.id;
+    startGenerationLog({
+      requestId,
+      kind: "multimode",
+      prompt: req.body?.prompt,
+      meta: req.body ?? {},
+      startedAt: Date.now(),
+    });
     const asyncMode = req.body?.async === true;
     let finishStatus = "completed";
     let finishHttpStatus = 200;
@@ -191,9 +199,15 @@ export function registerMultimodeRoutes(app: Express, ctxRaw: RouteRuntimeContex
         prompt,
         meta: {
           kind: "multimode",
+          provider: activeProvider,
           quality,
           model: imageModel,
           size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
           maxImages,
           refsCount: referencePayload.refsCount,
           referenceBytes: referencePayload.referenceBytes,
@@ -219,7 +233,10 @@ export function registerMultimodeRoutes(app: Express, ctxRaw: RouteRuntimeContex
         });
       }
       registerJobAbortController(requestId, cancelController);
-      if (asyncMode) res.status(202).json({ requestId });
+      if (asyncMode) {
+        res.status(202).json({ requestId });
+        markGenerationLogSubmitted(requestId, 202);
+      }
 
       logEvent("multimode", "request", {
         requestId,
@@ -480,6 +497,7 @@ export function registerMultimodeRoutes(app: Express, ctxRaw: RouteRuntimeContex
         finishCanceled = true;
         finishHttpStatus = canceled.status;
         finishErrorCode = canceled.code;
+        finishMeta = { error: canceled.message };
         dualEmitMultimode(res, requestId, "error", {
           error: canceled.message,
           code: canceled.code,
@@ -540,6 +558,12 @@ export function registerMultimodeRoutes(app: Express, ctxRaw: RouteRuntimeContex
       finishStatus = "error";
       finishHttpStatus = err.status || 500;
       finishErrorCode = fallbackCode || "MULTIMODE_GENERATE_FAILED";
+      finishMeta = {
+        error: err.message,
+        upstreamCode: ext.upstreamCode || null,
+        upstreamType: ext.upstreamType || null,
+        upstreamParam: ext.upstreamParam || null,
+      };
       logError("multimode", "error", err.raw, { requestId, code: finishErrorCode });
       dualEmitMultimode(res, requestId, "error", {
         error: err.message,

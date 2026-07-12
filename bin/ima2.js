@@ -187,7 +187,7 @@ async function serve(serveArgs = []) {
         env.OPENAI_API_KEY = config.apiKey;
     }
     const serverPath = join(ROOT, "server.js");
-    const child = spawn("node", [serverPath], {
+    const child = spawn(process.execPath, [serverPath], {
         stdio: "inherit",
         env,
         cwd: ROOT,

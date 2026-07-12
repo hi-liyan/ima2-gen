@@ -4,6 +4,7 @@ import { compressReferenceB64ForOAuth } from "./referenceImageCompress.js";
 import { detectImageMimeFromB64 } from "./refs.js";
 import { errInfo } from "./errInfo.js";
 import { setJobPhase } from "./inflight.js";
+import { finishGenerationLogCall, startGenerationLogCall } from "./generationLogStore.js";
 import { type RouteRuntimeContext, requireRuntimeContext } from "./runtimeContext.js";
 import {
   parseJson,
@@ -221,12 +222,24 @@ async function postResponses({
   onFinalImage = null,
 }: PostResponsesArgs) {
   const { url, headers } = await getEndpoint(ctx, provider, scope);
+  const model = payload && typeof payload === "object" && "model" in payload
+    ? String((payload as { model?: unknown }).model || "")
+    : null;
+  const callId = startGenerationLogCall({
+    operationId: requestId,
+    provider: provider === "api" ? "openai-api" : "openai-oauth",
+    model,
+    stage: scope,
+    request: { method: "POST", endpoint: endpointLabel(url), body: payload },
+  });
   const timeoutMs = ctx?.config?.oauth?.generationTimeoutMs || 400 * 1000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const fetchSignal = signal
     ? combineAbortSignals([controller.signal, signal])
     : controller.signal;
+  let httpStatus: number | undefined;
+  let response: Record<string, unknown> = {};
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -234,9 +247,12 @@ async function postResponses({
       signal: fetchSignal,
       body: JSON.stringify(payload),
     });
+    httpStatus = res.status;
+    response = { contentType: res.headers.get("content-type") || null };
     logEvent(scope, "response", { requestId, provider, status: res.status, contentType: res.headers.get("content-type") });
     if (!res.ok) {
       const text = await res.text();
+      response = { ...response, body: text };
       const upstream = parseOpenAIErrorBody(text);
       if (res.status >= 400 && res.status < 500 && upstream?.message) {
         throw makeError(safeUpstreamClientMessage(upstream, res.status), {
@@ -256,11 +272,34 @@ async function postResponses({
     }
     if (requestId) setJobPhase(requestId, "streaming");
     const contentType = res.headers.get("content-type") || "";
-    return contentType.includes("text/event-stream")
+    const result = contentType.includes("text/event-stream")
       ? await parseStream(res, { requestId, scope, maxImages, onPartialImage, onFinalImage })
       : await parseJson(res, maxImages);
+    finishGenerationLogCall({
+      callId,
+      status: "completed",
+      httpStatus,
+      response: {
+        ...response,
+        imageCount: result.images.length,
+        usage: result.usage,
+        webSearchCalls: result.webSearchCalls,
+        text: result.text,
+      },
+    });
+    return result;
   } catch (e) {
     const err = errInfo(e);
+    const raw = err.raw as { status?: unknown; code?: unknown } | null;
+    const errorCode = typeof raw?.code === "string" ? raw.code : "NETWORK_FAILED";
+    const status = typeof raw?.status === "number" ? raw.status : httpStatus;
+    finishGenerationLogCall({
+      callId,
+      status: errorCode === "GENERATION_CANCELED" ? "canceled" : "error",
+      httpStatus: status,
+      errorCode,
+      response: { ...response, error: err.message },
+    });
     if (err.name === "AbortError") {
       if (signal?.aborted) {
         throw makeError("Generation canceled", {
@@ -280,6 +319,15 @@ async function postResponses({
     });
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function endpointLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return "[invalid endpoint]";
   }
 }
 

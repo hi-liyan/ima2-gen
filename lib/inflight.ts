@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { getDb } from "./db.js";
 import { publish } from "./eventBus.js";
 import { logEvent } from "./logger.js";
+import { finishGenerationLog, markGenerationLogSubmitted, startGenerationLog } from "./generationLogStore.js";
 
 // SQLite-backed inflight job registry.
 // Tracks generation requests that are currently running on the server so clients
@@ -119,6 +120,7 @@ export function startJob({ requestId, kind, prompt, meta = {} }: {
   }
   terminalJobs.delete(requestId);
   abortControllers.delete(requestId);
+  startGenerationLog({ requestId, kind, prompt, meta: normalizedMeta, startedAt });
   logEvent("inflight", "start", {
     requestId,
     kind,
@@ -159,6 +161,7 @@ export function abortJob(requestId: string | null | undefined) {
     canceled: true,
     httpStatus: 499,
     errorCode: "GENERATION_CANCELED",
+    meta: { error: "Generation canceled" },
   });
   return { requestId, active, aborted };
 }
@@ -208,11 +211,21 @@ export function finishJob(requestId: string | null | undefined, options: any = {
       httpStatus: options.httpStatus,
       errorCode: options.errorCode,
     });
+    finishGenerationLog({
+      requestId,
+      status,
+      finalHttpStatus: options.httpStatus,
+      errorCode: options.errorCode,
+      meta: options.meta,
+      finishedAt,
+    });
   }
   getDb().prepare("DELETE FROM inflight WHERE request_id = ?").run(requestId);
   abortControllers.delete(requestId);
   reapTerminalJobs();
 }
+
+export { markGenerationLogSubmitted };
 
 export function reapTerminalJobs() {
   const now = Date.now();
