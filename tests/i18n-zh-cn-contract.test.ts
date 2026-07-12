@@ -46,6 +46,12 @@ describe("zh-CN locale contract", () => {
       "readiness.settingsBody",
       "provider.geminiApiCompatBodyLong",
       "gallery.scope.current",
+      "gallery.title",
+      "gallery.today",
+      "gallery.filterFavorites",
+      "gallery.searchPlaceholder",
+      "gallery.openGeneratedDir",
+      "gallery.empty.currentSession",
     ];
 
     for (const key of keys) {

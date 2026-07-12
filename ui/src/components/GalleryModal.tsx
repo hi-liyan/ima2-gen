@@ -21,7 +21,7 @@ import { GalleryStorageBar } from "./gallery/GalleryStorageBar";
 const STORAGE_NOTICE_DISMISSED_KEY = "ima2.storageNoticeDismissed.0.09.23";
 
 export function GalleryModal() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const open = useAppStore((s) => s.galleryOpen);
   const close = useAppStore((s) => s.closeGallery);
   const history = useAppStore((s) => s.history);
@@ -207,12 +207,12 @@ export function GalleryModal() {
   const dateGroups = useMemo(() => {
     const map = new Map<string, GenerateItem[]>();
     for (const item of filtered) {
-      const key = dateBucket(item.createdAt);
+      const key = dateBucket(item.createdAt, undefined, locale);
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(item);
     }
     return Array.from(map.entries());
-  }, [filtered]);
+  }, [filtered, locale]);
   const totalVisible = groupBy === "session"
     ? visibleSessionGroups.reduce((a, g) => a + g.items.length, 0) + visibleLoose.length
     : filtered.length;
