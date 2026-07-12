@@ -152,7 +152,7 @@ function createProbeSpecs({
         model,
         input: [
           { role: "developer", content: GENERATE_NO_SEARCH_DEVELOPER_PROMPT },
-          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: false }) },
+          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: false, size }) },
         ],
         tools: imageOnlyTools,
         tool_choice: "required",
@@ -172,7 +172,7 @@ function createProbeSpecs({
         model,
         input: [
           { role: "developer", content: GENERATE_DEVELOPER_PROMPT },
-          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: true }) },
+          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: true, size }) },
         ],
         tools: webSearchImageTools,
         tool_choice: "required",
@@ -192,7 +192,7 @@ function createProbeSpecs({
         model,
         input: [
           { role: "developer", content: GENERATE_DEVELOPER_PROMPT },
-          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: true }) },
+          { role: "user", content: buildUserTextPrompt(prompt, "auto", { webSearchEnabled: true, size }) },
         ],
         tools: webSearchImageTools,
         tool_choice: { type: "image_generation" },

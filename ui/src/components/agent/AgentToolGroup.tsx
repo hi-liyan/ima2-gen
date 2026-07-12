@@ -58,15 +58,30 @@ export function AgentToolGroup({ turns, imagesById, currentImageId, onImageSelec
           aria-label={`${actionLabel}: ${label}`}
           onClick={() => setExpanded((next) => !next)}
         >
-          <span className="agent-message__tool-header">
+          <span className="agent-message__tool-summary-line">
             <span className="agent-message__tool-dot" aria-hidden="true" />
             <span className="agent-message__role">{t("agent.toolGroup")}</span>
             {imageIds.length > 0 ? <span className="agent-message__tool-count">{t("agent.toolImageCount", { count: imageIds.length })}</span> : null}
             {toolCalls.length > 0 ? <span className="agent-message__tool-count">{t("agent.toolCallCount", { count: toolCalls.length })}</span> : null}
             {expanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
           </span>
-          <span className="agent-message__tool-label">{label}</span>
         </button>
+      </div>
+      <div id={detailsId} className="agent-message__tool-details" hidden={!expanded}>
+        <div className="agent-message__tool-label">{label}</div>
+        {toolCalls.length > 0 ? (
+          <ul className="agent-tool-call-list">
+            {toolCalls.map((call) => (
+              <AgentToolCallRow
+                key={call.id}
+                call={call}
+                imagesById={imagesById}
+                currentImageId={currentImageId}
+                onImageSelect={onImageSelect}
+              />
+            ))}
+          </ul>
+        ) : null}
         {imageIds.length > 0 ? (
           <div className="agent-message__tool-thumbs">
             {imageIds.map((imageId) => {
@@ -83,21 +98,6 @@ export function AgentToolGroup({ turns, imagesById, currentImageId, onImageSelec
               );
             })}
           </div>
-        ) : null}
-      </div>
-      <div id={detailsId} className="agent-message__tool-details" hidden={!expanded}>
-        {toolCalls.length > 0 ? (
-          <ul className="agent-tool-call-list">
-            {toolCalls.map((call) => (
-              <AgentToolCallRow
-                key={call.id}
-                call={call}
-                imagesById={imagesById}
-                currentImageId={currentImageId}
-                onImageSelect={onImageSelect}
-              />
-            ))}
-          </ul>
         ) : null}
       </div>
     </article>

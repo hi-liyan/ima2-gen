@@ -34,9 +34,24 @@ Agents should start from the packaged skill and capability commands instead of g
 
 | Command | Description |
 |---|---|
-| `ima2 skill` | Print the packaged Markdown skill from `skills/ima2/SKILL.md` |
-| `ima2 skill --json` | Print a JSON wrapper around the Markdown skill content |
-| `ima2 skill path` | Print the installed skill file path |
+| `ima2 skill` | Print the core Markdown skill (`skills/ima2/SKILL.md`) |
+| `ima2 skill front` | Print the frontend implementation skill (`skills/ima2-front/SKILL.md`) |
+| `ima2 skill uiux` | Print the design direction skill (`skills/ima2-uiux/SKILL.md`) |
+| `ima2 skill ls` | List all available packaged skills |
+| `ima2 skill --json` | Print a JSON wrapper around the core skill content |
+| `ima2 skill front --json` | Print a JSON wrapper around the frontend skill |
+| `ima2 skill uiux --json` | Print a JSON wrapper around the design skill |
+| `ima2 skill path` | Print the core skill file path |
+| `ima2 skill front path` | Print the frontend skill file path |
+| `ima2 skill uiux path` | Print the design skill file path |
+| `ima2 skill front refs` | List reference modules for the frontend skill (names + line counts) |
+| `ima2 skill uiux refs` | List reference modules for the design skill |
+| `ima2 skill front ref <name>` | Print one reference module by name (e.g. `motion`, `stacks/react`) |
+| `ima2 skill uiux ref <name>` | Print one reference module by name (e.g. `design-isms`) |
+| `ima2 skill install --dir <path>` | Install all skills to agent's skill directory |
+| `ima2 skill install --tmp` | Install to `$TMPDIR/ima2-skills/` (ephemeral fallback) |
+| `ima2 skill front refs --json` | JSON list of reference modules |
+| `ima2 skill front ref motion --json` | JSON wrapper around one reference module |
 | `ima2 capabilities --json` | Print supported commands, model/quality/reasoning values, and advisory limits |
 | `ima2 defaults --json` | Print the running server's effective model/reasoning defaults, falling back to local config when no server is reachable |
 | `ima2 defaults --local --json` | Print local effective defaults without contacting the server |
@@ -54,14 +69,14 @@ Agents should start from the packaged skill and capability commands instead of g
 | `ima2 node generate` | Node-mode generate (SSE; supports `--no-stream`) |
 | `ima2 node show <nodeId>` | Read node metadata |
 
-Generation flags include `--provider <auto|oauth|api|grok|grok-api|agy|gemini-api>`, `--reasoning-effort {none\|low\|medium\|high\|xhigh}`, `--web-search` / `--no-web-search`, `--model`, `--mode`, `--moderation`, `--ref <file>` (repeatable, up to 5 where supported), `-q low|medium|high`, `-n <count>`, `-o <file>`.
+Generation flags include `--provider <auto|oauth|api|grok|grok-api|agy|gemini-api>`, `--reasoning-effort {none\|low\|medium\|high\|xhigh\|max}`, `--web-search` / `--no-web-search`, `--model`, `--mode`, `--moderation`, `--ref <file>` (repeatable, up to 5 where supported), `-q low|medium|high`, `-n <count>`, `-o <file>`.
 
 Provider override semantics:
 
 - `api` forces the API-key Responses path and requires a configured API key.
 - `oauth` forces the local OAuth proxy path.
 - `grok` uses the bundled progrok xAI proxy (`127.0.0.1:18645`). Classic generation first runs mandatory xAI Web Search through Responses API, then asks `grok-4.3` to call ima2's local `generate_image` tool, then ima2 executes xAI `/v1/images/generations`. If `--ref` images are attached, the final step uses xAI `/v1/images/edits` instead so image-to-image/reference context is preserved. Models: `grok-imagine-image`, `grok-imagine-image-quality`. Size is mapped to xAI `aspect_ratio` and `resolution`; the UI web-search toggle is OpenAI-provider-only because Grok search is always on in this path.
-- `agy` spawns the Antigravity CLI to generate via Google Gemini (`nano-banana-2`). Fixed 1024×1024 JPEG output, max 3 refs. No web search, quality, size, or mask controls.
+- `agy` spawns the Antigravity CLI to generate via Google Gemini (`nano-banana-2`). Fixed 1024×1024 JPEG output, max 3 refs. No web search, quality, size, or mask controls. If `agy` is not on the server process PATH, ima2 also checks common user-local installs such as `~/.local/bin/agy`; set `IMA2_AGY_BIN=/absolute/path/to/agy` to force a specific binary.
 - `gemini-api` calls the Google Generative Language API directly. Models: `nano-banana-2` (Gemini 3.1 Flash Image) and `nano-banana-pro` (Gemini 3 Pro Image). Use `--model nano-banana-2` or `--model nano-banana-pro` to select. Supports `--size` for aspect ratio and resolution (512px–4K) on the direct API path; Vertex AI ignores aspect/size. Requires `GEMINI_API_KEY` or a Vertex AI service account (`VERTEX_SERVICE_ACCOUNT_JSON`). Switching from `agy` or `gemini-api` provider auto-selects the corresponding Gemini model; switching away resets to the GPT default.
 - `auto` preserves route default behavior and currently resolves to GPT OAuth unless server routing changes.
 
@@ -126,9 +141,9 @@ Video generate flags:
 | Flag | Meaning |
 |---|---|
 | `--duration <1..15>` | Duration in seconds (default: 5) |
-| `--resolution <480p\|720p>` | Video resolution (default: 480p) |
+| `--resolution <480p\|720p\|1080p>` | Video resolution (default: 480p). 1080p requires `--model grok-imagine-video-1.5`; prompt-only 1.5 uses the internal white-canvas I2V shim |
 | `--aspect-ratio <ratio\|auto>` | 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto (default: auto) |
-| `--model <name>` | `grok-imagine-video` or `grok-imagine-video-1.5-preview` |
+| `--model <name>` | `grok-imagine-video` or `grok-imagine-video-1.5`; `grok-imagine-video-1.5-preview` is accepted as a compatibility alias |
 | `--planner-model <name>` | Grok planner override (default: `grok-4.3`; also in settings UI and `IMA2_GROK_PLANNER_MODEL`) |
 | `--storyboard` | Enable storyboard mode — maintains character/scene continuity across sequential clips |
 | `--ref <file>` | Attach source/reference image (repeatable, max 7) |
@@ -161,7 +176,7 @@ Video continue flags:
 |---|---|
 | `--video <generated-file>` | Parent generated `.mp4`; server extracts its last frame |
 | `--duration <1..15>` | New clip duration (default: 5) |
-| `--resolution <480p\|720p>` | New clip resolution (default: 720p) |
+| `--resolution <480p\|720p\|1080p>` | New clip resolution (default: 720p). 1080p requires `--model grok-imagine-video-1.5` |
 | `--aspect-ratio <ratio\|auto>` | New clip aspect ratio |
 | `--model <name>` | Optional video generation model |
 
@@ -175,13 +190,14 @@ Video mode is auto-detected from `--ref` count:
 | 1 | image-to-video |
 | 2–7 | reference-to-video (max 10s duration) |
 
-`grok-imagine-video-1.5-preview` supports image-to-video, but not `reference_images` reference-to-video. Prompt-only 1.5 text-to-video uses an internal white-canvas image-to-video anchor. For 2+ refs, use `grok-imagine-video`; if ima2 auto-retries from 1.5-preview to the base model, read `video.effectiveModel` and `video.modelFallback` from CLI `--json`, or `effectiveModel` and `modelFallback` from SSE. Video edit and extension are also base-model only.
+`grok-imagine-video-1.5` supports 1080p for prompt-only text-to-video and single image/frame image-to-video. Prompt-only 1.5 text-to-video is submitted through the internal white-canvas image-to-video shim because upstream 1.5 rejects raw T2V. The old `grok-imagine-video-1.5-preview` name is accepted as an alias and normalized before the upstream request. 1.5 does not support `reference_images` reference-to-video, V2V edit, or video extension. For 2+ refs, use `grok-imagine-video`; if ima2 auto-retries a 1.5 Ref2V request to the base model, read `video.effectiveModel` and `video.modelFallback` from CLI `--json`, or `effectiveModel` and `modelFallback` from SSE.
 
 SSE events: `planning` → `submitted` → `progress` (0–100%) → `done` or `error`.
 
 ```bash
 ima2 video "a cat playing piano"
 ima2 video "animate this" --ref photo.png --duration 10
+ima2 video "animate this in high detail" --ref photo.png --model grok-imagine-video-1.5 --resolution 1080p
 ima2 video "cinematic" --resolution 720p --aspect-ratio 16:9 -o out.mp4
 ima2 video "style transfer" --ref a.png --ref b.png --ref c.png --model grok-imagine-video
 ima2 video edit "make the lighting warm sunset" --video 1780226256355_50252101.mp4 -o edited.mp4
@@ -280,12 +296,12 @@ Windows DNS/fragmentation bypass tool such as SecretDNS is in use.
 | `ima2 prompt edit <id> [--name] [--text] [--folder] [--tags]` | Edit |
 | `ima2 prompt rm <id>` | Delete |
 | `ima2 prompt favorite <id>` | Toggle favorite |
-| `ima2 prompt export <id> [-o <file>]` | Export one prompt to JSON |
+| `ima2 prompt export [-o <file>]` | Export all prompts to JSON |
 | `ima2 prompt folder ls / create <name> / rename <id> <name> / rm <id> [--strategy moveToRoot\|deleteItems]` | Folder CRUD |
 | `ima2 prompt import sources` | List configured import sources |
 | `ima2 prompt import refresh --source <id>` | Re-index a source |
 | `ima2 prompt import curated --source <id> --q <query>` | Curated import (commits prompts) |
-| `ima2 prompt import discovery --q <query> --seeds <a,b,c>` | Discovery import (curator-only on some servers) |
+| `ima2 prompt import discovery --q <query> --seed <repo>...` | Discovery import (curator-only on some servers) |
 | `ima2 prompt import folder <localpath>` | Import a local folder of prompts |
 | `ima2 prompt import json <file\|@file\|-> [--folder <id>]` | Import a JSON export body through `/api/prompts/import` |
 | `ima2 prompt import preview <file\|@file\|-> [--filename <name>]` | Preview local markdown/text candidates without committing |
@@ -318,7 +334,7 @@ Card News requires the server to be started with `IMA2_CARD_NEWS=1` (or `feature
 | `ima2 inflight rm <requestId>` | Force-remove a stuck job |
 | `ima2 storage status` | Storage inspection (richer than `doctor`) |
 | `ima2 storage open` | Open the generated dir in the OS file manager (POST) |
-| `ima2 billing` | API usage / quota; Grok result includes `billing.usedUsd` / `billing.limitUsd` drawn from the xAI billing API |
+| `ima2 billing` | API usage probe via `/api/billing` (OpenAI/API-key credits when configured). Grok quota (`usedUsd`/`limitUsd`) is web-UI only via `GET /api/quota`. |
 | `ima2 providers` | Configured providers |
 | `ima2 oauth status` | OAuth proxy state |
 | `ima2 grok status` | Bundled progrok / xAI image-model probe state |
@@ -403,6 +419,13 @@ ima2 storage status --json
 
 # Config
 ima2 skill --json
+ima2 skill ls
+ima2 skill front --json
+ima2 skill uiux path
+ima2 skill front refs
+ima2 skill front ref motion
+ima2 skill install --dir ~/.codex/skills
+ima2 skill install --tmp
 ima2 capabilities --json
 ima2 defaults set model gpt-5.5
 ima2 defaults set reasoning high

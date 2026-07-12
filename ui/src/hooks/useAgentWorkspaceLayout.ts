@@ -10,6 +10,16 @@ function getWindowHeight(): number {
   return typeof window === "undefined" ? 900 : window.innerHeight;
 }
 
+function getAgentWorkspaceWidth(): number {
+  if (typeof window === "undefined" || typeof document === "undefined") return 1440;
+  const sidebar = document.querySelector<HTMLElement>(".app[data-ui-mode=\"agent\"] .sidebar");
+  if (!sidebar) return window.innerWidth;
+  const style = window.getComputedStyle(sidebar);
+  if (style.display === "none" || style.visibility === "hidden") return window.innerWidth;
+  const width = sidebar.getBoundingClientRect().width;
+  return Math.max(0, window.innerWidth - width);
+}
+
 export function useAgentWorkspaceLayout(): AgentLayoutMode {
   const [layout, setLayout] = useState<AgentLayoutMode>(() =>
     resolveAgentLayout({ width: getWindowWidth(), height: getWindowHeight() }),
@@ -17,7 +27,7 @@ export function useAgentWorkspaceLayout(): AgentLayoutMode {
 
   useEffect(() => {
     const update = () => setLayout(resolveAgentLayout({
-      width: getWindowWidth(),
+      width: getAgentWorkspaceWidth(),
       height: getWindowHeight(),
     }));
     update();

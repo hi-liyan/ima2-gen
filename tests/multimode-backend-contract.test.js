@@ -17,6 +17,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 
@@ -30,8 +31,8 @@ function readSource(path) {
 describe("multimode backend contract", () => {
   it("registers a separate multimode route instead of overloading classic generate", () => {
     const index = readSource("routes/index.ts");
-    const route = readSource("routes/multimode.ts");
-    const classic = readSource("routes/generate.ts");
+    const route = (readSource("routes/multimode.ts") + readSource("lib/multimodePipeline.ts"));
+    const classic = (readSource("routes/generate.ts") + readSource("lib/generatePipeline.ts"));
 
     assert.match(index, /registerMultimodeRoutes/);
     assert.match(route, /app\.post\("\/api\/generate\/multimode"/);
@@ -70,7 +71,7 @@ describe("multimode backend contract", () => {
   });
 
   it("persists sequence metadata and surfaces it through history", () => {
-    const route = readSource("routes/multimode.ts");
+    const route = (readSource("routes/multimode.ts") + readSource("lib/multimodePipeline.ts"));
     const history = readSource("lib/historyList.ts");
     const api = readSource("ui/src/lib/api.ts");
 
@@ -86,7 +87,7 @@ describe("multimode backend contract", () => {
   });
 
   it("saves multimode images incrementally and preserves partial timeout output", () => {
-    const route = readSource("routes/multimode.ts");
+    const route = (readSource("routes/multimode.ts") + readSource("lib/multimodePipeline.ts"));
 
     assert.match(route, /const persistedIndexes = new Set<number>\(\)/);
     assert.match(route, /const persistAndSendImage = async/);
@@ -102,3 +103,4 @@ describe("multimode backend contract", () => {
     assert.match(route, /extraIgnored: latestExtraIgnored/);
   });
 });
+

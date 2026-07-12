@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useI18n } from "../../i18n";
 import { formatDuration } from "../../lib/agentToolFormatting";
 import { AgentResultThumb } from "./AgentResultThumb";
@@ -14,17 +15,26 @@ export function AgentToolCallDetails({ call, imagesById, currentImageId, onImage
   const { t } = useI18n();
   const imageIds = call.imageIds ?? [];
   const duration = formatDuration(call.durationMs);
+  const [expandedFields, setExpandedFields] = useState<Record<"input" | "output", boolean>>({ input: false, output: false });
+  const field = (key: "input" | "output", value: string) => (
+    <dd className={expandedFields[key] ? "is-expanded" : undefined}>
+      <span>{value}</span>
+      <button type="button" onClick={() => setExpandedFields((current) => ({ ...current, [key]: !current[key] }))}>
+        {t(expandedFields[key] ? "agent.toolsShowLess" : "agent.toolsShowMore")}
+      </button>
+    </dd>
+  );
 
   return (
     <div className="agent-tool-call-details">
       <dl>
         <div>
           <dt>{t("agent.toolInput")}</dt>
-          <dd>{call.inputSummary ?? "-"}</dd>
+          {field("input", call.inputSummary ?? "-")}
         </div>
         <div>
           <dt>{t("agent.toolOutput")}</dt>
-          <dd>{call.errorMessage ?? call.outputSummary ?? "-"}</dd>
+          {field("output", call.errorMessage ?? call.outputSummary ?? "-")}
         </div>
         {call.requestId ? (
           <div>

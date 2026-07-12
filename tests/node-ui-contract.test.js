@@ -46,7 +46,7 @@ describe("node UI compact metadata contract", () => {
   it("persists returned node output size so aspect-ratio layout survives reload", () => {
     const store = readSource("ui/src/store/useAppStore.ts");
     const api = readSource("ui/src/lib/nodeApi.ts");
-    const route = readSource("routes/nodes.ts");
+    const route = (readSource("routes/nodes.ts") + readSource("lib/nodeGeneration.ts") + readSource("lib/nodeValidation.ts"));
 
     assert.match(api, /size\?: string \| null/);
     assert.match(route, /size: effectiveSize,\s*\n\s*moderation/);
@@ -229,3 +229,4 @@ describe("node UI compact metadata contract", () => {
     assert.match(store, /targetHandle,/);
   });
 });
+

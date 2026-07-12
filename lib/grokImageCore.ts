@@ -157,7 +157,22 @@ export async function downloadGrokImageUrl(
     if (contentLength > MAX_IMAGE_DOWNLOAD_BYTES) {
       throw grokError("Image download exceeds 50MB limit", 502, "GROK_IMAGE_DOWNLOAD_FAILED");
     }
-    const buffer = Buffer.from(await res.arrayBuffer());
+    if (!res.body) throw grokError("Image download had no response body", 502, "GROK_IMAGE_DOWNLOAD_FAILED");
+    const chunks: Buffer[] = [];
+    let total = 0;
+    const reader = res.body.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_IMAGE_DOWNLOAD_BYTES) {
+        await reader.cancel("download size limit exceeded").catch(() => {});
+        controller.abort();
+        throw grokError("Image download exceeds 50MB limit", 502, "GROK_IMAGE_DOWNLOAD_FAILED");
+      }
+      chunks.push(Buffer.from(value));
+    }
+    const buffer = Buffer.concat(chunks, total);
     clearTimeout(timer);
     if (buffer.length === 0) throw grokError("Image download was empty", 502, "GROK_IMAGE_DOWNLOAD_FAILED");
     const mime = res.headers.get("content-type")?.split(";")[0]?.trim()

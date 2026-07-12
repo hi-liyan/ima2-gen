@@ -33,6 +33,7 @@ import {
   deriveVideoMode,
   clampVideoDuration,
   MAX_REF2V_REFERENCES,
+  validateVideoResolutionForRequest,
   type VideoMode,
 } from "../lib/imageModels.js";
 import { errInfo } from "../lib/errInfo.js";
@@ -42,8 +43,12 @@ import { publish } from "../lib/eventBus.js";
 import { publishJobEvent } from "../lib/ssePublish.js";
 
 function sendSse(res: Response, event: string, data: unknown) {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
+  if (res.writableEnded || res.destroyed) return;
+  try {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  } catch {
+    /* client went away mid-write; bus emit still delivers */
+  }
 }
 
 function dualEmitVideo(res: Response, requestId: string, event: string, data: unknown) {
@@ -137,6 +142,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
     let finishErrorCode: string | undefined;
     let finishMeta: Record<string, unknown> = {};
     let finishCanceled = false;
+    let jobOwned = false;
     const cancelController = new AbortController();
 
     if (!asyncMode) {
@@ -252,6 +258,10 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
       const incomingProviderUrl = typeof req.body?.providerUrl === "string" && req.body.providerUrl.startsWith("http") ? req.body.providerUrl : null;
       const mode: VideoMode = incomingProviderUrl ? "image-to-video" : deriveVideoMode(resolved.length);
       const duration = clampVideoDuration(durationCheck.duration, mode);
+      const resolutionModeCheck = validateVideoResolutionForRequest(modelCheck.model, resolutionCheck.resolution, mode, {
+        allowTextCanvasShim: true,
+      });
+      if (isNormalizeError(resolutionModeCheck)) return fail(resolutionModeCheck.status, resolutionModeCheck.code, resolutionModeCheck.error);
       const referenceImages = mode === "reference-to-video" ? resolved.map((r) => r.b64) : undefined;
       const sourceB64 = incomingProviderUrl || (mode === "image-to-video" ? resolved[0]?.b64 : undefined);
       const sourceFilename = resolved[0]?.filename ?? null;
@@ -274,6 +284,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
             : "Request ID already in use",
         );
       }
+      jobOwned = true;
       registerJobAbortController(requestId, cancelController);
       if (asyncMode) res.status(202).json({ requestId });
       await mkdir(ctx.config.storage.generatedDir, { recursive: true });
@@ -414,7 +425,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         dualEmitVideo(res, requestId, "error", { error: err.message, code: finishErrorCode, status: finishHttpStatus, requestId });
       }
     } finally {
-      finishJob(requestId, { canceled: finishCanceled, status: finishStatus, httpStatus: finishHttpStatus, errorCode: finishErrorCode, meta: finishMeta });
+      if (jobOwned) finishJob(requestId, { canceled: finishCanceled, status: finishStatus, httpStatus: finishHttpStatus, errorCode: finishErrorCode, meta: finishMeta });
       if (!res.writableEnded) res.end();
     }
   });

@@ -17,6 +17,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 
@@ -64,3 +65,4 @@ describe("edit mask API contract", () => {
     assert.match(png, /hasPngAlphaChannel/);
   });
 });
+

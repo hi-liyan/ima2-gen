@@ -274,7 +274,7 @@ export function CanvasModeWorkspace(_props: CanvasModeWorkspaceProps) {
     [importLocalImageToHistory],
   );
 
-  const { handleApplyCanvas, handleCloseCanvas, handleExportCanvas, handleEditWithMask } = useCanvasModeSession({
+  const { handleApplyCanvas, handleRevertAnnotations, handleCloseCanvas, handleExportCanvas, handleEditWithMask } = useCanvasModeSession({
     imageElementRef,
     currentImage,
     canvasDisplayImage,
@@ -465,9 +465,17 @@ export function CanvasModeWorkspace(_props: CanvasModeWorkspaceProps) {
               annotations={annotations}
               backgroundCleanup={backgroundCleanup}
               backgroundCleanupPreview={backgroundCleanupPreview}
-              canvasState={{ exportBackground, exportMatteColor, isApplying, isExporting, isEditingWithMask }}
+              canvasState={{
+                exportBackground,
+                exportMatteColor,
+                isApplying,
+                isExporting,
+                isEditingWithMask,
+                canRevertAnnotations: Boolean(canvasVersionItem?.annotationsBaked),
+              }}
               actions={{
                 handleApplyCanvas,
+                handleRevertAnnotations,
                 handleExportCanvas,
                 handleEditWithMask,
                 setExportBackground,

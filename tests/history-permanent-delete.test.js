@@ -30,7 +30,7 @@ describe("history permanent delete contract", () => {
     const fn = /export async function trashAsset[\s\S]*?(?=\nexport async function )/.exec(lifecycle)?.[0] ?? "";
 
     assert.match(fn, /resolveInGenerated\(rootDir,\s*filename\)/);
-    assert.match(fn, /await access\(src\)/);
+    assert.match(fn, /await assertRegularGeneratedPath\(src\)/);
     assert.match(fn, /err\.status = 404/);
     assert.match(fn, /err\.code = "ASSET_NOT_FOUND"/);
     assert.match(fn, /const sidecar = `\$\{src\}\.json`/);
@@ -54,11 +54,12 @@ describe("history permanent delete contract", () => {
     const fn = /export async function deleteAssetPermanent[\s\S]*?(?=\nexport async function )/.exec(lifecycle)?.[0] ?? "";
 
     assert.match(fn, /resolveInGenerated\(rootDir,\s*filename\)/);
-    assert.match(fn, /await access\(src\)/);
+    assert.match(fn, /await assertRegularGeneratedPath\(src\)/);
     assert.match(fn, /err\.status = 404/);
     assert.match(fn, /err\.code = "ASSET_NOT_FOUND"/);
     assert.match(fn, /await unlink\(src\)/);
-    assert.match(fn, /await unlink\(src \+ "\.json"\)\.catch/);
+    assert.match(fn, /await assertRegularGeneratedPath\(sidecar\)/);
+    assert.match(fn, /await unlink\(sidecar\)/);
     assert.match(fn, /markNodesAssetMissing\(filename\)/);
     assert.match(fn, /sessionsTouched/);
     assert.match(fn, /nodesTouched/);

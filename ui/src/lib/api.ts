@@ -53,6 +53,8 @@ export {
   deleteCanvasAnnotations,
   createCanvasVersion,
   updateCanvasVersion,
+  recordCanvasAnnotationBake,
+  revertCanvasAnnotations,
   type ImageMetadataReadResponse,
 } from "./api-canvas";
 export {
@@ -92,6 +94,7 @@ export {
   type PromptIndexedCandidate,
   type PromptImportPreview,
 } from "./api-library";
+export { getGenerationRequestLog, type GenerationRequestLogEntry } from "./api-log";
 export {
   postNodeGenerate,
   postNodeGenerateStream,

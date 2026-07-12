@@ -50,10 +50,11 @@ function connect() {
   source.onerror = () => {
     source?.close();
     source = null;
-    const delay = Math.min(
+    const baseDelay = Math.min(
       RECONNECT_BASE_MS * Math.pow(1.5, reconnectAttempt),
       RECONNECT_MAX_MS,
     );
+    const delay = Math.min(baseDelay * (0.8 + Math.random() * 0.4), RECONNECT_MAX_MS);
     reconnectAttempt += 1;
     connectionStateCallback?.(reconnectAttempt >= FAILED_THRESHOLD ? "failed" : "reconnecting");
     reconnectTimer = setTimeout(connect, delay);
@@ -117,6 +118,7 @@ export function disconnect() {
   lastEventId = "";
   wasEverConnected = false;
   reconnectAttempt = 0;
+  resyncCallback = null;
   connectionStateCallback = null;
 }
 

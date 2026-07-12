@@ -58,6 +58,7 @@ async function withApp(fn: (baseUrl: string) => Promise<void>) {
     config: {
       storage: { generatedDir },
       log: { level: "silent" },
+      agentPlanner: { enabled: false },
     },
     packageVersion: "test",
   });
@@ -126,7 +127,14 @@ describe("Agent Mode queue contract", () => {
     globalThis.fetch = async (url, init) => {
       if (String(url).startsWith("http://127.0.0.1:")) return originalFetch(url, init);
       upstreamHits++;
-      if (upstreamHits === 1) return firstResponse;
+      if (upstreamHits === 1) {
+        return await Promise.race([
+          firstResponse,
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")), { once: true });
+          }),
+        ]);
+      }
       return sseResponse([
         {
           type: "response.output_item.done",
@@ -141,47 +149,52 @@ describe("Agent Mode queue contract", () => {
       const sessionId = created.selectedSessionId;
       const first = await enqueue(baseUrl, sessionId, "hold first queue item");
 
-      await waitFor(async () => {
+      const running = await waitFor(async () => {
         const queue = await queueFor(baseUrl, sessionId);
         return queue.find((item) => item.id === first.queueItem.id && item.status === "running");
       }, "first queue item to run");
+      assert.equal(typeof running.startedAt, "number");
+      assert.equal(running.progressStage, "requesting");
 
       assert.ok(listJobs({ kind: "agent_queue", sessionId }).some((job) => (
         job.requestId === first.queueItem.requestId
       )));
 
-      const second = await enqueue(baseUrl, sessionId, "cancel second queue item");
-      assert.equal(second.workspace.selectedSessionId, sessionId);
-      assert.ok(second.workspace.queueBySession[sessionId].some((item: any) => item.id === second.queueItem.id));
-
-      const canceled = await fetch(`${baseUrl}/api/agent/queue/${second.queueItem.id}/cancel`, { method: "POST" });
-      const canceledBody = await canceled.json() as any;
-      assert.equal(canceled.status, 200);
-      assert.equal(canceledBody.selectedSessionId, sessionId);
+      const canceledRunning = await fetch(`${baseUrl}/api/agent/queue/${first.queueItem.id}/cancel`, { method: "POST" });
+      const canceledRunningBody = await canceledRunning.json() as any;
+      assert.equal(canceledRunning.status, 200);
       assert.equal(
-        canceledBody.queueBySession[sessionId].find((item: any) => item.id === second.queueItem.id).status,
+        canceledRunningBody.queueBySession[sessionId].find((item: any) => item.id === first.queueItem.id).status,
         "canceled",
       );
+      assert.equal(
+        canceledRunningBody.queueBySession[sessionId].find((item: any) => item.id === first.queueItem.id).errorMessage,
+        "Canceled by user",
+      );
+
+      const second = await enqueue(baseUrl, sessionId, "complete second queue item");
+      assert.equal(second.workspace.selectedSessionId, sessionId);
+      assert.ok(second.workspace.queueBySession[sessionId].some((item: any) => item.id === second.queueItem.id));
 
       releaseFirst();
       await waitFor(async () => {
         const queue = await queueFor(baseUrl, sessionId);
-        return queue.find((item) => item.id === first.queueItem.id && item.status === "succeeded");
-      }, "first queue item to finish");
+        return queue.find((item) => item.id === second.queueItem.id && item.status === "succeeded");
+      }, "second queue item to finish");
 
       assert.equal(listJobs({ kind: "agent_queue", sessionId }).length, 0);
       assert.ok(listTerminalJobs({ kind: "agent_queue", sessionId }).some((job) => (
-        job.requestId === first.queueItem.requestId && job.status === "completed"
+        job.requestId === second.queueItem.requestId && job.status === "completed"
       )));
 
-      const retried = await fetch(`${baseUrl}/api/agent/queue/${second.queueItem.id}/retry`, { method: "POST" });
+      const retried = await fetch(`${baseUrl}/api/agent/queue/${first.queueItem.id}/retry`, { method: "POST" });
       const retriedBody = await retried.json() as any;
       assert.equal(retried.status, 200);
       assert.equal(retriedBody.selectedSessionId, sessionId);
 
       await waitFor(async () => {
         const queue = await queueFor(baseUrl, sessionId);
-        return queue.find((item) => item.id === second.queueItem.id && item.status === "succeeded");
+        return queue.find((item) => item.id === first.queueItem.id && item.status === "succeeded");
       }, "retried queue item to finish");
     });
   });

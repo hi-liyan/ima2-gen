@@ -58,6 +58,9 @@
 }
 .docs-search-input:focus { border-color: var(--accent); }
 .docs-search-input::placeholder { color: var(--muted); }
+.docs-search-input,
+.docs-nav-title,
+.docs-nav-link { word-spacing: 0.08em; }
 
 .docs-nav { flex: 1; padding: 4px 0; }
 .docs-nav-section { padding: 9px 0; }
@@ -130,7 +133,7 @@
 .docs-article h1 {
   font-family: var(--font-display);
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   font-size: clamp(30px, 3.4vw, 40px);
   line-height: 1.08;
   margin-bottom: 12px;
@@ -138,7 +141,7 @@
 .docs-article h2 {
   font-family: var(--font-display);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-size: 23px;
   margin: 46px 0 14px;
   padding-bottom: 9px;

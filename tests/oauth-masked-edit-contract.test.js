@@ -12,6 +12,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 const proxy = OAUTH_PROXY_SOURCES.map((p) => fs.readFileSync(p, "utf8")).join("\n");
@@ -30,3 +31,4 @@ test("editViaOAuth gates mask path on flag, never silently strips mask", () => {
 });
 
 // TODO(#31 STEP-0): re-enable when upstream mask wiring lands
+

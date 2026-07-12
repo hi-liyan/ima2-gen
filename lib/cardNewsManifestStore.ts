@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { requireRuntimeContext, type RouteRuntimeContext } from "./runtimeContext.js";
 
 import { errInfo } from "./errInfo.js";
+import { assertSafeSetId, resolveCardNewsSetDir } from "./cardNewsPath.js";
 
 interface CardNewsManifest {
   setId: string;
@@ -39,7 +40,7 @@ interface ManifestCard {
 }
 
 export async function writeCardNewsManifest(generatedDir: string, manifest: CardNewsManifest) {
-  const dir = join(generatedDir, "cardnews", manifest.setId);
+  const dir = resolveCardNewsSetDir(generatedDir, manifest.setId);
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
   return { dir, manifestFilename: "manifest.json" };
@@ -52,14 +53,6 @@ export async function writeCardSidecar(dir: string, filename: string, sidecar: u
 function cardUrl(setId: string, imageFilename: string | null | undefined) {
   if (!imageFilename) return undefined;
   return `/generated/cardnews/${encodeURIComponent(setId)}/${encodeURIComponent(imageFilename)}`;
-}
-
-function assertSafeSetId(setId: unknown): string {
-  if (typeof setId === "string" && /^[a-zA-Z0-9_-]{3,120}$/.test(setId)) return setId;
-  const err: any = new Error("Card News set not found");
-  err.status = 404;
-  err.code = "CARD_NEWS_SET_NOT_FOUND";
-  throw err;
 }
 
 function manifestToPlan(manifest: CardNewsManifest) {
@@ -97,10 +90,10 @@ export async function readCardNewsSetPlan(ctxIn: RouteRuntimeContext, setId: str
 
 export async function readCardNewsManifest(ctxIn: RouteRuntimeContext, setId: string): Promise<CardNewsManifest> {
   const ctx = requireRuntimeContext(ctxIn);
-  const safeSetId = assertSafeSetId(setId);
+  const safeSetId = assertSafeSetId(setId, 404);
   try {
     const raw = await readFile(
-      join(ctx.config.storage.generatedDir, "cardnews", safeSetId, "manifest.json"),
+      join(resolveCardNewsSetDir(ctx.config.storage.generatedDir, safeSetId, 404), "manifest.json"),
       "utf8",
     );
     return JSON.parse(raw) as CardNewsManifest;
@@ -121,7 +114,8 @@ export async function listCardNewsSets(ctxIn: RouteRuntimeContext) {
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     try {
-      const raw = await readFile(join(root, entry.name, "manifest.json"), "utf8");
+      const safeSetId = assertSafeSetId(entry.name, 404);
+      const raw = await readFile(join(resolveCardNewsSetDir(ctx.config.storage.generatedDir, safeSetId, 404), "manifest.json"), "utf8");
       const manifest = JSON.parse(raw) as CardNewsManifest;
       const first = (manifest.cards || []).find((card) => card.imageFilename);
       sets.push({

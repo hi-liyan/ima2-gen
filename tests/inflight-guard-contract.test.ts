@@ -24,7 +24,7 @@ test("inflight startJob guards duplicate requestId and concurrent capacity", () 
 });
 
 test("nodes, multimode, and video routes map startJob failures to 409 and 429", () => {
-  for (const relPath of ["routes/nodes.ts", "routes/multimode.ts", "routes/video.ts"]) {
+  for (const relPath of ["lib/nodeGeneration.ts", "lib/multimodePipeline.ts", "routes/video.ts"]) {
     const src = readSource(relPath);
     assert.match(src, /const started = startJob\(/);
     assert.match(src, /if \(started && isStartJobFailure\(started\)\)/);
@@ -32,6 +32,30 @@ test("nodes, multimode, and video routes map startJob failures to 409 and 429", 
     assert.match(src, /REQUEST_ID_IN_USE|TOO_MANY_JOBS/);
     assert.match(src, /Retry-After/);
   }
+});
+
+test("all generation pipelines only finish jobs they successfully started", () => {
+  for (const relPath of [
+    "lib/generatePipeline.ts",
+    "lib/multimodePipeline.ts",
+    "lib/nodeGeneration.ts",
+    "routes/video.ts",
+    "routes/edit.ts",
+  ]) {
+    const src = readSource(relPath);
+    assert.match(src, /let jobOwned = false;/, relPath);
+    assert.match(src, /jobOwned = true;\s+registerJobAbortController\(/, relPath);
+    assert.match(src, /finally \{\s+if \(jobOwned\) finishJob\(/, relPath);
+  }
+});
+
+test("edit route maps startJob failures to 409 and 429", () => {
+  const src = readSource("routes/edit.ts");
+  assert.match(src, /const started = startJob\(/);
+  assert.match(src, /if \(started && isStartJobFailure\(started\)\)/);
+  assert.match(src, /started\.code === "TOO_MANY_JOBS" \? 429 : 409/);
+  assert.match(src, /res\.setHeader\("Retry-After", String\(INFLIGHT_RETRY_AFTER_SECONDS\)\)/);
+  assert.match(src, /code: started\.code,\s+requestId,/);
 });
 
 const TEST_DIR = mkdtempSync(join(tmpdir(), "ima2-inflight-guard-"));

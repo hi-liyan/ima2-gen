@@ -71,8 +71,8 @@ describe("prompt studio UI contract", () => {
     const types = readSource("ui/src/types.ts");
     const api = readSource("ui/src/lib/api.ts");
     const store = readSource("ui/src/store/useAppStore.ts");
-    const generateRoute = readSource("routes/generate.ts");
-    const multimodeRoute = readSource("routes/multimode.ts");
+    const generateRoute = (readSource("routes/generate.ts") + readSource("lib/generatePipeline.ts"));
+    const multimodeRoute = (readSource("routes/multimode.ts") + readSource("lib/multimodePipeline.ts"));
     const historyList = readSource("lib/historyList.ts");
     const snapshot = readSource("lib/composerSnapshot.ts");
     const snapshotRuntime = readSource("lib/composerSnapshot.js");
@@ -216,3 +216,4 @@ describe("prompt studio UI contract", () => {
     assert.ok(lineCount("ui/src/styles/viewer-workflow.css") < 500);
   });
 });
+

@@ -48,8 +48,9 @@ test("storeInflightImpl logs errors in dev mode instead of silent catch", () => 
 });
 
 test("multimode partial writeSse checks res.writableEnded before write", () => {
-  const src = read("routes/multimode.ts");
+  const src = (read("routes/multimode.ts") + read("lib/multimodePipeline.ts"));
   const partialBlock = src.slice(src.indexOf("onPartialImage"));
   assert.match(partialBlock, /res\.writableEnded/);
   assert.match(partialBlock, /res\.destroyed/);
 });
+

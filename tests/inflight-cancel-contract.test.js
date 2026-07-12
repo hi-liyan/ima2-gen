@@ -26,8 +26,8 @@ test("inflight cancel is wired to AbortController, not just terminal bookkeeping
 });
 
 test("classic and multimode routes register cancel controllers and block late saves", () => {
-  const classic = readSource("routes/generate.ts");
-  const multimode = readSource("routes/multimode.ts");
+  const classic = (readSource("routes/generate.ts") + readSource("lib/generatePipeline.ts"));
+  const multimode = (readSource("routes/multimode.ts") + readSource("lib/multimodePipeline.ts"));
 
   for (const source of [classic, multimode]) {
     assert.match(source, /registerJobAbortController\(requestId, cancelController\)/);
@@ -47,3 +47,4 @@ test("UI exposes cancel buttons only through the store cancel action", () => {
   assert.match(store, /await cancelInflight\(requestId\)/);
   assert.match(store, /phase: "canceling"/);
 });
+

@@ -28,6 +28,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const serverPath = join(__dirname, "..", "server.ts");
 const historyListPath = join(__dirname, "..", "lib", "historyList.ts");
 const nodeRoutePath = join(__dirname, "..", "routes", "nodes.ts");
+const nodeGenerationPath = join(__dirname, "..", "lib", "nodeGeneration.ts");
 const apiPath = join(__dirname, "..", "ui", "src", "lib", "api.ts");
 const nodeApiPath = join(__dirname, "..", "ui", "src", "lib", "nodeApi.ts");
 const asyncJobSubmitPath = join(__dirname, "..", "ui", "src", "lib", "asyncJobSubmit.ts");
@@ -38,7 +39,9 @@ const agyAdapterPath = join(__dirname, "..", "lib", "agyImageAdapter.ts");
 
 const src = await readFile(serverPath, "utf8");
 const historySrc = await readFile(historyListPath, "utf8");
-const nodeSrc = await readFile(nodeRoutePath, "utf8");
+const nodeSrc =
+  (await readFile(nodeRoutePath, "utf8")) +
+  (await readFile(nodeGenerationPath, "utf8"));
 const apiSrc = await readFile(apiPath, "utf8");
 const nodeApiSrc = await readFile(nodeApiPath, "utf8");
 const asyncJobSubmitSrc = await readFile(asyncJobSubmitPath, "utf8");
@@ -172,9 +175,9 @@ const grokImagePlanner = buildGrokPlannerPayload(
 const grokVideoPlanner = buildGrokVideoPlannerSystemPrompt();
 for (const prompt of [grokImagePlanner, grokVideoPlanner]) {
   assert.ok(prompt.includes(SAFETY_INTENT_POLICY), "grok planner should include safety intent policy");
-  assert.ok(prompt.includes("adult two-piece swimwear"), "grok planner should classify bikini as benign adult swimwear");
+  assert.ok(prompt.includes("bikini means a two-piece swimsuit"), "grok planner should preserve benign bikini intent");
   assert.ok(prompt.includes("negative safety constraints"), "grok planner should not append negative safety constraints");
-  assert.ok(prompt.includes("do not rewrite it as a benign allowed prompt"), "grok planner should not launder unsafe prompts");
+  assert.ok(prompt.includes("instead of rewriting it as allowed"), "grok planner should not launder unsafe prompts");
 }
 
 for (const source of [grokImageAdapterSrc, grokVideoPlannerSrc, agyAdapterSrc]) {

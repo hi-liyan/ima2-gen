@@ -1,124 +1,56 @@
 #!/usr/bin/env bash
-# release-preview.sh — build + preview semver bump + npm publish --tag preview
-# Auto-detects npm latest, bumps patch +1, then appends -preview.TIMESTAMP
-# Example: npm latest = 1.0.3 → preview = 1.0.4-preview.20260422153000
+# Promote one verified source SHA to the preview branch and wait for npm proof.
 set -euo pipefail
-
-PKG_NAME="ima2-gen"
 
 cd "$(dirname "$0")/.."
 
-if ! git diff --cached --quiet; then
-  echo "❌ Refusing preview release: staged changes exist"
+fail() {
+  echo "❌ $*" >&2
   exit 1
-fi
-if ! git diff --quiet; then
-  echo "❌ Refusing preview release: worktree has uncommitted changes"
-  exit 1
-fi
+}
 
-# ─── Version detection ─────────────────────────────────
-NPM_LATEST=$(npm view "$PKG_NAME" dist-tags.latest 2>/dev/null || echo "")
-PKG_VERSION=$(node -p "require('./package.json').version")
+for command in git gh node npm; do
+  command -v "$command" >/dev/null 2>&1 || fail "$command is required"
+done
+gh auth status >/dev/null 2>&1 || fail "gh CLI is not authenticated"
+node scripts/release-contract.mjs assert-toolchain
 
-# Use npm latest > package.json, strip prerelease suffix
-RAW_VERSION="${NPM_LATEST:-$PKG_VERSION}"
-RAW_VERSION=$(echo "$RAW_VERSION" | sed 's/-.*//')
+BRANCH=$(git branch --show-current)
+case "$BRANCH" in
+  main|dev) ;;
+  *) fail "preview promotion must run from main or dev (current: ${BRANCH:-detached})" ;;
+esac
 
-# Bump patch +1 for preview (so preview > latest in semver)
-IFS='.' read -r MAJOR MINOR PATCH <<< "$RAW_VERSION"
-NEXT_PATCH=$((PATCH + 1))
-BASE_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
-
-# Allow explicit override: ./scripts/release-preview.sh 2.0.0
-if [ "${1:-}" != "" ]; then
-  BASE_VERSION="$1"
+if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
+  fail "preview promotion requires a clean tracked and untracked worktree"
 fi
 
-PREID="${PREID:-preview}"
-STAMP="${STAMP:-$(date +%Y%m%d%H%M%S)}"
+git fetch origin preview --tags
+SOURCE_SHA=$(git rev-parse HEAD)
+REMOTE_PREVIEW=$(git rev-parse origin/preview)
+git merge-base --is-ancestor "$REMOTE_PREVIEW" "$SOURCE_SHA" || \
+  fail "origin/preview is not an ancestor of $SOURCE_SHA; refusing a non-fast-forward promotion"
 
-if [[ ! "$BASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "❌ BASE_VERSION must look like 1.0.3 (got: $BASE_VERSION)"
-  exit 1
+if [ "${IMA2_RELEASE_VERIFIED_SHA:-}" != "$SOURCE_SHA" ]; then
+  npm run verify:release
+  if [ -n "$(git status --porcelain --untracked-files=normal)" ]; then
+    fail "release verification changed tracked output; commit generated artifacts before preview"
+  fi
 fi
 
-PREVIEW_VERSION="${BASE_VERSION}-${PREID}.${STAMP}"
-
-echo "🎨 $PKG_NAME preview release script"
-echo "================================="
-echo "npm latest:      ${NPM_LATEST:-'(not found)'}"
-echo "package.json:    $PKG_VERSION"
-echo "Preview version: $PREVIEW_VERSION  (base $RAW_VERSION + patch bump)"
-echo "Dist-tag:        preview"
-
-# ─── Collect changelog from commits since last tag ─────
-PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]' | head -1)
-if [ -n "$PREV_TAG" ]; then
-  CHANGELOG=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges | head -30)
-  COMMIT_COUNT=$(git rev-list "$PREV_TAG"..HEAD --count)
-else
-  CHANGELOG=$(git log --oneline -10 --pretty=format:"- %s" --no-merges)
-  COMMIT_COUNT="?"
+if [ "$REMOTE_PREVIEW" = "$SOURCE_SHA" ]; then
+  CURRENT_PREVIEW_SHA=$(npm view ima2-gen@preview gitHead 2>/dev/null || true)
+  [ "$CURRENT_PREVIEW_SHA" = "$SOURCE_SHA" ] || \
+    fail "origin/preview already points at $SOURCE_SHA but npm preview does not; create a fix-forward commit to retrigger"
+  CURRENT_PREVIEW_VERSION=$(npm view ima2-gen@preview version)
+  node scripts/release-contract.mjs verify-channel \
+    "$CURRENT_PREVIEW_VERSION" preview refs/heads/preview "$SOURCE_SHA"
+  echo "✅ preview already verified for $SOURCE_SHA"
+  exit 0
 fi
 
-echo ""
-echo "📝 Changes since ${PREV_TAG:-'(none)'} ($COMMIT_COUNT commits):"
-echo "$CHANGELOG" | head -10
-echo ""
-
-# ─── Build ─────────────────────────────────────────────
-echo "⬆️  Setting preview version..."
-npm version "$PREVIEW_VERSION" --no-git-tag-version
-
-VERSION=$(node -p "require('./package.json').version")
-echo "📌 package.json version: $VERSION"
-
-echo "📦 Building UI..."
-npm run build
-
-echo "🧪 Verifying npm package contents..."
-npm pack --dry-run >/dev/null
-
-# ─── Commit + Publish ─────────────────────────────────
-echo "📝 Creating local commit..."
-git add package.json package-lock.json
-git commit -m "chore: preview v$VERSION" --allow-empty
-
-echo "🚀 Publishing preview to npm..."
-TARBALL="$(npm pack | tail -1)"
-trap 'rm -f "$TARBALL"' EXIT
-npm publish "$TARBALL" --tag preview --access public
-
-echo "🏷️  Creating preview tag..."
-git tag "v$VERSION"
-
-echo "⬆️  Pushing branch + tag..."
-git push origin main
-git push origin "v$VERSION"
-
-# ─── GitHub Prerelease with changelog ──────────────────
-echo "📋 Creating GitHub prerelease..."
-RELEASE_BODY="## Preview Release v$VERSION
-
-**Base**: $RAW_VERSION → preview patch $BASE_VERSION
-**Commits since ${PREV_TAG:-'(none)'}**: $COMMIT_COUNT
-
-### Changes
-$CHANGELOG"
-
-if command -v gh &>/dev/null; then
-  gh release create "v$VERSION" \
-    --title "v$VERSION (preview)" \
-    --notes "$RELEASE_BODY" \
-    --prerelease
-  echo "✅ GitHub prerelease v$VERSION created!"
-else
-  echo "⚠️  Skipped GitHub prerelease (gh CLI not found)"
-fi
-
-echo ""
-echo "✅ Preview published: $PKG_NAME@$VERSION"
-echo "   Install: npm install -g $PKG_NAME@preview"
-echo "   Exact:   npm install -g $PKG_NAME@$VERSION"
-echo "   Release: https://github.com/lidge-jun/ima2-gen/releases/tag/v$VERSION"
+echo "⬆️  Promoting $SOURCE_SHA to preview..."
+git push origin "$SOURCE_SHA:refs/heads/preview"
+node scripts/release-contract.mjs wait \
+  "$SOURCE_SHA" preview preview refs/heads/preview
+echo "✅ preview package verified for $SOURCE_SHA"

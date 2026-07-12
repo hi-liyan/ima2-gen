@@ -2,7 +2,7 @@ import type { Express, Request, Response } from "express";
 import { listImageTemplates, readTemplatePreview } from "../lib/cardNewsTemplateStore.js";
 import { listRoleTemplates } from "../lib/cardNewsRoleTemplateStore.js";
 import { createCardNewsDraft } from "../lib/cardNewsPlanner.js";
-import { generateCardNewsSet } from "../lib/cardNewsGenerator.js";
+import { generateCardNewsSet, validateCardNewsInput } from "../lib/cardNewsGenerator.js";
 import {
   createCardNewsJob,
   finishCardNewsJob,
@@ -152,6 +152,7 @@ export function registerCardNewsRoutes(app: Express, ctxRaw: RouteRuntimeContext
   app.post("/api/cardnews/jobs", (req: Request, res: Response) => {
     try {
       const body = (req.body ?? {}) as Parameters<typeof createCardNewsJob>[0];
+      validateCardNewsInput(body as Parameters<typeof validateCardNewsInput>[0]);
       const summary = createCardNewsJob(body);
       runCardNewsJob(ctx, summary.jobId, body);
       res.status(202).json(summary);

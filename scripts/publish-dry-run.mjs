@@ -1,10 +1,6 @@
-import { spawnSync } from "node:child_process";
+import { spawnNpmSync } from "./npm-subprocess.mjs";
 
-function npmCommand() {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
-}
-
-const result = spawnSync(npmCommand(), ["publish", "--dry-run", "--ignore-scripts"], {
+const result = spawnNpmSync(["publish", "--dry-run", "--ignore-scripts"], {
   cwd: process.cwd(),
   encoding: "utf8",
   env: {

@@ -5,7 +5,7 @@ import type { RouteRuntimeContext } from "../runtimeContext.js";
 
 import { errInfo } from "../errInfo.js";
 const FALLBACK_REASONING_EFFORT = "none";
-const VALID_REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh"]);
+const VALID_REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh", "max"]);
 
 export interface OAuthRuntimeOptions {
   reasoningEffort?: unknown;

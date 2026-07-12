@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import { buildHardeningDoctorLines } from "../lib/doctor-checks.js";
 import { buildStorageDoctorLines } from "../lib/storage-doctor.js";
 import { detectCodexAuth } from "../../lib/codexDetect.js";
+import { resolvePackageBin } from "../../lib/packageCli.js";
 import { runImageDoctorProbe } from "../../lib/responsesDoctor.js";
 import { config as runtimeConfig } from "../../config.js";
 
@@ -30,15 +31,23 @@ function loadConfig() {
 }
 
 function missingRuntimeDeps() {
-  const deps = ["express", "better-sqlite3", "openai", "openai-oauth", "progrok/package.json"];
-  return deps.filter((dep) => {
+  const deps = ["express", "better-sqlite3", "openai", "openai-oauth", "progrok/package.json", "@openai/codex/package.json", "zod"];
+  const missing = deps.filter((dep) => {
     try {
       requireFromRoot.resolve(dep);
       return false;
     } catch {
       return true;
     }
-  }).map((dep) => dep === "progrok/package.json" ? "progrok" : dep);
+  }).map((dep) => dep.endsWith("/package.json") ? dep.slice(0, -"/package.json".length) : dep);
+  for (const [packageName, binName] of [["openai-oauth", "openai-oauth"], ["@openai/codex", "codex"]]) {
+    try {
+      resolvePackageBin(packageName, binName);
+    } catch {
+      if (!missing.includes(packageName)) missing.push(packageName);
+    }
+  }
+  return missing;
 }
 
 function valueAfter(args: string[], name: string) {
@@ -187,7 +196,17 @@ async function standardDoctor() {
   for (const line of storageLines) console.log(line);
 
   const auth = detectCodexAuth();
-  if (auth.platform === "win32") console.log("  ℹ Windows GPT OAuth note: use WSL2 for Codex login.");
+  if (fileConfig.provider === "oauth" && !auth.proxyReady) {
+    console.log(
+      auth.authed
+        ? "  ✗ Codex is keyring-authenticated, but GPT OAuth needs a file-backed session; run 'ima2 login'"
+        : "  ✗ GPT OAuth has no file-backed Codex session; run 'ima2 login'",
+    );
+    fail++;
+  } else if (auth.proxyReady) {
+    console.log("  ✓ GPT OAuth file-backed Codex session is ready");
+    ok++;
+  }
 
   console.log(`\n  ${ok} passed, ${fail} failed\n`);
   process.exit(fail > 0 ? 1 : 0);

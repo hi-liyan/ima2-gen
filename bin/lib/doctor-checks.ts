@@ -77,12 +77,14 @@ export async function buildHardeningDoctorLines({
     text: `Card News: ${runtimeConfig.features.cardNews ? "enabled" : "disabled"}`,
   });
 
-  const skillPath = join(root, "skills", "ima2", "SKILL.md");
-  lines.push(
-    existsSync(skillPath)
-      ? { kind: "pass", text: `packaged skill found: ${skillPath}` }
-      : { kind: "fail", text: `packaged skill missing: ${skillPath}` },
-  );
+  for (const skillDir of ["ima2", "ima2-front", "ima2-uiux"]) {
+    const skillPath = join(root, "skills", skillDir, "SKILL.md");
+    lines.push(
+      existsSync(skillPath)
+        ? { kind: "pass", text: `packaged skill found: ${skillPath}` }
+        : { kind: "fail", text: `packaged skill missing: ${skillPath}` },
+    );
+  }
   lines.push(probeBetterSqlite(root));
 
   const perm = configPermissionLine(configFile, fileConfig);

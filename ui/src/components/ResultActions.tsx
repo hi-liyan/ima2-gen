@@ -4,6 +4,7 @@ import { useI18n } from "../i18n";
 import { exportImageToComfy } from "../lib/api";
 import { isVideoItem, extractFirstFrame, extractMidFrame, extractLastFrame } from "../lib/videoMedia";
 import { continueFromItem, continueFromItemAsUrl } from "../lib/continueFromItem";
+import { ResultMetadataModal } from "./ResultMetadataModal";
 import type { GenerateItem } from "../types";
 
 interface ResultActionsProps {
@@ -39,6 +40,7 @@ export function ResultActions({
   const openCanvas = useAppStore((s) => s.openCanvas);
   const [comfyExporting, setComfyExporting] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [metadataOpen, setMetadataOpen] = useState(false);
 
   const actionImage = imageOverride ?? currentImage;
   if (!actionImage) return null;
@@ -131,10 +133,23 @@ export function ResultActions({
     }
   };
 
-  const copyPrompt = () => {
+  const copyPrompt = async () => {
     if (!actionImage.prompt) return;
-    void navigator.clipboard.writeText(actionImage.prompt);
-    showToast(t("toast.promptCopied"));
+    try {
+      await navigator.clipboard.writeText(actionImage.prompt);
+      showToast(t("toast.promptCopied"));
+    } catch {
+      showToast(t("clipboard.writeFailed"), true);
+    }
+  };
+
+  const copyMetadataValue = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast(t("toast.metadataCopied"));
+    } catch {
+      showToast(t("clipboard.writeFailed"), true);
+    }
   };
 
   const newFromHere = async () => {
@@ -247,7 +262,7 @@ export function ResultActions({
           </button>
         </>
       )}
-      <button type="button" className="action-btn" onClick={copyPrompt}>
+      <button type="button" className="action-btn" onClick={() => void copyPrompt()}>
         {t("result.copyPrompt")}
       </button>
       <button
@@ -286,6 +301,14 @@ export function ResultActions({
         title={t("result.firstNodeTitle")}
       >
         {t("result.firstNode")}
+      </button>
+      <button
+        type="button"
+        className="action-btn"
+        onClick={() => setMetadataOpen(true)}
+        title={t("result.infoTitle")}
+      >
+        {t("result.info")}
       </button>
       {!canvasOpen && (
         <button
@@ -334,6 +357,13 @@ export function ResultActions({
             </div>
           </details>
         </>
+      )}
+      {metadataOpen && (
+        <ResultMetadataModal
+          item={actionImage}
+          onClose={() => setMetadataOpen(false)}
+          onCopy={(value) => void copyMetadataValue(value)}
+        />
       )}
     </div>
   );

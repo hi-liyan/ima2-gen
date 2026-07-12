@@ -1,8 +1,8 @@
 import type { Provider, Quality, SizePreset, Format, Moderation, ImageModel, Count } from "../types";
 import type { ReasoningEffort } from "../lib/reasoning";
-import { DEFAULT_IMAGE_MODEL, isApiOnlyImageModel, isGrokImageModel, isGeminiImageModel } from "../lib/imageModels";
+import { DEFAULT_IMAGE_MODEL, isApiOnlyImageModel, isGrokImageModel, isGeminiImageModel, normalizeVideoModelValue } from "../lib/imageModels";
 import { parseRequestedCustomSide } from "../lib/size";
-import { getSelectedNodeIds } from "../lib/nodeSelection";
+import { getEffectiveVideoSourceCount } from "../lib/videoSourceCount";
 import {
   saveImageModel,
   saveReasoningEffort,
@@ -110,20 +110,14 @@ export function setImageModelImpl(imageModel: ImageModel, set: StoreSet, get: St
 }
 
 export function selectVideoModelImpl(model: string | undefined, set: StoreSet, get: StoreGet): void {
-  const m = model || "grok-imagine-video";
+  const m = normalizeVideoModelValue(model) || "grok-imagine-video";
   set({ videoModelSelected: m });
   saveVideoDefaults({ model: m });
   if (get().provider !== "grok") get().setProvider("grok");
 }
 
 export function activeVideoRefCountImpl(get: StoreGet): number {
-  const s = get();
-  if (s.uiMode === "node") {
-    const id = getSelectedNodeIds(s.graphNodes)[0];
-    const node = s.graphNodes.find((n) => n.id === id);
-    return node?.data.referenceImages?.length ?? 0;
-  }
-  return s.referenceImages.length;
+  return getEffectiveVideoSourceCount(get());
 }
 
 export function setReasoningEffortImpl(reasoningEffort: ReasoningEffort, set: StoreSet): void {

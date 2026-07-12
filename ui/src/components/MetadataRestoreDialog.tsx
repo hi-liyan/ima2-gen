@@ -1,5 +1,6 @@
 import { useAppStore } from "../store/useAppStore";
 import { useI18n } from "../i18n";
+import { useModalFocus } from "../hooks/useModalFocus";
 
 function valueOrDash(value?: string | number | boolean | null): string {
   if (value === undefined || value === null || value === "") return "-";
@@ -12,6 +13,7 @@ export function MetadataRestoreDialog() {
   const applyMetadataRestore = useAppStore((s) => s.applyMetadataRestore);
   const addMetadataRestoreAsReference = useAppStore((s) => s.addMetadataRestoreAsReference);
   const cancelMetadataRestore = useAppStore((s) => s.cancelMetadataRestore);
+  const modalRef = useModalFocus<HTMLDivElement>(Boolean(pending), cancelMetadataRestore);
 
   if (!pending) return null;
 
@@ -21,10 +23,12 @@ export function MetadataRestoreDialog() {
   return (
     <div className="modal-backdrop metadata-restore-backdrop" role="presentation">
       <div
+        ref={modalRef}
         className="modal metadata-restore"
         role="dialog"
         aria-modal="true"
         aria-labelledby="metadata-restore-title"
+        tabIndex={-1}
       >
         <div id="metadata-restore-title" className="modal__title">
           {t("metadata.restoreTitle")}
@@ -62,7 +66,7 @@ export function MetadataRestoreDialog() {
           </div>
         </div>
         <div className="modal__actions">
-          <button type="button" className="modal__btn modal__btn--secondary" onClick={cancelMetadataRestore}>
+          <button type="button" className="modal__btn modal__btn--secondary" onClick={cancelMetadataRestore} data-modal-initial-focus>
             {t("common.cancel")}
           </button>
           <button type="button" className="modal__btn modal__btn--secondary" onClick={addMetadataRestoreAsReference}>

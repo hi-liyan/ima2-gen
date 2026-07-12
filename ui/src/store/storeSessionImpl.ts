@@ -34,6 +34,10 @@ export async function loadSessionsImpl(set: StoreSet, get: StoreGet): Promise<vo
     }
   } catch (err) {
     console.warn("[sessions] load failed:", err);
+    get().showToast(t("modal.sessionInitialLoadFailed"), true);
+    if (window.confirm(t("modal.sessionInitialLoadRetry"))) {
+      await loadSessionsImpl(set, get);
+    }
   }
 }
 
@@ -42,8 +46,16 @@ export async function switchSessionImpl(
   set: StoreSet,
   get: StoreGet,
 ): Promise<void> {
+  if (id === get().activeSessionId) return;
+  try {
+    await get().flushGraphSave("switch-session");
+  } catch (err) {
+    console.warn("[sessions] switch blocked by save failure:", err);
+    set({ sessionLoading: false });
+    get().showToast(t("modal.sessionSwitchSaveFailed"), true);
+    return;
+  }
   set({ sessionLoading: true });
-  await get().flushGraphSave("switch-session");
   try {
     const { session } = await apiGetSession(id);
     const { graphNodes, graphEdges, graphVersion } = mapSessionToGraph(session);

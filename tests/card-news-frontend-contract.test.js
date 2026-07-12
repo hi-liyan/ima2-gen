@@ -17,8 +17,10 @@ describe("Card News frontend dev MVP contract", () => {
     const switcher = readSource("ui/src/components/UIModeSwitch.tsx");
 
     assert.match(devMode, /export const ENABLE_CARD_NEWS_MODE/);
+    assert.match(devMode, /IS_DEV_UI && import\.meta\.env\.VITE_IMA2_CARD_NEWS !== "0"/);
     assert.match(devMode, /VITE_IMA2_CARD_NEWS/);
     assert.match(devMode, /VITE_IMA2_DEV/);
+    assert.doesNotMatch(devMode, /VITE_IMA2_CARD_NEWS === "1"/);
     assert.match(modes, /"classic" \| "node" \| "card-news"/);
     assert.match(switcher, /ENABLE_CARD_NEWS_MODE/);
     assert.match(switcher, /uiMode\.cardNews/);

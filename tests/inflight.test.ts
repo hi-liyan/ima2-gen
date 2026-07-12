@@ -15,11 +15,18 @@ const {
   isJobCanceled,
   listJobs,
   listTerminalJobs,
+  purgeStaleJobs,
+  reapTerminalJobs,
   registerJobAbortController,
   setJobPhase,
   startJob,
 } = await import("../lib/inflight.ts");
 const { closeDb } = await import("../lib/db.ts");
+const { config } = await import("../config.ts");
+
+function publishJobEvent(requestId: string, event: string, _data = {}): boolean {
+  return event !== "done" || !isJobCanceled(requestId);
+}
 
 beforeEach(() => {
   _resetForTests();
@@ -90,6 +97,29 @@ test("abortJob aborts the registered controller and records canceled terminal st
   const terminal = listTerminalJobs({ kind: "classic" });
   assert.equal(terminal[0].status, "canceled");
   assert.equal(terminal[0].errorCode, "GENERATION_CANCELED");
+});
+
+test("cancel after stale purge suppresses a late done event", () => {
+  const startedAt = Date.now();
+  startJob({ requestId: "req_purged_cancel", kind: "classic", meta: {} });
+
+  purgeStaleJobs(startedAt + config.inflight.ttlMs + 1);
+  abortJob("req_purged_cancel");
+
+  assert.equal(isJobCanceled("req_purged_cancel"), true);
+  assert.equal(publishJobEvent("req_purged_cancel", "done", {}), false);
+});
+
+test("reapTerminalJobs aborts an old controller with no inflight row", () => {
+  const registeredAt = Date.now();
+  const controller = new AbortController();
+  registerJobAbortController("req_orphan_controller", controller);
+
+  const orphanTtlMs = Math.max(config.inflight.ttlMs * 6, 60 * 60 * 1000);
+  reapTerminalJobs(registeredAt + orphanTtlMs + 1);
+
+  assert.equal(controller.signal.aborted, true);
+  assert.equal(abortJob("req_orphan_controller").aborted, false);
 });
 
 test("active jobs expose reference diagnostics in metadata", () => {

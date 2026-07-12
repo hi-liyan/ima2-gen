@@ -77,6 +77,12 @@ const en: Dict = {
     'Use the import dialog to drop files, preview GitHub folders, refresh curated sources, and review searched candidates before adding selected prompts to the library.',
   'latest.import.alt':
     'ima2-gen prompt import dialog for reviewing GitHub folders, curated sources, and searched prompt candidates before import.',
+  'latest.skills.label': 'Agent skills',
+  'latest.skills.h': 'Frontend & design skills built in.',
+  'latest.skills.body':
+    'Three packaged skills teach AI agents to build production frontends: core CLI prompting, frontend implementation (assets, motion, responsive, a11y, anti-slop), and design direction discovery (image-first ism workflow, UX states, product personalities). Run ima2 skill ls to discover them.',
+  'latest.skills.alt':
+    'ima2 skill ls output showing three available skills: core, front, and uiux.',
   'latest.video.label': 'Video',
   'latest.video.h': 'Text, image, or references to video.',
   'latest.video.body':
@@ -275,6 +281,12 @@ const ko: Dict = {
     '불러오기 다이얼로그에서 로컬 파일, GitHub 폴더, 추천 소스, 검색된 후보를 검토한 뒤 선택한 프롬프트만 라이브러리에 저장합니다.',
   'latest.import.alt':
     'ima2-gen 프롬프트 불러오기 다이얼로그 — GitHub 폴더, 추천 소스, 검색된 프롬프트 후보를 저장 전 검토하는 화면.',
+  'latest.skills.label': 'Agent skills',
+  'latest.skills.h': '프론트엔드 & 디자인 스킬 내장.',
+  'latest.skills.body':
+    'AI 에이전트에게 프로덕션급 프론트엔드 구축법을 가르치는 3개 패키징 스킬: 코어 CLI 프롬프팅, 프론트엔드 구현(에셋, 모션, 반응형, 접근성, 안티슬롭), 디자인 방향 탐색(이미지 우선 ism 워크플로, UX 상태, 프로덕트 퍼스널리티). ima2 skill ls로 확인하세요.',
+  'latest.skills.alt':
+    'ima2 skill ls 실행 결과 — core, front, uiux 3개 스킬이 표시된 화면.',
   'latest.video.label': 'Video',
   'latest.video.h': '텍스트, 이미지, 레퍼런스에서 영상으로.',
   'latest.video.body':

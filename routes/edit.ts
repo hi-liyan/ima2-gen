@@ -12,7 +12,7 @@ import { editViaResponses } from "../lib/responsesImageAdapter.js";
 import { editViaGrok } from "../lib/grokImageAdapter.js";
 import { generateViaAgy } from "../lib/agyImageAdapter.js";
 import { generateViaGeminiApi } from "../lib/geminiApiImageAdapter.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled } from "../lib/inflight.js";
+import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "../lib/inflight.js";
 import {
   isGenerationCanceledError,
   makeGenerationCanceledError,
@@ -112,6 +112,7 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
     let finishErrorCode;
     let finishMeta = {};
     let finishCanceled = false;
+    let jobOwned = false;
     const cancelController = new AbortController();
     try {
       const {
@@ -149,7 +150,7 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
       const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId : null;
       const normalizedPromptMode = promptMode === "direct" ? "direct" : "auto";
 
-      startJob({
+      const started = startJob({
         requestId,
         kind: "classic",
         prompt,
@@ -168,6 +169,20 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
           inputImage: "[redacted:image-data]",
         },
       });
+      if (started && isStartJobFailure(started)) {
+        const status = started.code === "TOO_MANY_JOBS" ? 429 : 409;
+        if (started.code === "TOO_MANY_JOBS") {
+          res.setHeader("Retry-After", String(INFLIGHT_RETRY_AFTER_SECONDS));
+        }
+        return res.status(status).json({
+          error: started.code === "TOO_MANY_JOBS"
+            ? "Too many concurrent generation jobs"
+            : "Request ID already in use",
+          code: started.code,
+          requestId,
+        });
+      }
+      jobOwned = true;
       registerJobAbortController(requestId, cancelController);
 
       if (!prompt || !imageB64) {
@@ -402,7 +417,7 @@ export function registerEditRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         requestId,
       });
     } finally {
-      finishJob(requestId, {
+      if (jobOwned) finishJob(requestId, {
         canceled: finishCanceled,
         status: finishStatus,
         httpStatus: finishHttpStatus,

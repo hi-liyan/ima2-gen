@@ -16,7 +16,7 @@
 
 `ima2-gen` is a local image generation studio for people who want the ChatGPT/Codex image workflow in a small desktop-like web app.
 
-Install globally, sign in with ChatGPT OAuth or Grok OAuth, and start generating images and videos. Iterate with history, references, node branches, multimode batches, Canvas Mode cleanup, and Grok Video generation. No API key required — free ChatGPT OAuth and SuperGrok subscription cover everything.
+Install globally, sign in with ChatGPT OAuth or Grok OAuth, and start generating images and videos. Iterate with history, references, node branches, multimode batches, Canvas Mode cleanup, and Grok Video generation. Default OAuth paths need no API key; optional API-key providers (`api`, `grok-api`, `gemini-api`, `agy`) are also supported.
 
 ![ima2-gen video playback with gallery sidebar showing generated images and videos.](assets/screenshots/classic-generate-light.png)
 
@@ -97,6 +97,36 @@ Ctrl+C now performs a clean shutdown — closing the database, stopping child pr
 - **Mobile shell**: use the app bar, compose sheet, and compact settings toggle on smaller screens.
 - **Observable jobs**: active and recent jobs are tracked with safe logs and request IDs.
 
+### Agent Skills
+
+ima2-gen ships three packaged skills for AI coding agents. These are Markdown
+instruction files that agents load to get structured workflows for image/video
+generation, frontend asset production, and design direction discovery.
+
+| Skill | Command | What It Covers |
+|-------|---------|----------------|
+| **Core** | `ima2 skill` | CLI reference, prompting protocol, provider routing, Korean text, video workflows |
+| **Frontend** | `ima2 skill front` | Asset pipeline (parallel gen, variant selection, provider routing), motion/video for web, responsive, a11y, anti-slop, 30+ reference files |
+| **UI/UX Design** | `ima2 skill uiux` | Image-first design direction discovery, UX states, design-isms, product personalities, DESIGN.md workflow, 18 reference files |
+
+```bash
+ima2 skill ls            # list available skills
+ima2 skill front         # print the frontend skill
+ima2 skill uiux          # print the design skill
+ima2 skill front path    # print file path (for agents)
+ima2 skill front --json  # JSON wrapper (for agents)
+ima2 skill front refs    # list reference modules (35 files)
+ima2 skill front ref motion        # load one reference module
+ima2 skill install --dir <path>     # install skills to agent's skill dir
+ima2 skill install --tmp            # install to temp dir (fallback)
+```
+
+The Frontend and UI/UX skills are production-grade design engineering guides
+adapted for the ima2 workflow. They cover typography, color systems, layout
+discipline, Korean UX patterns, motion choreography, and visual verification,
+with every asset generation step mapped to `ima2 gen`, `ima2 video`, and
+`ima2 multimode` commands.
+
 ### SSE Multiplexing
 
 The web UI uses a single `GET /api/events` Server-Sent Events connection for all generation progress. Multimode, node, and video requests are submitted as async POST (`202 { requestId }`) and progress events are multiplexed through a shared event bus. This eliminates the browser 6-connection limit that previously caused gallery hangs during concurrent generation. CLI clients that do not send `async: true` still receive per-request SSE streams for backward compatibility.
@@ -108,6 +138,7 @@ Image generation can run through the local Codex/ChatGPT OAuth path, a configure
 - `provider: "oauth"` uses the local Codex OAuth proxy.
 - `provider: "api"` calls the OpenAI Responses API with the hosted `image_generation` tool.
 - `provider: "grok"` starts bundled `progrok` on `127.0.0.1:18645`, runs mandatory xAI Web Search plus a planner pass (default: `grok-4.3`, configurable in settings or via `--planner-model`), then calls xAI Images API through the local proxy.
+- `provider: "grok-api"` calls the xAI Images API directly with `XAI_API_KEY` (no bundled progrok OAuth proxy).
 - `provider: "agy"` spawns the Antigravity CLI (`agy -p`) to generate images via Google Gemini's `default_api:generate_image` tool (model: `nano-banana-2`). Output is fixed at 1024×1024 JPEG, max 3 reference images. No web search, quality, or size controls.
 - `provider: "gemini-api"` calls the Google Generative Language API directly. Supports two models: `nano-banana-2` (Gemini 3.1 Flash Image) and `nano-banana-pro` (Gemini 3 Pro Image). Auth is via `GEMINI_API_KEY` env var, web UI key management, or a Vertex AI service account JSON (`VERTEX_SERVICE_ACCOUNT_JSON`). When both an API key and Vertex credentials are configured, Vertex takes priority. Supports variable aspect ratios (1:1 through 21:9) and four resolution tiers (512px, 1K, 2K, 4K); these controls are only honored on the direct API path — the Vertex AI endpoint ignores aspect/size because it does not accept the `response_format` field. Per-model cost differs: `nano-banana-2` (Flash): 512=$0.001, 1K=$0.003, 2K=$0.004, 4K=$0.006; `nano-banana-pro`: 1K=$0.007, 2K=$0.007, 4K=$0.013. No web search or mask controls.
 - API-key generation supports classic generate, edit, mask-guided edit, multimode, and node generation.
@@ -117,7 +148,7 @@ If no provider is specified, the app keeps the current GPT OAuth/default behavio
 
 Grok image generation exposes a model picker (`grok-imagine-image` / `grok-imagine-image-quality`) and a size picker (aspect ratio + 1k/2k resolution). The Settings page shows a billing/quota bar with `$used/$limit` drawn from the Grok billing API, and a **Switch Account** button that starts a device-code OAuth flow (`POST /api/auth/switch`) for re-authenticating without leaving the app.
 
-Grok video generation uses `grok-imagine-video` (default) or `grok-imagine-video-1.5-preview`. Three modes are auto-detected from reference count: text-to-video (0 refs), image-to-video (1 ref), and reference-to-video (2–7 refs, max 10s duration). `grok-imagine-video-1.5-preview` supports image-to-video but not `reference_images` Ref2V, so 2+ refs use `grok-imagine-video` as the effective model. Video edit and extension are also base-model only. Video controls include duration (1–15s), resolution (480p, 720p), and aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto).
+Grok video generation uses `grok-imagine-video` (default) or canonical `grok-imagine-video-1.5`; the legacy `grok-imagine-video-1.5-preview` string is accepted as an alias. Three modes are auto-detected from reference count: text-to-video (0 refs), image-to-video (1 ref), and reference-to-video (2-7 refs, max 10s duration). 1080p is available for `grok-imagine-video-1.5` prompt-only text-to-video and single image/frame image-to-video; prompt-only 1.5 uses the internal white-canvas I2V shim before the upstream request. 1.5 does not add `reference_images` Ref2V, V2V edit, or extension support, so those paths remain base-model only. Video controls include duration (1-15s), resolution (480p, 720p, 1080p when supported), and aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto).
 
 ![Settings workspace showing GPT OAuth active and API key provider available.](assets/screenshots/settings-oauth-generation.png)
 
@@ -255,6 +286,7 @@ environment variables > ~/.ima2/config.json > built-in defaults
 | `IMA2_LOG_LEVEL` | `info` | Normal serve defaults to `info`; dev mode defaults to `debug`; supports `debug`, `info`, `warn`, `error`, or `silent` |
 | `IMA2_INFLIGHT_TERMINAL_TTL_MS` | `300000` | Recent terminal job retention for debug views |
 | `OPENAI_API_KEY` | — | API key for the `provider: "api"` Responses API image path and auxiliary API-key features |
+| `XAI_API_KEY` | — | API key for `provider: "grok-api"` direct xAI Images API path |
 | `IMA2_API_IMAGE_MODEL_DEFAULT` | `gpt-5.4-mini` | Default image model for `provider: "api"` |
 | `IMA2_API_REASONING_EFFORT` | `low` | Default reasoning effort for `provider: "api"` |
 | `IMA2_API_IMAGE_SIZE` | `1024x1024` | Default size for `provider: "api"` |
@@ -269,6 +301,8 @@ environment variables > ~/.ima2/config.json > built-in defaults
 | `IMA2_OAUTH_MASKED_EDIT_ENABLED` | `false` | Opt-in feature flag for masked-edit requests on the OAuth path (#31, groundwork only) |
 | `GEMINI_API_KEY` | — | API key for `provider: "gemini-api"` direct Generative Language API path |
 | `VERTEX_SERVICE_ACCOUNT_JSON` | — | Google service account JSON for Vertex AI auth with `provider: "gemini-api"`; takes priority over `GEMINI_API_KEY` when both are set |
+| `IMA2_AGY_BIN` | `agy` on PATH | Explicit path to the Antigravity CLI binary for `provider: "agy"` |
+| `IMA2_MAX_PARALLEL` | `24` | Server-wide parallel generation cap |
 
 ### Logging modes
 

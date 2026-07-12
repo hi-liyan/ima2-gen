@@ -3,6 +3,7 @@ import { readFile, readdir, rm, stat, writeFile, mkdir } from "node:fs/promises"
 import { extname, dirname, join, resolve } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import { randomBytes } from "node:crypto";
+import { buildAgyPathEnv, resolveAgyBin } from "./agyCli.js";
 import { logEvent } from "./logger.js";
 import { SAFETY_INTENT_POLICY } from "./promptSafetyPolicy.js";
 import { detectImageMimeFromB64 } from "./refs.js";
@@ -116,12 +117,55 @@ function parseAgyOutput(stdout: string): { artifactPath: string; ext: string } {
   );
 }
 
+export async function findRecentAgyArtifact(sinceMs: number, rootOverrides?: string[]): Promise<string | null> {
+  const roots = rootOverrides ?? [
+    join(homedir(), ".gemini", "antigravity-cli", "brain"),
+    join(homedir(), ".gemini"),
+  ];
+
+  const candidates: { path: string; mtimeMs: number }[] = [];
+  const seen = new Set<string>();
+
+  async function walk(dir: string, depth: number): Promise<void> {
+    if (depth > 5 || seen.has(dir)) return;
+    seen.add(dir);
+
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      const p = join(dir, entry.name);
+
+      if (!entry.isSymbolicLink() && entry.isDirectory()) {
+        await walk(p, depth + 1);
+        continue;
+      }
+
+      if (!/^ima2_generated.*\.(png|jpg|jpeg|webp)$/i.test(entry.name)) {
+        continue;
+      }
+
+      const s = await stat(p).catch(() => null);
+      if (!s) continue;
+
+      if (s.mtimeMs >= sinceMs - 5_000) {
+        candidates.push({ path: p, mtimeMs: s.mtimeMs });
+      }
+    }
+  }
+
+  for (const root of roots) {
+    await walk(root, 0);
+  }
+
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return candidates[0]?.path ?? null;
+}
+
 function spawnAgy(prompt: string, signal?: AbortSignal): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const child = spawn("agy", ["-p", "-"], {
+    const child = spawn(resolveAgyBin(), ["-p", "-"], {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
-        PATH: process.env.PATH,
+        PATH: buildAgyPathEnv(),
         HOME: process.env.HOME,
         USERPROFILE: process.env.USERPROFILE,
         TMPDIR: process.env.TMPDIR,
@@ -146,11 +190,15 @@ function spawnAgy(prompt: string, signal?: AbortSignal): Promise<{ stdout: strin
     child.stdout.on("data", (chunk: Buffer) => { if (stdout.length < AGY_MAX_OUTPUT_BYTES) stdout += chunk.toString(); });
     child.stderr.on("data", (chunk: Buffer) => { if (stderr.length < AGY_MAX_OUTPUT_BYTES) stderr += chunk.toString(); });
 
-    child.on("error", (err) => {
+    child.on("error", (err: NodeJS.ErrnoException) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      reject(agyError(`Agy process error: ${err.message}`, 502, "AGY_PROCESS_ERROR"));
+      const bin = resolveAgyBin();
+      const hint = err.code === "ENOENT"
+        ? `. "${bin}" was not found — install agy or set IMA2_AGY_BIN=/absolute/path/to/agy`
+        : "";
+      reject(agyError(`Agy process error: ${err.message}${hint}`, 502, "AGY_PROCESS_ERROR"));
     });
 
     child.on("close", (code) => {
@@ -260,6 +308,7 @@ export async function generateViaAgy(
   });
 
   try {
+    const generationStartedAtMs = Date.now();
     const { stdout, stderr } = await spawnAgy(agyPrompt, options.signal);
 
     if (stderr && stderr.trim().length > 0) {
@@ -270,7 +319,30 @@ export async function generateViaAgy(
       });
     }
 
-    const { artifactPath } = parseAgyOutput(stdout);
+    const agyCombinedOutput = [stdout, stderr].filter(Boolean).join("\n");
+
+    let artifactPath: string;
+    try {
+      artifactPath = parseAgyOutput(agyCombinedOutput).artifactPath;
+    } catch (err) {
+      if ((err as any)?.code !== "AGY_PARSE_FAILED") {
+        throw err;
+      }
+
+      const fallbackPath = await findRecentAgyArtifact(generationStartedAtMs);
+      if (!fallbackPath) {
+        throw err;
+      }
+
+      logEvent("agy", "generate:fallback_artifact_found", {
+        requestId: options.requestId,
+        artifactPath: fallbackPath,
+        stdoutChars: stdout.length,
+        stderrChars: stderr.length,
+      });
+
+      artifactPath = fallbackPath;
+    }
 
     // Validate artifact path is within allowed directories
     const resolvedPath = resolve(artifactPath);

@@ -71,7 +71,9 @@ describe("ima2 video CLI contracts", () => {
     assert.match(stdout, /--duration <1\.\.15>[\s\S]*Duration in seconds\. Default: 5\. Prompt motion should naturally fill this length/);
     assert.match(stdout, /--duration <2\.\.10>[\s\S]*Extension duration only\. Default: 6/);
     assert.match(stdout, /--topic <text>/);
-    assert.match(stdout, /grok-imagine-video-1\.5-preview/);
+    assert.match(stdout, /--resolution <480p\|720p\|1080p>/);
+    assert.match(stdout, /grok-imagine-video-1\.5/);
+    assert.match(stdout, /preview alias accepted/);
   });
 
   it("rejects invalid generate and extend durations before network calls", async () => {
@@ -109,6 +111,34 @@ describe("ima2 video CLI contracts", () => {
     assert.equal(noContinuePrompt.code, 2);
     assert.match(noContinuePrompt.stderr, /Active video prompt required/);
     assert.match(noContinuePrompt.stderr, /stable ending frame/);
+  });
+
+  it("allows prompt-only Grok Video 1.5 1080p so the server can apply the canvas shim", async () => {
+    let body = "";
+    const server = makeServer((req, res) => {
+      if (req.url?.startsWith("/api/video/generate")) {
+        req.on("data", (d) => (body += d));
+        req.on("end", () => {
+          res.writeHead(200, { "Content-Type": "text/event-stream" });
+          res.end('event: done\ndata: {"requestId":"r","filename":"out.mp4","url":"/generated/out.mp4","mediaType":"video"}\n\n');
+        });
+        return;
+      }
+      if (req.url?.startsWith("/generated/out.mp4")) {
+        res.writeHead(200, { "Content-Type": "video/mp4" });
+        res.end("mp4");
+        return;
+      }
+      res.writeHead(404).end();
+    });
+    const base = await listen(server);
+    const result = await runCLI(["video", "clip", "--resolution", "1080p", "--model", "grok-imagine-video-1.5", "--server", base, "--json"]);
+    assert.equal(result.code, 0);
+    const parsed = JSON.parse(body);
+    assert.equal(parsed.model, "grok-imagine-video-1.5");
+    assert.equal(parsed.resolution, "1080p");
+    assert.equal(parsed.sourceImage, undefined);
+    assert.equal(parsed.referenceImages, undefined);
   });
 
   it("sends continueFromVideo for video continue", async () => {

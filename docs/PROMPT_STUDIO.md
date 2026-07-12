@@ -115,3 +115,34 @@ When opening an issue, include:
 
 Do not share ChatGPT cookies, OAuth token files, API keys, raw upstream
 responses, private prompt history, or generated base64 data.
+
+## Canvas Notes And I2I Editing
+
+When you draw memos (notes), arrows, or boxes on the canvas and save, the
+notes reach the model as **text instructions, not pixels**.
+
+- Saving a canvas version keeps the burned-in annotated image for UI display
+  and history only; model references always use the **clean source**. Adding
+  the current image as a reference also swaps a canvas version for its
+  original.
+- Note contents attach to the composer as a removable "Canvas notes" chip, so
+  the next generation carries the instructions (position + content + a
+  markup-removal rule).
+- Drawing boxes and running the mask edit calls the edit API with the clean
+  source, a box mask, and the note instructions.
+
+If markup still shows up in a result:
+
+- Phrase notes as **what should be visible in that spot**, not only what to
+  remove. For example, "show the continuous wooden desk surface where the
+  sticky note was" instead of "remove the sticky note".
+- Generate several candidates from the same request and pick the cleanest.
+- Box only the residual trace and run one more mask edit.
+
+### Reverting Baked Notes
+
+Canvas versions that contain baked notes offer **Revert baked notes**. When no
+later pixel edit was added, the clean source is restored and the saved notes
+return as an editable draft. If background cleanup or another pixel edit was
+added afterward, Prompt Studio asks for confirmation because reverting also
+discards those pixel edits.

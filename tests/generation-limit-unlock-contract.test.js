@@ -26,11 +26,12 @@ test("generation image-count limit is configured once and exposed to clients", (
 
 test("server generation paths no longer keep hard-coded 8 image-count caps", () => {
   for (const relPath of [
-    "routes/generate.ts",
-    "routes/multimode.ts",
+    "lib/generatePipeline.ts",
+    "lib/multimodePipeline.ts",
     "lib/multimodeHelpers.ts",
     "lib/oauthProxy/prompts.ts",
     "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
     "lib/oauthProxy/streams.ts",
     "lib/responsesImageAdapter.ts",
     "lib/grokMultimodeAdapter.ts",
@@ -104,3 +105,4 @@ test("frontend reference limit syncs from server capabilities", () => {
   assert.doesNotMatch(nodeRefs, /MAX_REFERENCE_IMAGES/);
   assert.doesNotMatch(composer, /MAX_REFS|MAX_REFERENCE_IMAGES/);
 });
+

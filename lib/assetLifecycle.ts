@@ -1,5 +1,5 @@
 import { getDb } from "./db.js";
-import { mkdir, rename, unlink, access } from "fs/promises";
+import { mkdir, rename, unlink, lstat, realpath } from "fs/promises";
 import { resolve, sep } from "path";
 import { moveToSystemTrash } from "./systemTrash.js";
 import { config } from "../config.js";
@@ -27,6 +27,24 @@ function resolveInGenerated(rootDir: string, relPath: string): string {
     throw err;
   }
   return target;
+}
+
+async function assertRegularGeneratedPath(path: string): Promise<void> {
+  const baseDir = await realpath(resolve(config.storage.generatedDir));
+  const stat = await lstat(path);
+  if (stat.isSymbolicLink()) {
+    const err: any = new Error("symbolic links are not valid assets");
+    err.status = 400;
+    err.code = "INVALID_FILENAME";
+    throw err;
+  }
+  const canonical = await realpath(path);
+  if (canonical !== baseDir && !canonical.startsWith(baseDir + sep)) {
+    const err: any = new Error("filename escapes generated/");
+    err.status = 400;
+    err.code = "INVALID_FILENAME";
+    throw err;
+  }
 }
 
 function nodesReferencingFilename(filename: string): Array<{ sessionId: string; id: string; data: string }> {
@@ -69,8 +87,9 @@ function markNodesAssetMissing(filename: string) {
 export async function trashAsset(rootDir: string, filename: string) {
   const src = resolveInGenerated(rootDir, filename);
   try {
-    await access(src);
-  } catch {
+    await assertRegularGeneratedPath(src);
+  } catch (cause: any) {
+    if (cause?.code !== "ENOENT") throw cause;
     const err: any = new Error("Asset not found");
     err.status = 404;
     err.code = "ASSET_NOT_FOUND";
@@ -80,9 +99,11 @@ export async function trashAsset(rootDir: string, filename: string) {
   const sidecar = `${src}.json`;
   const paths = [src];
   try {
-    await access(sidecar);
+    await assertRegularGeneratedPath(sidecar);
     paths.push(sidecar);
-  } catch {}
+  } catch (err: any) {
+    if (err?.code !== "ENOENT") throw err;
+  }
 
   let trashMethod: "system" | "internal" = "system";
   try {
@@ -112,15 +133,22 @@ export async function trashAsset(rootDir: string, filename: string) {
 export async function deleteAssetPermanent(rootDir: string, filename: string) {
   const src = resolveInGenerated(rootDir, filename);
   try {
-    await access(src);
-  } catch {
+    await assertRegularGeneratedPath(src);
+  } catch (cause: any) {
+    if (cause?.code !== "ENOENT") throw cause;
     const err: any = new Error("Asset not found");
     err.status = 404;
     err.code = "ASSET_NOT_FOUND";
     throw err;
   }
   await unlink(src);
-  await unlink(src + ".json").catch(() => {});
+  const sidecar = src + ".json";
+  try {
+    await assertRegularGeneratedPath(sidecar);
+    await unlink(sidecar);
+  } catch (err: any) {
+    if (err?.code !== "ENOENT") throw err;
+  }
   const summary = markNodesAssetMissing(filename);
   return {
     ok: true,

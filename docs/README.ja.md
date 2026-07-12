@@ -10,7 +10,7 @@
 
 `ima2-gen` は、無料の ChatGPT と SuperGrok だけで画像と動画を作れるローカル AI スタジオです。
 
-グローバルインストールし、ChatGPT または Grok OAuth でログインすれば、すぐに画像・動画生成を始められます。API キー不要で、ノード分岐、multimode batch、Grok Video、Canvas Mode まで全機能が使えます。
+グローバルインストールし、ChatGPT または Grok OAuth でログインすれば、すぐに画像・動画生成を始められます。デフォルトの OAuth パスは API キー不要です。オプションで API キー系プロバイダー（`api`, `grok-api`, `gemini-api`, `agy`）も利用できます。
 
 ![プロンプト入力、生成画像、モデル表示、結果メタデータが見える ima2-gen classic 画面](../assets/screenshots/classic-generate-light.png)
 
@@ -24,9 +24,58 @@ ima2 serve
 
 その後、`http://localhost:3333` を開きます。
 
+CLI で動画生成:
+
+```bash
+ima2 video "猫がピアノを弾く" --duration 5 --resolution 720p
+ima2 video "このシーンをアニメ化" --ref photo.png --duration 10
+```
+
 `3333` がすでに使われている場合、次に空いているポートで起動し、実際の URL は `~/.ima2/server.json` に書き込まれます。ポートを決め打ちせず、terminal に表示された URL または `ima2 open` を使ってください。
 
 > **npx を使いたい場合は?** [NPX_QUICKSTART.md](NPX_QUICKSTART.md) を参照してください。
+
+### ワンクリックインストール（npm 不要）
+
+Node.js や npm がなくても、プラットフォーム用インストールスクリプトが環境を検出し、必要なら Node LTS を入れてから ima2-gen をインストールします。
+
+**macOS:**
+```bash
+curl -fsSL https://lidge-jun.github.io/ima2-gen/install-mac.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://lidge-jun.github.io/ima2-gen/install-windows.ps1 | iex
+```
+
+**Linux / WSL:**
+```bash
+curl -fsSL https://lidge-jun.github.io/ima2-gen/install-linux.sh | bash
+```
+
+各スクリプトは nvm/fnm/brew/winget を確認し、最適な方法で Node LTS を入れ、古いプロセスのクリーンアップも自動で行います。
+
+### セットアップ
+
+`ima2 setup` では認証方式を4つ選べます:
+
+1. **GPT OAuth** — ChatGPT アカウントでログイン（無料、画像のみ）
+2. **Grok OAuth** — xAI/Grok アカウントでログイン（画像 + 動画）
+3. **Both** — GPT + Grok 両方（全機能）
+4. **Web setup** — Web UI で設定
+
+動画生成には Grok OAuth（2 または 3）が必要です。GPT OAuth だけ設定済みで動画を追加する場合は `ima2 grok login` を別途実行してください。
+
+### アップデート
+
+実行中の server を Ctrl+C で止めてから:
+
+```bash
+npm install -g ima2-gen@latest
+```
+
+Ctrl+C は DB クローズ、子プロセス停止、ファイルロック解放まで行うクリーンシャットダウンです。古いバージョン（< 1.1.22）や Windows で `EBUSY` が出る場合は、インストールスクリプトが stale プロセスを自動クリーンアップします。
 
 ## できること
 
@@ -34,11 +83,17 @@ ima2 serve
 - **Node mode**: 良い画像を起点に、複数の方向へ分岐して試せます。
 - **Multimode batches**: 1つのプロンプトから複数候補を同時に走らせ、slot ごとの進行を見ながら最も良い結果から作業を継続できます。
 - **Canvas Mode**: zoom/pan、annotation、eraser、background cleanup、transparent checkerboard preview、alpha/matte export をサポートします。
-- **Local gallery**: 生成物をローカルに保存し、セッションごとの履歴として確認できます。
-- **Reference images**: 参照画像を drag/drop、paste、file picker で追加できます。大きな画像は送信前に圧縮されます。
+- **Video generation**: テキスト、画像、複数参照から短い動画を生成。SSE で planning→submitted→progress→done。First/Mid/Last フレームコピー対応。
+- **Storyboard mode**: コンポーザーの storyboard トグルで連続フレームのキャラクター・シーン連続性を維持（画像・動画両対応）。
+- **Local gallery**: 生成物をローカル保存。デフォルトは現在セッション、All Images トグルで全履歴。生成時間と reasoning effort をメタデータに記録。
+- **Reference images**: ドラッグ/ペースト/ファイル選択。画像最大5、動画最大7。大きい画像は自動圧縮。
 - **Prompt library imports**: local prompt pack、GitHub folder、curated GPT-image hint を built-in prompt library に取り込めます。
 - **Mobile shell**: 小さい画面では app bar、compose sheet、compact settings toggle で操作できます。
 - **Observable jobs**: 進行中の生成と最近の生成を request ID で追跡できます。
+
+### SSE マルチプレキシング
+
+Web UI は単一の `GET /api/events` Server-Sent Events 接続で全生成の進行を受信します。Multimode、node、video リクエストは非同期 POST（`202 { requestId }`）で送信され、共有イベントバス経由で進行イベントがマルチプレクスされます。これにより、同時生成時のブラウザ 6 接続制限によるギャラリー hang が解消されます。`async: true` を送らない CLI クライアントは、後方互換のため従来どおりリクエストごとの SSE ストリームを受け取れます。
 
 ## 画像生成は OAuth と API key をサポートします
 
@@ -46,7 +101,15 @@ ima2 serve
 
 API key が env/config に存在する場合、生成エンドポイントで `provider: "api"` を指定すると Responses API の `image_generation` tool を使用できます。
 
+- `provider: "grok-api"` — `XAI_API_KEY` で xAI Images API を直接呼び出し
+- `provider: "agy"` — ローカル Antigravity CLI (`IMA2_AGY_BIN`)
+- `provider: "gemini-api"` — `GEMINI_API_KEY` または Vertex (`VERTEX_SERVICE_ACCOUNT_JSON`、Vertex 優先)
+
 Settings に **API key provider available** と表示される場合、API key が検出され、生成・編集・multimode・node request に使用できるという意味です。
+
+Grok 動画は `grok-imagine-video`（既定）または正式名 `grok-imagine-video-1.5` を使用します。従来の `grok-imagine-video-1.5-preview` は互換 alias として受け付けます。参照数に応じて T2V(0)、I2V(1)、Ref2V(2-7、最大10秒)が自動選択され、1080p は `grok-imagine-video-1.5` の単一画像/フレーム I2V でのみ有効です。1.5 は Ref2V、V2V edit、extension を追加サポートしないため、それらは既定モデルのみです。duration(1-15s)、resolution(480p/720p/対応時 1080p)、aspect ratio を設定できます。
+
+設定画面の QuotaCard に Grok billing `$used/$limit` バーと **Switch Account** ボタン（`POST /api/auth/switch`）が表示されます。
 
 ![OAuth active と API key provider available の状態を示す settings 画面](../assets/screenshots/settings-oauth-generation.png)
 
@@ -120,6 +183,7 @@ Settings ワークスペースでは、アカウント、モデル、テーマ�
 | `ima2 setup` | 認証設定を再構成 |
 | `ima2 status` | config と OAuth 状態を表示 |
 | `ima2 doctor` | Node、package、config、auth を診断 |
+| `ima2 doctor image-probe [--json]` | 画像なし診断用 sanitized probe |
 | `ima2 open` | Web UI を開く |
 | `ima2 reset` | 保存済み config を削除 |
 
@@ -132,6 +196,7 @@ Settings ワークスペースでは、アカウント、モデル、テーマ�
 | `ima2 gen <prompt>` | CLI から画像生成 |
 | `ima2 edit <file> --prompt <text>` | 既存画像を編集 |
 | `ima2 multimode <prompt>` | マルチイメージ SSE 生成 |
+| `ima2 video <prompt>` | Grok 動画生成（SSE 進捗） |
 | `ima2 ls [--session <id>] [--favorites]` | ローカル履歴を表示 |
 | `ima2 show <name> [--metadata]` | 生成ファイルを開く |
 | `ima2 prompt ls -q <検索>` | プロンプトライブラリ検索 |
@@ -162,9 +227,13 @@ environment variables > ~/.ima2/config.json > built-in defaults
 | `IMA2_GENERATED_DIR` | `~/.ima2/generated` | Generated image directory |
 | `IMA2_IMAGE_MODEL_DEFAULT` | `gpt-5.4-mini` | Server fallback image model |
 | `IMA2_NO_OAUTH_PROXY` | — | `1` で OAuth proxy の自動起動を無効化 |
-| `IMA2_LOG_LEVEL` | `warn` | 通常の `serve` は `warn`、dev mode は `debug`。`debug`, `info`, `warn`, `error`, `silent` をサポート |
-| `IMA2_INFLIGHT_TERMINAL_TTL_MS` | `30000` | デバッグ用の recent job retention |
-| `OPENAI_API_KEY` | — | 補助機能用。画像生成用ではありません |
+| `IMA2_LOG_LEVEL` | `info` | 通常の `serve` は `info`、dev mode は `debug`。`debug`, `info`, `warn`, `error`, `silent` をサポート |
+| `IMA2_INFLIGHT_TERMINAL_TTL_MS` | `300000` | デバッグ用の recent job retention |
+| `OPENAI_API_KEY` | — | `provider: "api"` の Responses 画像パスと補助機能用 |
+| `XAI_API_KEY` | — | `provider: "grok-api"` 直接 xAI Images API |
+| `GEMINI_API_KEY` | — | `provider: "gemini-api"` Generative Language API |
+| `VERTEX_SERVICE_ACCOUNT_JSON` | — | Vertex AI サービスアカウント JSON（API キーより優先） |
+| `IMA2_AGY_BIN` | PATH の `agy` | `provider: "agy"` バイナリパス |
 
 ### Logging modes
 
@@ -186,8 +255,14 @@ Endpoint 一覧は [API Reference](API.md) に分離しました。
 **OAuth login がうまくいかない**
 `ima2 setup` を再実行（オプション 1）し、`ima2 status` を確認してから `ima2 serve` を再起動してください。
 
+**proxy/VPN 環境で `fetch failed` が繰り返される**
+ローカル OAuth proxy に到達できるか確認してください。プロキシ必須のネットワークでは、プロキシクライアントの TUN/TURN 系モードを有効にしてから `openai-oauth --port 10531` を再試行してください。それでも失敗する場合は、`ima2 serve` や `openai-oauth` を実行する同じ terminal で `HTTP_PROXY` と `HTTPS_PROXY` を設定してください。Windows では SecretDNS など DNS/断片化バイパス系ツールが OAuth やストリーミング画像応答を壊すことがあります。
+
 **画像生成が `API_KEY_REQUIRED` で失敗する**
 `provider: "api"` request に使う API key が設定されていません。API key を設定するか OAuth provider に切り替えてください。
+
+**画像生成が `EMPTY_RESPONSE` になる、または画像データが返らない**
+`ima2 doctor image-probe --json > ima2-image-probe.json` を実行し、issue 作成時に安全な JSON を添付してください。GPT OAuth の場合は、`ima2 serve` 実行中に `ima2 gen "猫" --no-web-search --json` と `ima2 gen "猫" --json` も取得してください。ChatGPT cookie、OAuth トークンファイル、API key、生の upstream 応答、プロンプト履歴、生成 base64 は共有しないでください。詳細は [FAQ サポートバンドル](FAQ.md#what-should-i-share-when-oauth-image-generation-returns-no-image) を参照してください。
 
 **大きな参照画像が失敗する**
 参照画像は送信前に自動圧縮されます。HEIC/HEIF 写真は JPEG に自動変換されます。それでも失敗する場合は、解像度を下げて再試行してください。
@@ -198,8 +273,11 @@ Endpoint 一覧は [API Reference](API.md) に分離しました。
 **`gpt-5.5` だけ失敗する**
 まず Codex CLI を最新版に更新してから再試行してください。それでも失敗する場合は、現在のアカウントやバックエンド経路で `gpt-5.5` の image capability または使用量枠がまだ異なる可能性があります。安定した代替として `gpt-5.4` を使ってください。
 
-**Port が突然 `3457` になる**
-別のローカルツールから `PORT=3457` が引き継がれている可能性があります。`unset PORT` するか、`IMA2_PORT=3333 ima2 serve` で起動してください。
+**別のポートでアプリが開く**
+要求した server ポートが使用中の場合、ima2-gen は次の空きポートに fallback し、`~/.ima2/server.json` に記録します。ポートが想定外の `3457` になる場合、shell が別ツールの `PORT=3457` を引き継いでいる可能性があります。`unset PORT` するか、`IMA2_PORT=3333 ima2 serve` で起動してください。
+
+**Windows でポート `10531` が既に使われている**
+Windows のセキュリティツール（`AnySign4PC.exe` など）が既定 OAuth proxy ポートを占有することがあります。現在のビルドは実際の fallback OAuth ポートを追跡します。手動上書きが必要な場合は `IMA2_OAUTH_PROXY_PORT=11531 ima2 serve` で起動し、`ima2 doctor` で確認してください。
 
 より詳しい確認手順は [FAQ](FAQ.md) を参照してください。
 

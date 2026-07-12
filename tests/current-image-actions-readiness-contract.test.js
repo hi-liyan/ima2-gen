@@ -48,7 +48,7 @@ describe("current image actions and readiness popup contract", () => {
   it("shows Continue as URL only for fresh Grok provider URLs", () => {
     const actions = readSource("ui/src/components/ResultActions.tsx");
     const store = readSource("ui/src/store/storeGenImpl.ts");
-    const route = readSource("routes/generate.ts");
+    const route = (readSource("routes/generate.ts") + readSource("lib/generatePipeline.ts"));
 
     assert.match(actions, /providerUrlAlive/);
     assert.match(actions, /actionImage\.providerUrl/);
@@ -63,3 +63,4 @@ describe("current image actions and readiness popup contract", () => {
     assert.match(store, /createdAt: res\.createdAt \?\? Date\.now\(\)/);
   });
 });
+

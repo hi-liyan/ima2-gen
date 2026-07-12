@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import type { Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { readFile } from "fs/promises";
 import {
   existsSync,
@@ -17,7 +17,7 @@ import { startGrokProxy } from "./lib/grokProxyLauncher.js";
 import { startOAuthProxy } from "./lib/oauthLauncher.js";
 import { migrateGeneratedStorage } from "./lib/storageMigration.js";
 import { purgeStaleJobs } from "./lib/inflight.js";
-import { configureLogger } from "./lib/logger.js";
+import { configureLogger, logError } from "./lib/logger.js";
 import { createRequestLogger } from "./lib/requestLogger.js";
 import { configureApiCachePolicy } from "./lib/apiCachePolicy.js";
 import { configureRoutes } from "./routes/index.js";
@@ -31,6 +31,7 @@ import { stopAgentQueueWorker } from "./lib/agentQueueWorker.js";
 import { reapCardNewsJobs } from "./lib/cardNewsJobStore.js";
 import { reapTerminalJobs } from "./lib/inflight.js";
 import { errInfo } from "./lib/errInfo.js";
+import { timingSafeEqual } from "node:crypto";
 
 type BootRuntimeContext = RuntimeContext & {
   markGrokProxyPort: (info?: { url?: string; port?: number }) => void;
@@ -181,11 +182,43 @@ function setUiStaticHeaders(res: Response, filePath: string) {
   }
 }
 
+export function isLoopbackHost(host: string | undefined): boolean {
+  const normalized = String(host || "").trim().toLowerCase();
+  return normalized === "127.0.0.1" || normalized === "::1" || normalized === "localhost";
+}
+
+export function assertLanAccessConfiguration(host: string | undefined, token: string | undefined): void {
+  if (isLoopbackHost(host) || token) return;
+  const message = `[server.security] Refusing non-loopback host ${host || "<empty>"}: set IMA2_LAN_TOKEN to enable LAN access.`;
+  console.error(message);
+  throw new Error(message);
+}
+
+function tokenMatches(actual: unknown, expected: string): boolean {
+  if (typeof actual !== "string") return false;
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function createLanApiGuard(host: string | undefined, token: string | undefined) {
+  const requiredToken = isLoopbackHost(host) ? "" : String(token || "");
+  return function lanApiGuard(req: Request, res: Response, next: NextFunction) {
+    if (!requiredToken || !req.path.startsWith("/api")) return next();
+    const supplied = req.get("x-ima2-token") ?? req.query.token;
+    if (tokenMatches(supplied, requiredToken)) return next();
+    return res.status(401).json({
+      error: { code: "LAN_TOKEN_REQUIRED", message: "A valid IMA2 LAN token is required" },
+    });
+  };
+}
+
 export function buildApp(ctx: RuntimeContext) {
   const app = express();
   configureApiCachePolicy(app);
   configureLogger({ level: ctx.config.log.level });
   app.use(createRequestLogger());
+  app.use(createLanApiGuard(ctx.config.server.host, ctx.config.server.lanToken));
   app.use(express.json({ limit: ctx.config.server.bodyLimit }));
   app.use(express.static(join(ctx.rootDir, "ui", "dist"), {
     setHeaders: setUiStaticHeaders,
@@ -201,6 +234,23 @@ export function buildApp(ctx: RuntimeContext) {
     immutable: true,
   }));
   configureRoutes(app, ctx);
+  app.use((_req: Request, res: Response) => {
+    res.status(404).json({ error: { code: "NOT_FOUND", message: "Route not found" } });
+  });
+  app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const info = errInfo(error);
+    const candidateStatus = Number(info.status);
+    const operational = Boolean((error as any)?.isOperational)
+      || (Number.isInteger(candidateStatus) && candidateStatus >= 400 && candidateStatus < 500);
+    const status = operational ? candidateStatus : 500;
+    if (!operational) logError("server", "unhandled:error", error);
+    res.status(status).json({
+      error: {
+        code: operational && info.code ? info.code : "INTERNAL_ERROR",
+        message: operational ? info.message : "Internal server error",
+      },
+    });
+  });
   return app;
 }
 
@@ -210,6 +260,9 @@ function runtimeHostUrl(host: string | undefined): string {
 }
 
 function advertise(ctx: RuntimeContext) {
+  // Proxy readiness can arrive before the backend has bound. Publishing that
+  // intermediate state makes consumers treat the configured port as live.
+  if (!ctx.serverActualPort) return;
   try {
     mkdirSync(dirname(ctx.config.storage.advertiseFile), { recursive: true });
     writeFileSync(
@@ -341,6 +394,7 @@ export async function createRuntimeContext(overrides: StartServerOverrides = {})
 
 export async function startServer(overrides: StartServerOverrides = {}) {
   const ctx = await createRuntimeContext(overrides);
+  assertLanAccessConfiguration(ctx.config.server.host, ctx.config.server.lanToken);
   await migrateGeneratedStorage(ctx);
   purgeStaleJobs();
   const app = buildApp(ctx);

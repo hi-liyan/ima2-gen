@@ -94,7 +94,7 @@ const SAVE_DEBOUNCE_MS = 800;
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let isSavingGraph = false;
 let needsGraphSave = false;
-let activeGraphSavePromise: Promise<void> | null = null;
+let activeGraphSavePromise: Promise<GraphSaveResult> | null = null;
 let graphSaveSeq = 0;
 
 function getGraphTabId(): string {
@@ -274,28 +274,30 @@ async function runGraphSaveQueue(
   get: () => AppState,
   set: (patch: Partial<AppState>) => void,
   reason: GraphSaveReason,
-): Promise<void> {
+): Promise<GraphSaveResult> {
   if (isSavingGraph) {
     needsGraphSave = true;
-    if (activeGraphSavePromise) await activeGraphSavePromise;
-    return;
+    if (activeGraphSavePromise) return activeGraphSavePromise;
+    return "skipped";
   }
 
   isSavingGraph = true;
   activeGraphSavePromise = (async () => {
     let nextReason = reason;
+    let lastResult: GraphSaveResult = "skipped";
     do {
       needsGraphSave = false;
-      const result = await doSave(get, set, nextReason);
-      if (result === "conflict" || result === "failed") break;
+      lastResult = await doSave(get, set, nextReason);
+      if (lastResult === "conflict" || lastResult === "failed") break;
       nextReason = "queued";
     } while (needsGraphSave);
+    return lastResult;
   })().finally(() => {
     isSavingGraph = false;
     activeGraphSavePromise = null;
   });
 
-  await activeGraphSavePromise;
+  return activeGraphSavePromise;
 }
 
 export function scheduleGraphSaveImpl(
@@ -326,11 +328,13 @@ export async function flushGraphSaveImpl(
   }
   if (isSavingGraph) {
     needsGraphSave = true;
-    if (activeGraphSavePromise) await activeGraphSavePromise;
+    const result = activeGraphSavePromise ? await activeGraphSavePromise : "skipped";
+    if (result === "failed") throw new Error(t("modal.graphSaveFailed"));
     return;
   }
   if (shouldSaveNow) {
-    await runGraphSaveQueue(get, set, reason);
+    const result = await runGraphSaveQueue(get, set, reason);
+    if (result === "failed") throw new Error(t("modal.graphSaveFailed"));
   }
 }
 

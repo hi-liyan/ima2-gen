@@ -12,7 +12,7 @@ const BUILD_HELP = `
     --message <text>          User message (required unless --messages)
     --messages <file|@file|-> Multi-turn conversation as JSON array
     --ref <image>             Image reference (repeatable)
-    --model <model>           Builder model (gpt-5.5, gpt-5.4, gpt-5.4-mini)
+    --model <model>           Builder model (gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna)
     --language <ko|en|both>   Preferred output language hint
     --server <url>            Override server URL
     --json                    Output raw JSON

@@ -80,11 +80,11 @@ describe("canvas apply merged contract", () => {
     assert.match(actions, /edit instructions/);
     assert.match(canvas, /imageOverride=\{canvasOpen \? canvasDisplayImage : null\}/);
     assert.match(canvas, /onAfterDeleteFocus=\{onAfterDeleteFocus\}/);
-    assert.match(store, /compressReferenceSource\(cur\.image/);
+    assert.match(store, /compressReferenceSource\(\s*resolveModelReferenceSrc\(cur\)/);
     assert.match(store, /useImageAsReference.*useImageAsReferenceImpl/);
-    assert.match(store, /compressReferenceSource\(item\.image/);
+    assert.match(store, /compressReferenceSource\(\s*resolveModelReferenceSrc\(item\)/);
     assert.match(store, /attachCanvasVersionReference/);
-    assert.match(store, /compressReferenceSource\(\s*item\.image/);
+    assert.match(store, /item\.canvasVersion && item\.canvasSourceFilename/);
     assert.doesNotMatch(store, /referenceImages:\s*\[\s*item\.image/);
   });
 

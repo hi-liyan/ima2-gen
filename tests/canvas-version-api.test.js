@@ -17,6 +17,8 @@ describe("canvas version API contract", () => {
     assert.match(route, /express\.raw\(\{ type: "image\/png"/);
     assert.match(route, /app\.post\("\/api\/canvas-versions"/);
     assert.match(route, /app\.put\("\/api\/canvas-versions\/:filename"/);
+    assert.match(route, /\/annotation-bake/);
+    assert.match(route, /\/revert-annotations/);
   });
 
   it("stores canvas versions under generatedDir with metadata", () => {
@@ -28,6 +30,9 @@ describe("canvas version API contract", () => {
     assert.match(store, /canvasVersion: true/);
     assert.match(store, /canvasSourceFilename/);
     assert.match(store, /canvasEditableFilename/);
+    assert.match(store, /annotationsBaked/);
+    assert.match(store, /annotationSnapshot/);
+    assert.match(store, /annotationOnly/);
     assert.match(store, /readGeneratedMetadata/);
     assert.match(store, /firstString\(input\.prompt, sourceMeta\?\.userPrompt, sourceMeta\?\.prompt\)/);
   });

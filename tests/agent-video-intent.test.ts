@@ -64,6 +64,9 @@ describe("parseVideoParams", () => {
   it("extracts resolution", () => {
     assert.deepEqual(parseVideoParams("720p video"), { resolution: "720p" });
   });
+  it("extracts 1080p resolution", () => {
+    assert.deepEqual(parseVideoParams("1080p image-to-video"), { resolution: "1080p" });
+  });
   it("extracts aspect ratio", () => {
     assert.deepEqual(parseVideoParams("16:9 video"), { aspectRatio: "16:9" });
   });

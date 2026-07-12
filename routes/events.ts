@@ -18,6 +18,11 @@ function formatSse(ev: { id: number; jobId: string; event: string; data: Record<
   return `id: ${ev.id}\nevent: ${ev.event}\ndata: ${JSON.stringify({ ...ev.data, jobId: ev.jobId })}\n\n`;
 }
 
+function parseLastEventIdHeader(value: string | string[] | undefined): number {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return parseInt(raw?.split(",", 1)[0]?.trim() ?? "", 10);
+}
+
 export function registerEventsRoute(app: Express, _ctx: RouteRuntimeContext) {
   app.get("/api/events", (req, res) => {
     if (activeConnections >= MAX_SSE_LISTENERS) {
@@ -34,7 +39,7 @@ export function registerEventsRoute(app: Express, _ctx: RouteRuntimeContext) {
 
     activeConnections++;
 
-    const headerLastId = parseInt(req.headers["last-event-id"] as string, 10);
+    const headerLastId = parseLastEventIdHeader(req.headers["last-event-id"]);
     const queryLastId = parseInt(String(req.query.lastEventId ?? ""), 10);
     const lastId = !Number.isNaN(headerLastId) ? headerLastId : queryLastId;
     if (!Number.isNaN(lastId)) {

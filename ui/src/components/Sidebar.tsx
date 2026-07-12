@@ -12,6 +12,7 @@ import { ENABLE_AGENT_MODE, ENABLE_CARD_NEWS_MODE, ENABLE_NODE_MODE } from "../l
 import { useI18n } from "../i18n";
 import { resolveWorkspaceSettings } from "../lib/workspaceProfile";
 import { useIsMobile } from "../hooks/useIsMobile";
+import type { AgentGenerationSettings } from "./agent/agentTypes";
 
 export function SidebarStack() {
   const { t } = useI18n();
@@ -34,19 +35,7 @@ export function SidebarStack() {
 
   return (
     <>
-      <div className="logo">
-        <div className="logo-mark" aria-hidden="true" />
-        <div className="logo-copy">
-          <div className="logo-title">ima2</div>
-          <div className="logo-title logo-title--gen">gen</div>
-        </div>
-        <div className="logo-actions">
-          <PromptLibraryButton />
-          <ImageModelSelect variant="sidebar" />
-          <SettingsButton />
-        </div>
-      </div>
-      <UIModeSwitch />
+      <SidebarChrome />
       {uiMode === "classic" ? (
         promptStudioDesktop ? (
           <>
@@ -82,6 +71,31 @@ export function SidebarStack() {
           <InFlightList />
         </>
       ) : null}
+    </>
+  );
+}
+
+type SidebarChromeProps = {
+  agentSettings?: AgentGenerationSettings;
+  onAgentSettingsChange?: (patch: Partial<AgentGenerationSettings>) => void;
+};
+
+export function SidebarChrome({ agentSettings, onAgentSettingsChange }: SidebarChromeProps = {}) {
+  return (
+    <>
+      <div className="logo">
+        <div className="logo-mark" aria-hidden="true" />
+        <div className="logo-copy">
+          <div className="logo-title">ima2</div>
+          <div className="logo-title logo-title--gen">gen</div>
+        </div>
+        <div className="logo-actions">
+          <PromptLibraryButton />
+          <ImageModelSelect variant="sidebar" agentSettings={agentSettings} onAgentSettingsChange={onAgentSettingsChange} />
+          <SettingsButton />
+        </div>
+      </div>
+      <UIModeSwitch />
     </>
   );
 }

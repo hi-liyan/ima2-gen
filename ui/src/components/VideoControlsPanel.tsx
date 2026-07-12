@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { useI18n } from "../i18n";
 import { OptionGroup } from "./OptionGroup";
-import { deriveVideoModeUI, MAX_REF2V_DURATION_UI } from "../lib/imageModels";
+import { deriveVideoModeUI, GROK_VIDEO_MODEL_15, GROK_VIDEO_MODEL_BASE, MAX_REF2V_DURATION_UI, supportsVideoResolutionUI } from "../lib/imageModels";
 import { ACTIVE_VIDEO_PROMPT_GUIDANCE, continuitySummary } from "../lib/videoContinuity";
 import type { VideoResolutionUI } from "../types";
 
@@ -11,13 +11,14 @@ interface PlannerConfig { model: string; options: string[]; }
 const RES_ITEMS = [
   { value: "480p" as const, label: "480p" },
   { value: "720p" as const, label: "720p" },
+  { value: "1080p" as const, label: "1080p", sub: "1.5 HD" },
 ];
 const ASPECT_ITEMS = ["auto", "1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3"].map((v) => ({ value: v, label: v }));
 const DURATIONS = [3, 5, 8, 10, 12, 15];
 
 const VIDEO_MODELS: Array<{ value: string; label: string; sub: string }> = [
-  { value: "grok-imagine-video", label: "Grok V", sub: "Fast" },
-  { value: "grok-imagine-video-1.5-preview", label: "Grok V1.5", sub: "Preview" },
+  { value: GROK_VIDEO_MODEL_BASE, label: "Grok V", sub: "Fast" },
+  { value: GROK_VIDEO_MODEL_15, label: "Grok V1.5", sub: "HD" },
 ];
 
 export function VideoControlsPanel() {
@@ -33,10 +34,32 @@ export function VideoControlsPanel() {
   const setAspect = useAppStore((s) => s.setVideoAspectRatio);
   const videoTopic = useAppStore((s) => s.videoTopic);
   const setVideoTopic = useAppStore((s) => s.setVideoTopic);
+  const showToast = useAppStore((s) => s.showToast);
   const continuity = useAppStore((s) => s.videoContinuityLineage);
   const maxDuration = refCount >= 2 ? MAX_REF2V_DURATION_UI : 15;
   const mode = deriveVideoModeUI(refCount);
   const summary = continuitySummary(continuity);
+  const canUse1080pWithSelectedModel = supportsVideoResolutionUI(videoModelSelected, "1080p", mode);
+  const canUse1080pIfModelSelected = supportsVideoResolutionUI(GROK_VIDEO_MODEL_15, "1080p", mode);
+  const resolutionItems = RES_ITEMS.map((item) => (
+    item.value === "1080p" ? { ...item, disabled: !canUse1080pIfModelSelected } : item
+  ));
+
+  useEffect(() => {
+    if (!supportsVideoResolutionUI(videoModelSelected, resolution, mode)) {
+      setResolution("720p");
+    }
+  }, [mode, resolution, setResolution, videoModelSelected]);
+
+  const handleResolutionChange = (next: VideoResolutionUI) => {
+    if (next === "1080p") {
+      if (!canUse1080pIfModelSelected) return;
+      if (!canUse1080pWithSelectedModel) {
+        selectVideoModel(GROK_VIDEO_MODEL_15);
+      }
+    }
+    setResolution(next);
+  };
 
   const [plannerConfig, setPlannerConfig] = useState<PlannerConfig | null>(null);
   useEffect(() => {
@@ -46,14 +69,19 @@ export function VideoControlsPanel() {
       .catch(() => {});
   }, []);
   const onPlannerChange = async (model: string) => {
+    const previousModel = plannerConfig?.model;
+    setPlannerConfig((prev) => prev ? { ...prev, model } : null);
     try {
-      await fetch("/api/config/grok-planner", {
+      const response = await fetch("/api/config/grok-planner", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model }),
       });
-      setPlannerConfig((prev) => prev ? { ...prev, model } : null);
-    } catch {}
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    } catch {
+      setPlannerConfig((prev) => prev && previousModel ? { ...prev, model: previousModel } : prev);
+      showToast(t("video.plannerUpdateFailed"), true);
+    }
   };
 
   return (
@@ -112,9 +140,10 @@ export function VideoControlsPanel() {
       </div>
       <OptionGroup<VideoResolutionUI>
         title={t("video.resolutionTitle")}
-        items={RES_ITEMS}
+        help={!canUse1080pIfModelSelected ? t("video.resolution1080Help") : undefined}
+        items={resolutionItems}
         value={resolution}
-        onChange={setResolution}
+        onChange={handleResolutionChange}
       />
       <OptionGroup<string>
         title={t("video.aspectTitle")}

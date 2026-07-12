@@ -151,22 +151,22 @@ describe("Grok video adapter", () => {
     });
     const system = String(payload.messages[0].content);
     const userText = String((payload.messages[1].content as any[])[0].text);
-    assert.match(system, /Dialogue\/audio intent/);
-    assert.match(system, /Ending frame \/ continuity handoff/);
+    assert.match(system, /MULTI-CHARACTER DIALOGUE/);
+    assert.match(system, /ENDING FRAME \/ CONTINUATION CUT PLANNING/);
     assert.match(system, /no background music/);
     assert.match(system, /sound effects only/);
     assert.match(system, /Duration pacing is mandatory/);
     assert.match(userText, /Duration pacing \(10s total\)/);
-    assert.match(userText, /production-level cinematic sequence/);
-    assert.match(userText, /opening composition -> connected motion or emotion change -> clear action or camera development -> stable ending frame/);
+    assert.match(userText, /complete visual arc/);
+    assert.match(userText, /Beat structure for/);
   });
 
   it("formats duration pacing without forbidding useful timing detail", () => {
     const guidance = formatDurationPacingGuidance(15, "text-to-video");
     assert.match(guidance, /15s total/);
     assert.match(guidance, /naturally across the entire duration/);
-    assert.match(guidance, /production-level cinematic sequence/);
-    assert.match(guidance, /precise timing would improve the result/);
+    assert.match(guidance, /Beat structure for 11-15s/);
+    assert.match(guidance, /anticipation/);
     assert.doesNotMatch(guidance, /Do not use second-by-second/);
     assert.doesNotMatch(guidance, /0\.0-2\.0s/);
   });
@@ -174,7 +174,7 @@ describe("Grok video adapter", () => {
   it("keeps the planner system prompt duration-scaled instead of word-count capped", () => {
     const system = buildGrokVideoPlannerSystemPrompt();
     assert.match(system, /Duration pacing is mandatory/);
-    assert.match(system, /scale detail to the requested duration/);
+    assert.match(system, /Scale detail to duration/);
     assert.doesNotMatch(system, /30-80 words/);
   });
 
@@ -350,13 +350,15 @@ describe("Grok video adapter", () => {
     );
   });
 
-  it("accepts grok-imagine-video-1.5-preview as valid model", () => {
+  it("accepts canonical 1.5 and normalizes preview alias", () => {
+    assert.ok(VALID_GROK_VIDEO_MODELS.has("grok-imagine-video-1.5"));
     assert.ok(VALID_GROK_VIDEO_MODELS.has("grok-imagine-video-1.5-preview"));
+    assert.equal((normalizeGrokVideoModel("grok-imagine-video-1.5") as any).model, "grok-imagine-video-1.5");
     const result = normalizeGrokVideoModel("grok-imagine-video-1.5-preview");
-    assert.equal((result as any).model, "grok-imagine-video-1.5-preview");
+    assert.equal((result as any).model, "grok-imagine-video-1.5");
   });
 
-  it("reports requested and effective model when 1.5-preview falls back for Ref2V", async () => {
+  it("reports requested and effective model when 1.5 falls back for Ref2V", async () => {
     const starts: any[] = [];
     globalThis.fetch = (async (input: any, init?: any) => {
       const url = String(input);
@@ -379,29 +381,46 @@ describe("Grok video adapter", () => {
       referenceImages: ["A", "B"],
       duration: 10,
     });
-    assert.equal(starts[0].model, "grok-imagine-video-1.5-preview");
+    assert.equal(starts[0].model, "grok-imagine-video-1.5");
     assert.equal(starts[1].model, "grok-imagine-video");
-    assert.equal(result.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(result.requestedModel, "grok-imagine-video-1.5");
     assert.equal(result.effectiveModel, "grok-imagine-video");
-    assert.deepEqual(result.modelFallback, { from: "grok-imagine-video-1.5-preview", to: "grok-imagine-video" });
+    assert.deepEqual(result.modelFallback, { from: "grok-imagine-video-1.5", to: "grok-imagine-video" });
   });
 
-  it("builds 1.5-preview I2V payload", () => {
-    const plan: GrokVideoPlan = { prompt: "dance", mode: "image-to-video", duration: 5, resolution: "480p", aspectRatio: "16:9", webSearchCalls: 0 };
+  it("builds 1.5 I2V payload with 1080p", () => {
+    const plan: GrokVideoPlan = { prompt: "dance", mode: "image-to-video", duration: 5, resolution: "1080p", aspectRatio: "16:9", webSearchCalls: 0 };
     const payload = buildVideoGenerationPayload(plan, { model: "grok-imagine-video-1.5-preview", sourceImageUrl: "data:image/png;base64,AAAA" });
-    assert.equal(payload.model, "grok-imagine-video-1.5-preview");
+    assert.equal(payload.model, "grok-imagine-video-1.5");
+    assert.equal(payload.resolution, "1080p");
     assert.deepEqual(payload.image, { url: "data:image/png;base64,AAAA" });
   });
 
-  it("sends 1.5-preview T2V through an injected canvas I2V payload", async () => {
+  it("rejects raw 1080p payloads outside canonical 1.5 image-to-video", () => {
+    const t2v: GrokVideoPlan = { prompt: "p", mode: "text-to-video", duration: 5, resolution: "1080p", aspectRatio: "auto", webSearchCalls: 0 };
+    const i2v: GrokVideoPlan = { ...t2v, mode: "image-to-video" };
+    const ref2v: GrokVideoPlan = { ...t2v, mode: "reference-to-video" };
+    assert.throws(() => buildVideoGenerationPayload(t2v, { model: "grok-imagine-video-1.5" }), (e: any) => e.code === "INVALID_VIDEO_RESOLUTION");
+    assert.throws(() => buildVideoGenerationPayload(i2v, { model: "grok-imagine-video", sourceImageUrl: "data:image/png;base64,AAAA" }), (e: any) => e.code === "INVALID_VIDEO_RESOLUTION");
+    assert.throws(() => buildVideoGenerationPayload(ref2v, { model: "grok-imagine-video-1.5", referenceImageUrls: ["A", "B"] }), (e: any) => e.code === "INVALID_VIDEO_RESOLUTION");
+  });
+
+  it("sends 1.5-preview 1080p T2V through an injected canvas I2V payload", async () => {
     let startBody: any = null;
     installFetch({ pollSequence: [DONE_POLL], captureStart: (b) => (startBody = b) });
-    const result = await generateVideoViaGrok("make a freeform clip", ctx(), { model: "grok-imagine-video-1.5-preview", plannedPrompt: "A freeform cinematic clip.", duration: 5 });
+    const result = await generateVideoViaGrok("make a freeform clip", ctx(), {
+      model: "grok-imagine-video-1.5-preview",
+      plannedPrompt: "A freeform cinematic clip.",
+      duration: 5,
+      resolution: "1080p",
+      aspectRatio: "16:9",
+    });
     assert.equal(result.mode, "text-to-video");
-    assert.equal(startBody.model, "grok-imagine-video-1.5-preview");
+    assert.equal(startBody.model, "grok-imagine-video-1.5");
+    assert.equal(startBody.resolution, "1080p");
     assert.ok(startBody.image?.url?.startsWith("data:image/png;base64,"));
     const canvas = Buffer.from(startBody.image.url.replace(/^data:image\/png;base64,/, ""), "base64");
-    assert.deepEqual(parsePngInfo(canvas), { width: 853, height: 480, bitDepth: 8, colorType: 2 });
-    assert.match(startBody.prompt, /not a start frame/);
+    assert.deepEqual(parsePngInfo(canvas), { width: 1920, height: 1080, bitDepth: 8, colorType: 2 });
+    assert.match(startBody.prompt, /blank white canvas.*technical placeholder/);
   });
 });

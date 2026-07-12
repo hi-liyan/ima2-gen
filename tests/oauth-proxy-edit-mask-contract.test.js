@@ -16,6 +16,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 
@@ -43,3 +44,4 @@ describe("oauth proxy edit mask contract", () => {
     assert.match(adapter, /mask guide/);
   });
 });
+

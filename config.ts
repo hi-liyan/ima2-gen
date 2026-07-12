@@ -76,6 +76,7 @@ export const config = {
     // Accept both IMA2_PORT and legacy PORT.
     port: pickInt(firstDefined(env.IMA2_PORT, env.PORT), fileCfg.server?.port, 3333),
     host: pickStr(env.IMA2_HOST, fileCfg.server?.host, "127.0.0.1"),
+    lanToken: env.IMA2_LAN_TOKEN || "",
     bodyLimit: pickStr(env.IMA2_BODY_LIMIT, fileCfg.server?.bodyLimit, "50mb"),
   },
   limits: {
@@ -235,6 +236,11 @@ export const config = {
     ),
     configFile: join(configDir, "config.json"),
     advertiseFile: pickStr(env.IMA2_ADVERTISE_FILE, fileCfg.storage?.advertiseFile, join(configDir, "server.json")),
+    generationRequestLogFile: pickStr(
+      env.IMA2_GENERATION_REQUEST_LOG_FILE,
+      fileCfg.storage?.generationRequestLogFile,
+      join(configDir, "generation-request-log.json"),
+    ),
     staticMaxAge: pickStr(env.IMA2_STATIC_MAX_AGE, fileCfg.storage?.staticMaxAge, "1y"),
   },
   ids: {
@@ -255,14 +261,14 @@ export const config = {
   },
   imageModels: {
     default: pickStr(env.IMA2_IMAGE_MODEL_DEFAULT, fileCfg.imageModels?.default, "gpt-5.4-mini"),
-    valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-image-2"]),
+    valid: new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-image-2"]),
     unsupported: new Set(["gpt-5.3-codex-spark"]),
     reasoningEffort: pickStr(
       env.IMA2_REASONING_EFFORT,
       fileCfg.imageModels?.reasoningEffort,
       "medium",
     ),
-    validReasoningEfforts: new Set(["none", "low", "medium", "high", "xhigh"]),
+    validReasoningEfforts: new Set(["none", "low", "medium", "high", "xhigh", "max"]),
   },
   apiProvider: {
     baseUrl: pickStr(
@@ -315,6 +321,10 @@ export const config = {
       fileCfg.cardNewsPlanner?.deterministicFallback,
       false,
     ),
+  },
+  agentPlanner: {
+    enabled: pickBool(env.IMA2_AGENT_PLANNER_ENABLED, fileCfg.agentPlanner?.enabled, true),
+    timeoutMs: pickInt(env.IMA2_AGENT_PLANNER_TIMEOUT_MS, fileCfg.agentPlanner?.timeoutMs, 30_000),
   },
   comfy: {
     defaultUrl: pickStr(env.IMA2_COMFY_URL, fileCfg.comfy?.defaultUrl, "http://127.0.0.1:8188"),

@@ -11,7 +11,34 @@ function readSource(path) {
 }
 
 describe("Agent Mode frontend shell contract", () => {
-  it("exposes Agent mode only through the dev feature gate", () => {
+  it("keeps video 1080p contracts in sync across Agent and Video controls", () => {
+    const agentTypes = readSource("ui/src/components/agent/agentTypes.ts");
+    const videoTypes = readSource("ui/src/types.ts");
+    const imageModels = readSource("ui/src/lib/imageModels.ts");
+    const panel = readSource("ui/src/components/VideoControlsPanel.tsx");
+    const persistence = readSource("ui/src/store/storePersistence.ts");
+
+    assert.match(agentTypes, /resolution\?: "480p" \| "720p" \| "1080p"/);
+    assert.match(videoTypes, /VideoResolutionUI = "480p" \| "720p" \| "1080p"/);
+    assert.match(videoTypes, /"grok-imagine-video-1\.5"/);
+    assert.match(imageModels, /GROK_VIDEO_MODEL_15 = "grok-imagine-video-1\.5"/);
+    assert.match(imageModels, /GROK_VIDEO_MODEL_15_PREVIEW_ALIAS/);
+    assert.match(imageModels, /normalizeVideoModelValue/);
+    assert.match(imageModels, /supportsVideoResolutionUI/);
+    assert.match(imageModels, /mode === "text-to-video" \|\| mode === "image-to-video"/);
+    assert.match(panel, /value: "1080p"/);
+    assert.match(panel, /canUse1080pIfModelSelected/);
+    assert.match(panel, /disabled: !canUse1080pIfModelSelected/);
+    assert.match(panel, /handleResolutionChange/);
+    assert.match(panel, /next === "1080p"/);
+    assert.match(panel, /selectVideoModel\(GROK_VIDEO_MODEL_15\)/);
+    assert.match(panel, /onChange=\{handleResolutionChange\}/);
+    assert.match(panel, /setResolution\("720p"\)/);
+    assert.match(persistence, /normalizeVideoModelValue\(p\.model\)/);
+    assert.match(persistence, /p\.resolution === "1080p"/);
+  });
+
+  it("exposes Agent mode as a default-on product gate", () => {
     const devMode = readSource("ui/src/lib/devMode.ts");
     const types = readSource("ui/src/types.ts");
     const store = readSource("ui/src/store/useAppStore.ts");
@@ -20,8 +47,7 @@ describe("Agent Mode frontend shell contract", () => {
     const switcher = readSource("ui/src/components/UIModeSwitch.tsx");
 
     assert.match(devMode, /export const ENABLE_AGENT_MODE/);
-    assert.match(devMode, /VITE_IMA2_AGENT_MODE === "1"/);
-    assert.match(devMode, /VITE_IMA2_DEV === "1"/);
+    assert.match(devMode, /VITE_IMA2_AGENT_MODE !== "0"/);
     assert.match(types, /"classic" \| "node" \| "card-news" \| "agent"/);
     assert.match(store, /raw === "agent"/);
     assert.match(store, /m === "agent" && !ENABLE_AGENT_MODE/);
@@ -37,7 +63,9 @@ describe("Agent Mode frontend shell contract", () => {
 
   it("mounts a lazy Agent workspace instead of Classic or Node surfaces", () => {
     const app = readSource("ui/src/App.tsx");
+    const shellSidebar = readSource("ui/src/components/Sidebar.tsx");
     const workspace = readSource("ui/src/components/agent/AgentWorkspace.tsx");
+    const sessionSidebar = readSource("ui/src/components/agent/AgentSessionSidebar.tsx");
     const css = readSource("ui/src/styles/agent-workspace.css");
 
     assert.match(app, /LazyAgentWorkspace/);
@@ -47,8 +75,18 @@ describe("Agent Mode frontend shell contract", () => {
     assert.match(workspace, /AgentSessionSidebar/);
     assert.match(workspace, /AgentChatPane/);
     assert.match(workspace, /AgentRightSidebar/);
+    assert.match(shellSidebar, /<SidebarChrome \/>/);
+    assert.match(sessionSidebar, /SidebarChrome/);
+    assert.match(sessionSidebar, /agentSettings={props\.settings}/);
+    assert.match(sessionSidebar, /onAgentSettingsChange={props\.onSettingsChange}/);
+    assert.match(sessionSidebar, /agent-sessions/);
+    assert.doesNotMatch(sessionSidebar, /UIModeSwitch/);
+    assert.doesNotMatch(sessionSidebar, /ima2-gen/);
     assert.match(css, /\.app\[data-ui-mode="agent"\]/);
-    assert.match(css, /\.app\[data-ui-mode="agent"\] \.sidebar/);
+    assert.match(css, /grid-template-columns: 260px minmax\(0, 1fr\)/);
+    assert.match(css, /\.app\[data-ui-mode="agent"\] > \.sidebar\s*\{\s*display: none;/);
+    assert.match(css, /\.agent-session-sidebar/);
+    assert.match(css, /\.agent-session-sidebar \.agent-sessions/);
   });
 
   it("implements the planned responsive Agent regions and mobile overlays", () => {
@@ -57,7 +95,7 @@ describe("Agent Mode frontend shell contract", () => {
     const types = readSource("ui/src/components/agent/agentTypes.ts");
     const drawer = readSource("ui/src/components/agent/AgentSessionDrawer.tsx");
     const sheet = readSource("ui/src/components/agent/AgentImageSheet.tsx");
-    const modelSheet = readSource("ui/src/components/agent/AgentModelSheet.tsx");
+    const modelSelector = readSource("ui/src/components/agent/AgentModelSelector.tsx");
     const css = readSource("ui/src/styles/agent-workspace.css");
     const panelCss = readSource("ui/src/styles/agent-workspace-panels.css");
     const composerCss = readSource("ui/src/styles/agent-panels-composer.css");
@@ -72,13 +110,18 @@ describe("Agent Mode frontend shell contract", () => {
     assert.match(layout, /width >= 960 && height >= 560/);
     assert.match(layout, /width >= 768 && height >= 700/);
     assert.match(layoutHook, /getWindowHeight/);
-    assert.match(css, /280px minmax\(420px, 0\.95fr\) minmax\(520px, 1\.05fr\)/);
-    assert.match(css, /64px minmax\(420px, 1fr\) minmax\(440px, 1fr\)/);
+    assert.match(css, /grid-template-columns: minmax\(420px, 0\.95fr\) minmax\(520px, 1\.05fr\)/);
+    assert.match(css, /grid-template-columns: minmax\(420px, 1fr\) minmax\(440px, 1fr\)/);
     assert.match(css, /minmax\(280px, min\(46dvh, 420px\)\) minmax\(0, 1fr\)/);
     assert.match(css, /grid-template-areas: "image" "chat"/);
     assert.match(drawer, /role="dialog"/);
     assert.match(sheet, /role="dialog"/);
-    assert.match(modelSheet, /role="dialog"/);
+    assert.match(modelSelector, /image-model-select__trigger--pill/);
+    assert.match(modelSelector, /image-model-select__menu/);
+    assert.match(modelSelector, /AGENT_LLM_MODEL_OPTIONS/);
+    assert.match(modelSelector, /getAgentLlmModelOption/);
+    assert.match(modelSelector, /REASONING_EFFORT_OPTIONS/);
+    assert.match(modelSelector, /role="menu"/);
     assert.match(composerCss, /\.agent-image-sheet/);
     assert.match(composerCss, /\.agent-model-sheet/);
   });
@@ -86,6 +129,7 @@ describe("Agent Mode frontend shell contract", () => {
   it("wires Agent workspace to server-backed runtime APIs and image handles", () => {
     const api = readSource("ui/src/lib/agentApi.ts");
     const workspace = readSource("ui/src/components/agent/AgentWorkspace.tsx");
+    const attachFiles = readSource("ui/src/components/agent/agentAttachFiles.ts");
     const composer = readSource("ui/src/components/agent/AgentComposer.tsx");
     const message = readSource("ui/src/components/agent/AgentMessage.tsx");
     const ko = readSource("ui/src/i18n/ko.json");
@@ -95,6 +139,7 @@ describe("Agent Mode frontend shell contract", () => {
     assert.match(api, /\/queue/);
     assert.match(api, /\/turns/);
     assert.match(api, /currentImageId\?: string/);
+    assert.match(api, /currentImage\?: AgentImageHandle \| null/);
     assert.match(api, /imageHandleFromCurrent/);
     assert.match(api, /enqueueAgentTurn/);
     assert.match(api, /cancelAgentQueueItem/);
@@ -103,44 +148,92 @@ describe("Agent Mode frontend shell contract", () => {
     assert.doesNotMatch(api, /base64/i);
     assert.match(workspace, /getAgentWorkspace/);
     assert.match(workspace, /enqueueAgentTurn/);
+    assert.match(workspace, /importLocalImageToHistory/);
+    assert.match(workspace, /attachAgentImageFiles/);
+    assert.match(attachFiles, /imageHandleFromCurrent\(item\)/);
+    assert.match(attachFiles, /updateAgentSession\(sessionId, \{ currentImage \}\)/);
     assert.match(workspace, /derivedRuntimeStatus/);
     assert.match(workspace, /imageIdsBySession/);
     assert.match(workspace, /queueBySession/);
     assert.match(workspace, /runSummaryBySession/);
     assert.match(composer, /onWebSearchChange/);
+    assert.match(composer, /onAttachFiles/);
+    assert.match(composer, /type="file"/);
+    assert.match(composer, /accept="image\/png,image\/jpeg,image\/webp"/);
+    assert.match(composer, /fileInputRef\.current\?\.click\(\)/);
+    assert.match(composer, /onPaste=\{handlePaste\}/);
     assert.match(composer, /onSend/);
     assert.match(message, /imageIds/);
     assert.match(ko, /"agent"/);
     assert.match(en, /"agent"/);
   });
 
-  it("shows optimistic chat turns and visible pending state while Agent generation is in flight", () => {
+  it("shows durable composer-adjacent run progress while Agent generation is in flight", () => {
     const workspace = readSource("ui/src/components/agent/AgentWorkspace.tsx");
+    const localTurns = readSource("ui/src/components/agent/agentLocalTurns.ts");
+    const runProgress = readSource("ui/src/components/agent/agentRunProgress.ts");
+    const chat = readSource("ui/src/components/agent/AgentChatPane.tsx");
+    const statusBar = readSource("ui/src/components/agent/AgentRunStatusBar.tsx");
+    const list = readSource("ui/src/components/agent/AgentMessageList.tsx");
+    const runGroup = readSource("ui/src/components/agent/AgentRunGroup.tsx");
     const message = readSource("ui/src/components/agent/AgentMessage.tsx");
+    const composerCss = readSource("ui/src/styles/agent-panels-composer.css");
     const panelCss = readSource("ui/src/styles/agent-workspace-panels.css");
     const ko = readSource("ui/src/i18n/ko.json");
     const en = readSource("ui/src/i18n/en.json");
 
-    assert.match(workspace, /LOCAL_TURN_PREFIX/);
-    assert.match(workspace, /localUserTurn/);
-    assert.match(workspace, /localPendingTurn/);
-    assert.match(workspace, /status: "streaming"/);
+    assert.match(localTurns, /LOCAL_TURN_PREFIX/);
+    assert.match(localTurns, /localUserTurn/);
+    assert.match(localTurns, /localPendingTurn/);
+    assert.match(localTurns, /status: "streaming"/);
+    assert.match(workspace, /deriveAgentRunProgress/);
+    assert.match(workspace, /localPendingCount/);
+    assert.match(workspace, /turns\.filter\(\(turn\) => !isLocalPendingTurn\(turn\)\)/);
     assert.match(workspace, /pendingTurnsRef/);
     assert.match(workspace, /mergeWorkspaceWithLocalTurns/);
     assert.match(workspace, /replacePendingWithError/);
     assert.match(workspace, /appendTurns\(current, sessionId, \[userTurn, pendingTurn\]\)/);
+    assert.match(workspace, /if \(busy\) continue/);
     assert.match(workspace, /payload\.workspace/);
     assert.match(workspace, /t\("agent\.pending"\)/);
+    assert.match(chat, /runProgress: AgentRunProgress \| null/);
+    assert.match(chat, /<AgentRunStatusBar progress=\{runProgress\} \/>/);
+    assert.match(statusBar, /role="status"/);
+    assert.match(statusBar, /aria-live="polite"/);
+    assert.match(statusBar, /agent-run-status/);
+    assert.match(runProgress, /labelKey: "pendingQueued" \| "pendingPlanning" \| "pendingGenerating" \| "runError"/);
+    assert.match(runProgress, /turn\.role === "tool"/);
+    assert.match(list, /aria-live="polite"/);
+    assert.match(list, /kind: "run"/);
+    assert.match(list, /turn\.role === "user"/);
+    assert.match(list, /<AgentRunGroup/);
+    assert.match(runGroup, /agent-message--assistant-run/);
+    assert.match(runGroup, /aria-busy={isStreaming \? "true" : undefined}/);
+    assert.match(runGroup, /agent-run__header-tool/);
+    assert.match(runGroup, /<AgentToolGroup/);
+    assert.match(runGroup, /agent-run__steps/);
+    assert.match(runGroup, /agent-run__step/);
     assert.match(message, /aria-busy/);
     assert.match(panelCss, /\.agent-message\.is-streaming/);
+    assert.match(panelCss, /\.agent-message--assistant-run/);
+    assert.match(panelCss, /\.agent-run__header-tool/);
+    assert.match(panelCss, /\.agent-run__steps/);
+    assert.match(panelCss, /\.agent-run__step\.is-streaming \.agent-run__step-marker/);
+    assert.match(composerCss, /\.agent-run-status/);
+    assert.match(composerCss, /\.agent-run-status__spinner/);
+    assert.match(panelCss, /prefers-reduced-motion: reduce/);
     assert.match(panelCss, /@keyframes agent-spin/);
+    assert.match(panelCss, /@keyframes agent-typing/);
     assert.match(panelCss, /agent-status__dot[\s\S]*animation: agent-pulse/);
-    assert.match(en, /"pending": "Generating image\.\.\."/);
-    assert.match(ko, /"pending": "이미지를 생성하는 중\.\.\."/);
+    assert.match(en, /"pending": "Generating response\.\.\."/);
+    assert.match(ko, /"pending": "응답을 생성하는 중\.\.\."/);
+    assert.match(workspace, /isLocalPendingTurn/);
+    assert.match(workspace, /new Set\(\[userTurn\.id\]\)/);
+    assert.match(workspace, /applyWorkspaceWithLocalTurns\(loaded, new Set\(\)\)/);
   });
 
   it("collapses Agent tool turns behind accessible summary controls", () => {
-    const message = readSource("ui/src/components/agent/AgentMessage.tsx");
+    const runGroup = readSource("ui/src/components/agent/AgentRunGroup.tsx");
     const group = readSource("ui/src/components/agent/AgentToolGroup.tsx");
     const row = readSource("ui/src/components/agent/AgentToolCallRow.tsx");
     const icons = readSource("ui/src/components/agent/AgentIcons.tsx");
@@ -150,20 +243,27 @@ describe("Agent Mode frontend shell contract", () => {
     const en = readSource("ui/src/i18n/en.json");
 
     const messageList = readSource("ui/src/components/agent/AgentMessageList.tsx");
-    assert.match(messageList, /turn\.role === "tool"/);
-    assert.match(messageList, /AgentToolGroup/);
+    assert.match(messageList, /kind: "run"/);
+    assert.match(runGroup, /turn\.role === "tool"/);
+    assert.match(runGroup, /agent-run__header-tool/);
+    assert.match(runGroup, /AgentToolGroup/);
+    assert.doesNotMatch(runGroup, /agent-run__tools/);
     assert.match(group, /useState\(false\)/);
     assert.match(group, /agent-message__tool-toggle/);
+    assert.match(group, /agent-message__tool-summary-line/);
     assert.match(group, /aria-expanded={expanded}/);
     assert.match(group, /aria-controls={detailsId}/);
     assert.match(group, /agent-message__tool-details/);
     assert.match(group, /hidden={!expanded}/);
+    assert.doesNotMatch(group, /setExpanded\(true\)/);
     assert.match(group, /AgentToolCallRow/);
     assert.match(row, /agent-tool-call-row__toggle/);
     assert.match(row, /AgentToolCallDetails/);
     assert.match(icons, /ChevronRightIcon/);
     assert.match(icons, /ChevronDownIcon/);
+    assert.match(panelCss, /\.agent-run__header-tool/);
     assert.match(panelCss, /\.agent-message__tool-toggle/);
+    assert.match(panelCss, /\.agent-message__tool-summary-line/);
     assert.match(panelCss, /\.agent-message__tool-details\[hidden\]/);
     assert.match(panelCss, /\.agent-message__tool-thumbs/);
     assert.match(sidebarCss, /\.agent-tool-call-row__toggle/);

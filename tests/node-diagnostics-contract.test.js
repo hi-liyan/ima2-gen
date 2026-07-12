@@ -15,11 +15,12 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 const oauth = OAUTH_PROXY_SOURCES.map((p) => readFileSync(p, "utf-8")).join("\n");
 const nodes = [
-  readFileSync("routes/nodes.ts", "utf-8"),
+  (readFileSync("routes/nodes.ts", "utf-8") + readFileSync("lib/nodeGeneration.ts", "utf-8") + readFileSync("lib/nodeValidation.ts", "utf-8")),
   readFileSync("lib/nodeHelpers.ts", "utf-8"),
 ].join("\n");
 
@@ -63,3 +64,4 @@ describe("node diagnostics contract", () => {
     assert.doesNotMatch(oauth, /logEvent\("oauth-edit", "request", \{[^}]*imageB64/);
   });
 });
+

@@ -31,6 +31,7 @@ async function withApp(fn: (baseUrl: string) => Promise<void>) {
     config: {
       storage: { generatedDir: join(TEST_DIR, "generated") },
       log: { level: "silent" },
+      agentPlanner: { enabled: false },
     },
     packageVersion: "test",
   });

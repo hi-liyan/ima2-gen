@@ -7,6 +7,7 @@ import {
   getAgentGenerationSettings,
   getAgentSession,
   getAgentWorkspacePayload,
+  importAgentImage,
   renameAgentSession,
   setAgentCurrentImage,
   setAgentGenerationSettings,
@@ -14,13 +15,13 @@ import {
   setAgentWebSearch,
 } from "../lib/agentStore.js";
 import {
-  cancelAgentQueueItem,
   createAgentQueueItem,
+  getAgentGenerationErrors,
   getAgentQueueItem,
   listAgentQueueItems,
   retryAgentQueueItem,
 } from "../lib/agentQueueStore.js";
-import { ensureAgentQueueWorker, tickAgentQueueWorker } from "../lib/agentQueueWorker.js";
+import { cancelRunningAgentQueueItem, ensureAgentQueueWorker, tickAgentQueueWorker } from "../lib/agentQueueWorker.js";
 import { parseAgentSlashCommand, formatAgentQuestionReply, formatAgentSlashHelp } from "../lib/agentCommandParser.js";
 import { requestAgentQuestionAnswer } from "../lib/agentQuestionResponder.js";
 import { agentAllowedToolPayload, runAgentTurn } from "../lib/agentRuntime.js";
@@ -94,6 +95,10 @@ export function registerAgentRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
       if (Object.prototype.hasOwnProperty.call(body, "generationSettings")) {
         setAgentGenerationSettings(req.params.sessionId, body.generationSettings);
       }
+      if (Object.prototype.hasOwnProperty.call(body, "currentImage")) {
+        const image = normalizeCurrentImage(body.currentImage);
+        if (image) importAgentImage(req.params.sessionId, image);
+      }
       if (Object.prototype.hasOwnProperty.call(body, "currentImageId")) {
         const ok = setAgentCurrentImage(req.params.sessionId, body.currentImageId);
         if (!ok) throw imageNotFound(req.params.sessionId);
@@ -149,6 +154,17 @@ export function registerAgentRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
 
   app.get("/api/agent/queue", (_req: Request, res: Response) => {
     res.json({ queue: listAgentQueueItems() });
+  });
+
+  app.get("/api/agent/sessions/:sessionId/errors", (req: Request<{ sessionId: string }>, res: Response) => {
+    try {
+      if (!getAgentSession(req.params.sessionId)) throw notFound(req.params.sessionId);
+      const limitRaw = Number(req.query.limit);
+      const limit = Number.isFinite(limitRaw) ? limitRaw : 10;
+      res.json({ errors: getAgentGenerationErrors(req.params.sessionId, limit) });
+    } catch (error) {
+      sendError(res, error);
+    }
   });
 
   app.get("/api/agent/sessions/:sessionId/queue", (req: Request<{ sessionId: string }>, res: Response) => {
@@ -208,8 +224,8 @@ export function registerAgentRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
   app.post("/api/agent/queue/:itemId/cancel", (req: Request<{ itemId: string }>, res: Response) => {
     const item = getAgentQueueItem(req.params.itemId);
     if (!item) return sendError(res, queueItemNotFound(req.params.itemId));
-    const ok = cancelAgentQueueItem(item.id);
-    if (!ok) return sendError(res, queueActionError("AGENT_QUEUE_CANCEL_FAILED", "Only queued Agent work can be canceled."));
+    const ok = cancelRunningAgentQueueItem(item.id);
+    if (!ok) return sendError(res, queueActionError("AGENT_QUEUE_CANCEL_FAILED", "Only queued or running Agent work can be canceled."));
     res.json(getAgentWorkspacePayload(item.sessionId));
   });
 

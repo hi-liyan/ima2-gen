@@ -18,6 +18,7 @@ import { THEME_FAMILIES } from "../types";
 import {
   DEFAULT_IMAGE_MODEL,
   isImageModel,
+  normalizeVideoModelValue,
 } from "../lib/imageModels";
 import {
   DEFAULT_REASONING_EFFORT,
@@ -241,9 +242,9 @@ export function loadVideoDefaults(): VideoDefaults {
     if (!raw) return VIDEO_DEFAULTS_FALLBACK;
     const p = JSON.parse(raw) as Record<string, unknown>;
     return {
-      model: typeof p.model === "string" ? p.model : false,
+      model: normalizeVideoModelValue(p.model),
       duration: typeof p.duration === "number" ? p.duration : 5,
-      resolution: p.resolution === "480p" || p.resolution === "720p" ? p.resolution : "480p",
+      resolution: p.resolution === "480p" || p.resolution === "720p" || p.resolution === "1080p" ? p.resolution : "480p",
       aspectRatio: typeof p.aspectRatio === "string" ? p.aspectRatio : "auto",
     };
   } catch {

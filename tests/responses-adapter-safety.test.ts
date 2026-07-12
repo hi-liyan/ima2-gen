@@ -182,6 +182,42 @@ test("Responses adapter preserves marked stream errors", async () => {
   }
 });
 
+test("Responses adapter does not label paramless 400 errors as parameter failures", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => Response.json({
+    error: {
+      message: "Request rejected",
+      code: "invalid_request",
+      type: "invalid_request_error",
+    },
+  }, { status: 400 })) as typeof fetch;
+  try {
+    await assert.rejects(
+      () => generateViaResponses(
+        "api",
+        "cat",
+        "low",
+        "1024x1024",
+        "low",
+        [],
+        null,
+        "auto",
+        testContext({ apiKey: "sk-test" }),
+        { webSearchEnabled: false },
+      ),
+      (err: any) => {
+        assert.equal(err.code, "INVALID_REQUEST");
+        assert.equal(err.status, 400);
+        assert.equal(err.upstreamParam, null);
+        assert.equal(err.message, "OpenAI rejected the image request.");
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Responses edit EMPTY_RESPONSE carries 422 diagnostics", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () => emptyCompletedStreamResponse()) as typeof fetch;

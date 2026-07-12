@@ -59,7 +59,7 @@ const d = (slug: string) => docsPath(import.meta.env.BASE_URL, 'en', slug);
       <tr><td><code>grok-imagine-image</code></td><td>Default Grok image model ("Grok" / Fast in the UI).</td></tr>
       <tr><td><code>grok-imagine-image-quality</code></td><td>Higher quality Grok image model ("Grok+" / Best in the UI).</td></tr>
       <tr><td><code>grok-imagine-video</code></td><td>Default Grok video model (T2V/I2V). Shown as "Grok V / Fast" in the video model picker.</td></tr>
-      <tr><td><code>grok-imagine-video-1.5-preview</code></td><td>Preview Grok video model with improved quality. Shown as "Grok V1.5 / Preview" in the video model picker.</td></tr>
+      <tr><td><code>grok-imagine-video-1.5</code></td><td>Canonical Grok Video 1.5 model for single-image/frame I2V, including 1080p when supported. The old <code>grok-imagine-video-1.5-preview</code> value is accepted as an alias.</td></tr>
       <tr><td><code>nano-banana-2</code></td><td>Gemini Flash image model (maps to <code>gemini-3.1-flash-image</code>). Used by both <code>gemini-api</code> and <code>agy</code> providers.</td></tr>
       <tr><td><code>nano-banana-pro</code></td><td>Gemini Pro image model (maps to <code>gemini-3-pro-image</code>). Available on the <code>gemini-api</code> provider only.</td></tr>
     </tbody>
@@ -152,11 +152,14 @@ const d = (slug: string) => docsPath(import.meta.env.BASE_URL, 'en', slug);
   <h2>Grok video</h2>
   <p>
     Grok video generation uses <code>grok-imagine-video</code> (default, "Grok V / Fast") or
-    <code>grok-imagine-video-1.5-preview</code> ("Grok V1.5 / Preview"). A two-button video model
+    canonical <code>grok-imagine-video-1.5</code> ("Grok V1.5"). A two-button video model
     picker at the top of the video controls panel lets you switch between them. Three modes are
     auto-detected from reference count: text-to-video (0 refs), image-to-video (1 ref), and
     reference-to-video (2–7 refs, max 10s). Controls include duration (1–15s), resolution
-    (480p, 720p), and aspect ratio. Choose the planner model in video settings or pass
+    (480p, 720p, and 1080p for 1.5 single-image/frame I2V), and aspect ratio. The old
+    <code>grok-imagine-video-1.5-preview</code> value is accepted as a compatibility alias.
+    1.5 does not add Ref2V, V2V edit, or extension support, so those routes remain
+    base-model only. Choose the planner model in video settings or pass
     <code>--planner-model</code> on CLI video commands.
     The endpoint <code>POST /api/video/generate</code> streams SSE events: planning → submitted →
     progress → done. From the CLI: <code>ima2 video "prompt" --duration 5 --resolution 720p</code>.

@@ -52,6 +52,8 @@ interface TerminalJob {
 
 const terminalJobs = new Map<string, TerminalJob>(); // requestId -> terminal snapshot, active-only API stays default
 const abortControllers = new Map<string, AbortController>();
+const controllerRegisteredAt = new Map<string, number>();
+const ORPHAN_CONTROLLER_TTL_MS = Math.max(config.inflight.ttlMs * 6, 60 * 60 * 1000);
 
 export const MAX_CONCURRENT_JOBS = Math.max(1, Math.trunc(Number(config.limits.maxParallel) || 24));
 export const INFLIGHT_RETRY_AFTER_SECONDS = 5;
@@ -121,6 +123,7 @@ export function startJob({ requestId, kind, prompt, meta = {} }: {
   terminalJobs.delete(requestId);
   abortControllers.delete(requestId);
   startGenerationLog({ requestId, kind, prompt, meta: normalizedMeta, startedAt });
+  controllerRegisteredAt.delete(requestId);
   logEvent("inflight", "start", {
     requestId,
     kind,
@@ -138,6 +141,7 @@ export function registerJobAbortController(
 ) {
   if (!requestId) return;
   abortControllers.set(requestId, controller);
+  controllerRegisteredAt.set(requestId, Date.now());
 }
 
 export function abortJob(requestId: string | null | undefined) {
@@ -184,8 +188,8 @@ export function setJobPhase(requestId: string | null | undefined, phase: string)
 export function finishJob(requestId: string | null | undefined, options: any = {}) {
   if (!requestId) return;
   const j = getJob(requestId);
+  const finishedAt = Date.now();
   if (j) {
-    const finishedAt = Date.now();
     const status = options.canceled ? "canceled" : options.status || "completed";
     terminalJobs.set(requestId, {
       requestId,
@@ -219,18 +223,38 @@ export function finishJob(requestId: string | null | undefined, options: any = {
       meta: options.meta,
       finishedAt,
     });
+  } else if (options.canceled && !terminalJobs.has(requestId)) {
+    terminalJobs.set(requestId, {
+      requestId,
+      kind: "unknown",
+      status: "canceled",
+      startedAt: finishedAt,
+      finishedAt,
+      durationMs: 0,
+      phase: "unknown",
+      phaseAt: finishedAt,
+      httpStatus: options.httpStatus,
+      errorCode: options.errorCode,
+      meta: {},
+    });
   }
   getDb().prepare("DELETE FROM inflight WHERE request_id = ?").run(requestId);
   abortControllers.delete(requestId);
+  controllerRegisteredAt.delete(requestId);
   reapTerminalJobs();
 }
 
 export { markGenerationLogSubmitted };
 
-export function reapTerminalJobs() {
-  const now = Date.now();
+export function reapTerminalJobs(now = Date.now()) {
   for (const [id, j] of terminalJobs) {
     if (now - j.finishedAt > config.inflight.terminalTtlMs) terminalJobs.delete(id);
+  }
+  for (const [id, registeredAt] of controllerRegisteredAt) {
+    if (now - registeredAt <= ORPHAN_CONTROLLER_TTL_MS || getJob(id)) continue;
+    abortControllers.get(id)?.abort();
+    abortControllers.delete(id);
+    controllerRegisteredAt.delete(id);
   }
 }
 
@@ -270,6 +294,7 @@ export function _resetForTests() {
   getDb().prepare("DELETE FROM inflight").run();
   terminalJobs.clear();
   abortControllers.clear();
+  controllerRegisteredAt.clear();
 }
 
 export function purgeStaleJobs(now = Date.now()) {

@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { useI18n } from "../i18n";
+import { useModalFocus } from "../hooks/useModalFocus";
 
 type Props = {
   open: boolean;
@@ -11,24 +11,19 @@ type Props = {
 
 export function ApiDisabledModal({ open, providerLabel, reason, hint, onClose }: Props) {
   const { t } = useI18n();
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const modalRef = useModalFocus<HTMLDivElement>(open, onClose);
 
   if (!open) return null;
   const title = t("apiDisabled.title", { provider: providerLabel });
   return (
     <div className="modal-backdrop" onClick={onClose} role="presentation">
       <div
+        ref={modalRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal__title">{title}</div>
@@ -37,7 +32,7 @@ export function ApiDisabledModal({ open, providerLabel, reason, hint, onClose }:
           {hint ? <p className="modal__hint">{hint}</p> : null}
         </div>
         <div className="modal__actions">
-          <button type="button" className="modal__btn" onClick={onClose}>
+          <button type="button" className="modal__btn" onClick={onClose} data-modal-initial-focus>
             {t("common.ok")}
           </button>
         </div>

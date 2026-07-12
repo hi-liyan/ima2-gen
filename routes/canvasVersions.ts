@@ -1,5 +1,10 @@
 import express, { type Express, type Request, type Response } from "express";
-import { createCanvasVersion, updateCanvasVersion } from "../lib/canvasVersionStore.js";
+import {
+  createCanvasVersion,
+  recordCanvasAnnotationBake,
+  revertCanvasAnnotations,
+  updateCanvasVersion,
+} from "../lib/canvasVersionStore.js";
 
 import { errInfo } from "../lib/errInfo.js";
 import { requireRuntimeContext, type RouteRuntimeContext } from "../lib/runtimeContext.js";
@@ -56,6 +61,7 @@ export function registerCanvasVersionRoutes(app: Express, ctxRaw: RouteRuntimeCo
         sourceFilename,
         prompt: getPrompt(req),
         buffer: getRequestBuffer(req),
+        pixelEdited: req.headers["x-ima2-canvas-pixel-edited"] === "true",
       });
       res.json({ item });
     } catch (e) {
@@ -64,6 +70,30 @@ export function registerCanvasVersionRoutes(app: Express, ctxRaw: RouteRuntimeCo
         error: err.message,
         code: err.code || "CANVAS_VERSION_SAVE_FAILED",
       });
+    }
+  });
+
+  app.put("/api/canvas-versions/:filename/annotation-bake", express.json({ limit: ctx.config.server.bodyLimit }), async (req, res) => {
+    try {
+      const item = await recordCanvasAnnotationBake(
+        ctx,
+        decodeURIComponent(req.params.filename),
+        req.body?.snapshot,
+        req.body?.annotationOnly === true,
+      );
+      res.json({ item });
+    } catch (e) {
+      const err = errInfo(e);
+      res.status(err.status || 500).json({ error: err.message, code: err.code || "CANVAS_ANNOTATION_BAKE_FAILED" });
+    }
+  });
+
+  app.post("/api/canvas-versions/:filename/revert-annotations", async (req, res) => {
+    try {
+      res.json(await revertCanvasAnnotations(ctx, decodeURIComponent(req.params.filename)));
+    } catch (e) {
+      const err = errInfo(e);
+      res.status(err.status || 500).json({ error: err.message, code: err.code || "CANVAS_ANNOTATION_REVERT_FAILED" });
     }
   });
 }

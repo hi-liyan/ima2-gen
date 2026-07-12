@@ -50,11 +50,18 @@ describe("provider UI contract", () => {
     assert.match(css, /:focus-visible/);
   });
 
-  it("keeps Agent mode provider selection as a native select", () => {
+  it("keeps Agent mode model control on the existing dropdown pattern", () => {
     const agent = readSource("ui/src/components/agent/AgentModelSelector.tsx");
     const css = readSource("ui/src/styles/provider-controls.css");
 
-    assert.match(agent, /<select value=\{settings\.provider\}/);
+    assert.match(agent, /image-model-select__trigger--pill/);
+    assert.match(agent, /image-model-select__menu/);
+    assert.match(agent, /AGENT_LLM_MODEL_OPTIONS/);
+    assert.match(agent, /getAgentLlmModelOption/);
+    assert.match(agent, /REASONING_EFFORT_OPTIONS/);
+    assert.match(agent, /provider: option\.provider/);
+    assert.doesNotMatch(agent, /OPENAI_IMAGE_MODEL_OPTIONS/);
+    assert.doesNotMatch(agent, /<select value=\{settings\.provider\}/);
     assert.doesNotMatch(agent, /ProviderCard/);
     assert.doesNotMatch(agent, /getProviderIdentity/);
     assert.doesNotMatch(agent, /agent-provider-options/);

@@ -18,7 +18,8 @@ When changing an API, find the endpoint here first. Then check the CLI usage in 
 
 ```mermaid
 graph TD
-    API["server.ts + routes/* /api"] --> STATUS["status<br/>providers health oauth billing"]
+    API["server.ts + routes/* /api"] --> STATUS["status<br/>providers health oauth billing quota keys"]
+    API --> KEYS["keys auth switch agy genlog"]
     API --> IMG["classic image<br/>generate edit history"]
     API --> JOBS["inflight jobs"]
     API --> EVENTS["events multiplex<br/>GET /api/events SSE"]
@@ -31,6 +32,7 @@ graph TD
     API --> PROMPTS["prompt library<br/>crud folders import export"]
     API --> AGENT["agent mode<br/>sessions turns queue"]
     API --> BUILDER["prompt builder<br/>chat assist"]
+    API --> GENLOG["generation request log<br/>GET /api/generation-requests"]
     API --> CARD["cardnews dev-only<br/>templates jobs sets"]
     IMG --> FILES["~/.ima2/generated<br/>sidecar metadata + embedded XMP"]
     NODE --> FILES
@@ -49,12 +51,23 @@ graph TD
 | `GET` | `/api/health` | `{ ok, version, provider, uptimeSec, activeJobs, pid, startedAt, runtime }` | Used by CLI discovery and health checks |
 | `GET` | `/api/oauth/status` | `{ status, models?, runtime }` | Checks whether the OAuth proxy is ready and reports actual proxy URL/port |
 | `GET` | `/api/billing` | `{ oauth, apiKeyValid, apiKeySource, credits?, costs? }` | Probes billing/model state when an API key exists |
+| `GET` | `/api/quota` | `{ codex?, grok? }` | Grok billing quota (`billing.usedUsd` / `billing.limitUsd`); web-UI only |
+| `GET` | `/api/keys/status` | masked key status + `geminiAuthMode` | Settings > API Keys aggregate |
+| `PUT` | `/api/keys/:provider` | `{ apiKey }` | Save `openai` / `xai` / `gemini` key |
+| `DELETE` | `/api/keys/:provider` | none | Remove config-sourced key |
+| `PUT` | `/api/keys/vertex` | `{ serviceAccountJson }` | Save Vertex service account |
+| `DELETE` | `/api/keys/vertex` | none | Remove Vertex credentials |
+| `PUT` | `/api/keys/gemini-auth-mode` | `{ mode }` | Persist `apikey` or `vertex` mode |
+| `POST` | `/api/auth/switch` | `{ provider }` | Start Switch Account device OAuth |
+| `GET` | `/api/auth/switch/:sessionId` | none | Poll Switch Account session |
+| `GET` | `/api/agy/status` | `{ ready, ... }` | AGY CLI provider probe |
+| `GET` | `/api/generation-requests` | `{ items }` | Last 200 generation attempts (#95) |
 | `GET` | `/api/storage/status` | `{ ok, data: { generatedDirLabel, generatedCount, legacyCandidatesScanned, legacySourcesFound, legacyFilesFound, state, messageKind, recoveryDocsPath, doctorCommand, overrides } }` | Summarizes gallery storage and legacy recovery state for UI support banners |
 | `POST` | `/api/storage/open-generated-dir` | `{ ok }` | Opens only the configured generated image folder in the local OS file manager |
 
 `/api/billing` reports `apiKeySource` as `"none"`, `"env"`, or `"config"`. API-key generation requires a configured key and returns `API_KEY_REQUIRED` before upstream when `provider: "api"` is requested without one.
 
-The live generation/edit provider can be OAuth, API-key, or Grok based. OAuth and API-key paths use the Responses API `image_generation` tool through a shared image adapter; only the endpoint/auth boundary differs. The Grok path uses the bundled progrok xAI proxy: classic, Node, and Agent generation first run mandatory xAI Web Search through `/v1/responses`, then call `grok-4.3` with a forced local `generate_image` function, then the server executes xAI `/v1/images/generations`. When Grok references, a Node parent image, or an Agent current image are attached, the planner also receives those images as multimodal inputs and the final step switches to xAI `/v1/images/edits` with the same reference images so i2i context survives the planner phase. Grok video uses separate routes: `/api/video/generate` for T2V/I2V/Ref2V plus branch-local continuation, `/api/video/edit`, `/api/video/extend`, `/api/video/frame`, and `/api/video/analyze`.
+The live generation/edit provider can be OAuth, API-key, or Grok based. OAuth and API-key paths use the Responses API `image_generation` tool through a shared image adapter; only the endpoint/auth boundary differs. The Grok path uses the bundled progrok xAI proxy: classic, Node, and Agent generation first run mandatory xAI Web Search through `/v1/responses`, then call `grok-4.3` with a forced local `generate_image` function, then the server executes xAI `/v1/images/generations`. When Grok references, a Node parent image, or an Agent current image are explicitly attached, the planner also receives those images as multimodal inputs and the final step switches to xAI `/v1/images/edits` with the same reference images so i2i context survives the planner phase. Agent image plans now carry `sourceImagePolicy: "none" | "current" | "auto"`; plain image requests default to fresh generation (`none`), while current-image edit/reference use requires explicit planner or prompt intent (`current`). Grok video uses separate routes: `/api/video/generate` for T2V/I2V/Ref2V plus branch-local continuation, `/api/video/edit`, `/api/video/extend`, `/api/video/frame`, and `/api/video/analyze`.
 
 Storage endpoints are local-support helpers. `/api/storage/open-generated-dir` never accepts a browser-supplied path; it opens `ctx.config.storage.generatedDir` only.
 
@@ -110,6 +123,8 @@ server validates the generated `.mp4`, extracts its last frame, reads the parent
 sidecar, and treats that sidecar lineage as authoritative over any client hint.
 Lineage keeps at most four entries with start preserved plus the latest three.
 
+`grok-imagine-video-1.5` is the canonical Grok Video 1.5 model name. Incoming `grok-imagine-video-1.5-preview` values are accepted only as a compatibility alias and are normalized before upstream calls. `resolution: "1080p"` is accepted when the effective request is 1.5 prompt-only T2V or image-to-video with one image/extracted frame source; prompt-only 1.5 T2V is converted to the existing white-canvas I2V shim before the upstream request. Base-model requests, Ref2V/multi-image, video edit, and extension requests reject it with `INVALID_VIDEO_RESOLUTION`.
+
 ## History And Asset Lifecycle
 
 | Method | Path | Query or body | Response |
@@ -121,6 +136,7 @@ Lineage keeps at most four entries with start preserved plus the latest three.
 | `POST` | `/api/history/:filename/restore` | `{ trashId }` | `{ ok }` |
 | `POST` | `/api/history/favorite` | `{ filename, favorite }` | `{ ok, favorite }` |
 | `POST` | `/api/history/import-local` | raw body `image/png` \| `image/jpeg` \| `image/webp`; optional header `X-Ima2-Original-Filename` | `201 { item }` (GenerateItem with `kind: "imported"`) |
+| `POST` | `/api/history/backfill-thumbnails` | none | `{ created, skipped, failed, total }` — recursive thumbnail backfill for gallery/history |
 
 History is reconstructed from image files and sidecar JSON under the configured generated directory. The current implementation uses a process-local history index/cache and applies browser-scoped favorites as an overlay for `/api/history`. `favoritesOnly=1` filters before pagination so older favorites can be reached with cursor paging. `DELETE /api/history/:filename` is a soft-delete into the OS trash via `lib/systemTrash.ts` (`trash` dependency); `lib/assetLifecycle.ts` returns a `trashId` so the UI can offer undo through `POST /api/history/:filename/restore`. `DELETE /api/history/:filename/permanent` skips the trash and removes the file plus any sidecar immediately — used by the gallery's permanent-delete affordance.
 
@@ -221,11 +237,11 @@ Node sidecars include `requestId` as recovery metadata. `/api/history` exposes t
 
 ## Agent Mode API
 
-Agent Mode is a conversational image workspace. Each agent session holds a current image, a web-search toggle, generation settings, style/subject locks, a turn history, and a durable per-session job queue. These routes are always registered (not feature-gated). Implementation is split across `lib/agentStore.ts` (sessions, workspace payload, XML manifest, locks, current image, generation settings), `lib/agentQueueStore.ts` + `lib/agentQueueWorker.ts` (durable queue and worker), `lib/agentCommandParser.ts` (`/question` and slash commands), `lib/agentQuestionResponder.ts`, and `lib/agentRuntime.ts` (`runAgentTurn`, allowed-tool payload).
+Agent Mode is a conversational image workspace. Each agent session holds a current image, a web-search toggle, generation settings, style/subject locks, a turn history, and a durable per-session job queue. These routes are always registered (not feature-gated). Implementation is split across `lib/agentStore.ts` (sessions, workspace payload, XML manifest, locks, current image, generation settings), `lib/agentQueueStore.ts` + `lib/agentQueueWorker.ts` (durable queue, worker, and runtime LLM planning), `lib/agentCommandParser.ts` (`/question` and slash commands), `lib/agentQuestionResponder.ts`, `lib/agentRuntime.ts` (`runAgentTurn`, allowed-tool payload, error lookup), `lib/agentToolManifest.ts` (tool surface single source: names, descriptions, parameter schemas), and `lib/agentPlannerModel.ts` (provider-follow LLM planner: oauth/api via Responses, grok via chat completions, regex fallback on failure; gated by `agentPlanner.enabled`/`agentPlanner.timeoutMs`).
 
 | Method | Path | Purpose |
 |---|---|---|
-| `GET` | `/api/agent/tools` | Allowed tool payload for the agent runtime |
+| `GET` | `/api/agent/tools` | Allowed tool payload + parameter-schema manifest for the agent runtime |
 | `GET` | `/api/agent/sessions` | Workspace payload (session list + selected); `selectedSessionId` query selects |
 | `POST` | `/api/agent/sessions` | Create a session (`title?`, `currentImage?`, `webSearchEnabled?`) |
 | `GET` | `/api/agent/sessions/:sessionId` | Load one session workspace |
@@ -239,10 +255,11 @@ Agent Mode is a conversational image workspace. Each agent session holds a curre
 | `POST` | `/api/agent/sessions/:sessionId/queue` | Enqueue a generation turn |
 | `POST` | `/api/agent/queue/:itemId/cancel` | Cancel a queued item |
 | `POST` | `/api/agent/queue/:itemId/retry` | Retry a queued item |
+| `GET` | `/api/agent/sessions/:sessionId/errors` | Read-only recent generation failures (failed queue jobs + error turns); `limit` query (1-20) |
 
 Agent Mode is a server + web-UI feature (`ui/src/components/agent/*`, `ui/src/lib/agentApi.ts`, `ui/src/styles/agent-workspace*.css`). There is no `ima2 agent` CLI command; drive it from the web UI or `/api/agent/*` directly. Turns run through the durable queue worker so parallel/auto-generation work survives reconnects.
 
-Agent generation settings accept `provider: "oauth" | "api" | "grok"`. With `provider: "grok"`, the Agent runtime keeps the same user/tool/assistant turn skeleton (`ima2.get_image_context`, `ima2.web_search`, `ima2.generate_image`) but routes the generator through the Grok search + `grok-4.3` planner + xAI Images API path. Grok Agent turns force web search on because the provider planner depends on it; `quality: "high"` promotes the final image model to `grok-imagine-image-quality`. If the session has a current image, that image is sent as the Grok edit reference so Agent follow-up turns preserve image-to-image context.
+Agent generation settings accept `provider: "oauth" | "api" | "grok"`. With `provider: "grok"`, the Agent runtime keeps the same user/tool/assistant turn skeleton (`ima2.get_image_context`, `ima2.web_search`, `ima2.generate_image`) but routes the generator through the Grok search + `grok-4.3` planner + xAI Images API path. Grok Agent turns force web search on because the provider planner depends on it; `quality: "high"` promotes the final image model to `grok-imagine-image-quality`. Image plans use `sourceImagePolicy`: `none` ignores the current session image and calls `/v1/images/generations`, `current` attaches the selected/current image and calls `/v1/images/edits`, and `auto` is reserved for compatibility flows. The regex fallback infers `none` for fresh/new/no-i2i wording and plain image requests, `current` for explicit current-image/reference/edit wording, and `auto` for video so existing image-to-video continuity remains unchanged.
 
 ## Prompt Builder API
 
@@ -406,7 +423,8 @@ Node retry diagnostics include safe context such as `operation`, `clientNodeId`,
 - 2026-05-29: Persisted per-image `elapsed` (numeric seconds) and `reasoningEffort` in sidecar + embedded XMP and exposed both through `/api/history` for Classic, Canvas edit, and Node modes (#79, forward-fix; older items stay blank). Classic/edit `elapsed` responses are now numeric.
 - 2026-05-30: Documented the Agent Mode API (`/api/agent/*` — sessions, turns, durable queue, compact, manifest, tools; backed by `lib/agentStore.ts`, `lib/agentQueueStore.ts`, `lib/agentQueueWorker.ts`, `lib/agentRuntime.ts`) and the Prompt Builder endpoint (`POST /api/prompt-builder/chat`). Re-grounded the API map against current code at ima2-gen 1.1.14.
 - 2026-06-01: Updated the API map for Grok video runtime: generation/edit/extension/frame/analyze, active prompt guidance, `continueFromVideo`, and `videoContinuity` sidecar/SSE contracts.
-- 2026-06-08: Verified `GET /api/events` Events Multiplexing section (lines 157–201) against `routes/events.ts` — replay-gap, `X-Accel-Buffering: no`, 512 cap, `res.end()` cleanup, async 202 dual-emit. Cross-ref `devlog/00_sse-multiplexing-architecture.md`.
+- 2026-06-27: Documented keys/quota/auth-switch/agy/generation-request-log endpoints and provider matrix at ima2-gen 2.0.4; added `POST /api/history/backfill-thumbnails`.
+- 2026-06-28: WP6 — expanded `docs/API.md` with Prompt Library, Prompt Import, and Card News route tables; `tests/api-docs-contract.test.js` enforces full `routes/*.ts` `/api/*` coverage.
 
 Previous document: `[[02-command-reference]]`
 

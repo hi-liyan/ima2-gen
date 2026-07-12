@@ -28,6 +28,7 @@ interface CanvasToolbarProps {
   onStyleChange: (style: CanvasAnnotationStyle) => void;
   onClear: () => void;
   onApply?: () => void;
+  onRevertAnnotations?: () => void;
   onExport?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -77,6 +78,7 @@ export function CanvasToolbar({
   onStyleChange,
   onClear,
   onApply,
+  onRevertAnnotations,
   onExport,
   onUndo,
   onRedo,
@@ -224,6 +226,18 @@ export function CanvasToolbar({
           title={t("canvas.toolbar.apply")}
         >
           <ApplyIcon />
+        </button>
+      ) : null}
+      {onRevertAnnotations ? (
+        <button
+          type="button"
+          className="canvas-toolbar__button"
+          onClick={onRevertAnnotations}
+          disabled={isApplying}
+          aria-label={t("canvas.revert.action")}
+          title={t("canvas.revert.action")}
+        >
+          <UndoIcon />
         </button>
       ) : null}
       {onEditWithMask ? (

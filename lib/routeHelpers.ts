@@ -14,9 +14,14 @@ export function imageFormatFromMime(mime: string | null | undefined): "png" | "j
   return "png";
 }
 
-export function writeSse(res: Response, event: string, data: unknown) {
-  res.write(`event: ${event}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
+export function writeSse(res: Response, event: string, data: unknown): boolean {
+  if (res.writableEnded || res.destroyed) return false;
+  try {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function dataUrlFromB64(format: string, b64: string) {

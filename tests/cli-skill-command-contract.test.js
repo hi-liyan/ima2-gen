@@ -1,9 +1,17 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 
 function readSource(path) {
   return readFileSync(path, "utf-8");
+}
+
+function runSkillCli(args) {
+  return spawnSync(process.execPath, ["bin/ima2.js", "skill", ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+  });
 }
 
 describe("CLI packaged skill contract", () => {
@@ -42,20 +50,25 @@ describe("CLI packaged skill contract", () => {
     assert.doesNotMatch(skill, /jq -r '\.url'/);
     assert.match(skill, /Structured Video Prompt Template/);
     assert.match(skill, /duration pacing/);
-    assert.match(skill, /production-level sequence/);
-    assert.match(skill, /Expected Motion/);
+    assert.match(skill, /beat structure scales with length/);
+    assert.match(skill, /Motivated movement/);
     assert.match(skill, /Dialogue/);
-    assert.match(skill, /Ending Frame/);
+    assert.match(skill, /Settling final frame/);
     assert.match(skill, /no background music/);
-    assert.match(skill, /Sound Effects/);
-    assert.match(skill, /Continuity Handoff/);
+    assert.match(skill, /specific SFX/);
+    assert.match(skill, /self-explanatory for continuation/);
     assert.match(skill, /Video edit\/extend: grok-imagine-video only/);
   });
 
   it("skill command wraps Markdown content instead of inventing a schema skill", () => {
     const src = readSource("bin/commands/skill.ts");
 
-    assert.match(src, /SKILL_PATH = join\(ROOT, "skills", "ima2", "SKILL\.md"\)/);
+    assert.match(src, /KNOWN_SKILLS/);
+    assert.match(src, /dir:\s*"ima2"/);
+    assert.match(src, /dir:\s*"ima2-front"/);
+    assert.match(src, /dir:\s*"ima2-uiux"/);
+    assert.match(src, /join\(SKILLS_DIR, entry\.dir, "SKILL\.md"\)/);
+    assert.match(src, /positional\[0\] === "ls" \|\| positional\[0\] === "list"/);
     assert.match(src, /format:\s*"markdown-skill"/);
     assert.match(src, /formatVersion:\s*"1"/);
     assert.match(src, /packageVersion: readPackageVersion\(\)/);
@@ -63,11 +76,70 @@ describe("CLI packaged skill contract", () => {
     assert.match(src, /packaged skill not found/);
   });
 
+  it("ships frontend and uiux skill documents with frontmatter names", () => {
+    const front = readSource("skills/ima2-front/SKILL.md");
+    const uiux = readSource("skills/ima2-uiux/SKILL.md");
+
+    assert.match(front, /name:\s*ima2-front/);
+    assert.match(uiux, /name:\s*ima2-uiux/);
+  });
+
   it("top-level CLI dispatch lets skill help reach the subcommand", () => {
     const src = readSource("bin/ima2.ts");
 
-    assert.match(src, /skill\s+Print packaged agent skill/);
+    assert.match(src, /Agent skills/);
     assert.match(src, /"skill"/);
     assert.match(src, /case "skill":/);
+  });
+});
+
+describe("CLI packaged skill behavior (executes built CLI)", () => {
+  it("skill ls lists all packaged skills as installed", () => {
+    const res = runSkillCli(["ls"]);
+
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /✓\s+ima2\s/);
+    assert.match(res.stdout, /✓\s+front\s/);
+    assert.match(res.stdout, /✓\s+uiux\s/);
+  });
+
+  it("skill <name> path resolves each packaged skill file", () => {
+    for (const [name, dir] of [
+      ["front", "ima2-front"],
+      ["uiux", "ima2-uiux"],
+    ]) {
+      const res = runSkillCli([name, "path"]);
+      assert.equal(res.status, 0, res.stderr);
+      const printed = res.stdout.trim().replaceAll("\\", "/");
+      assert.ok(
+        printed.endsWith(`skills/${dir}/SKILL.md`),
+        `expected ${name} path to end with skills/${dir}/SKILL.md, got: ${printed}`,
+      );
+    }
+  });
+
+  it("skill --json wraps the core skill; skill front --json wraps the frontend skill", () => {
+    const core = runSkillCli(["--json"]);
+    assert.equal(core.status, 0, core.stderr);
+    const corePayload = JSON.parse(core.stdout);
+    assert.equal(corePayload.name, "ima2");
+    assert.equal(corePayload.format, "markdown-skill");
+    assert.equal(corePayload.formatVersion, "1");
+    assert.match(corePayload.content, /name:\s*ima2/);
+
+    const front = runSkillCli(["front", "--json"]);
+    assert.equal(front.status, 0, front.stderr);
+    const frontPayload = JSON.parse(front.stdout);
+    assert.equal(frontPayload.name, "ima2-front");
+    assert.match(frontPayload.path.replaceAll("\\", "/"), /skills\/ima2-front\/SKILL\.md$/);
+  });
+
+  it("documents current fallback: unknown skill names print the core skill", () => {
+    // Current contract: an unregistered positional falls back to the core skill
+    // instead of erroring. Pinned here so a behavior change is a conscious one.
+    const res = runSkillCli(["nope"]);
+
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /name:\s*ima2\b/);
   });
 });

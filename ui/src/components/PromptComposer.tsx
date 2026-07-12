@@ -345,7 +345,7 @@ export function PromptComposer({ variant = "sidebar" }: PromptComposerProps) {
             if (videoModelSelected) {
               setImageModel("gpt-5.5" as any);
             } else {
-              selectVideoModel("grok-imagine-video-1.5-preview");
+              selectVideoModel("grok-imagine-video-1.5");
             }
           }}
           title={t("prompt.videoToggleTitle")}

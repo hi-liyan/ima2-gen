@@ -18,6 +18,7 @@ describe("CLI doctor/status hardening contract", () => {
     assert.match(doctorChecks, /Preferred backend port/);
     assert.match(doctorChecks, /Card News:/);
     assert.match(doctorChecks, /packaged skill/);
+    assert.match(doctorChecks, /"ima2", "ima2-front", "ima2-uiux"/);
     assert.match(doctorChecks, /better-sqlite3 native binding/);
     assert.match(doctorChecks, /chmod 600/);
   });

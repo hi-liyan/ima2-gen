@@ -26,6 +26,7 @@ import { registerQuotaRoutes } from "./quota.js";
 import { registerAuthRoutes } from "./auth.js";
 import { registerGenerationLogRoutes } from "./generationLogs.js";
 import { mountKeyRoutes } from "./keys.js";
+import { registerGenerationRequestLogRoutes } from "./generationRequestLog.js";
 import { requireRuntimeContext } from "../lib/runtimeContext.js";
 export function configureRoutes(app, ctxRaw) {
     const ctx = requireRuntimeContext(ctxRaw);
@@ -58,4 +59,5 @@ export function configureRoutes(app, ctxRaw) {
     registerGenerationLogRoutes(app);
     registerAuthRoutes(app);
     mountKeyRoutes(app, ctx);
+    registerGenerationRequestLogRoutes(app, ctx);
 }

@@ -161,7 +161,9 @@ Node mode separates visible node-local references from classic composer referenc
 
 Child/edit nodes already have a parent image source. Extra node-local references are allowed and are sent to the edit path after the parent image and before the text prompt. They supplement the parent image; they do not replace it.
 
-The default node context policy is `parent-plus-refs`: immediate parent image plus explicit node-local references. `parent-only` is available when references must be ignored. `ancestry` is reserved and currently rejected; node mode does not silently send the full upstream chain. Edit search is also explicit. `searchMode` defaults to `off`; `on` is the only mode that adds edit web search.
+The default node context policy is `parent-plus-refs`: immediate parent image plus explicit node-local references. `parent-only` is available when references must be ignored. `ancestry` is reserved and currently rejected; node mode does not silently send the full upstream chain. Edit search follows the global web-search toggle: `searchMode` is `"on"` when `webSearchEnabled` is true (default **on** via `DEFAULT_WEB_SEARCH_ENABLED` in `ui/src/lib/webSearch.ts`) and `"off"` otherwise.
+
+Node generation in the web UI uses the shared `eventChannel` (`GET /api/events`) plus async `POST /api/node/generate` with `{ async: true, requestId }` (202 response). Per-request SSE remains available for CLI clients that do not opt into async mode.
 
 `duplicateBranchRoot()` seeds the source image into the duplicated root node's local draft references. It must not push into the classic global reference list.
 

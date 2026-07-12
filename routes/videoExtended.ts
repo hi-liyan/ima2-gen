@@ -20,6 +20,14 @@ function routeError(message: string, status = 400): Error & { status: number } {
 }
 
 function sendError(res: Response, err: any): void {
+  if (err?.name === "TimeoutError") {
+    res.status(504).json({ error: "Video operation timed out", code: "VIDEO_TIMEOUT" });
+    return;
+  }
+  if (err?.name === "AbortError") {
+    if (!res.headersSent) res.status(499).json({ error: "Request canceled", code: "REQUEST_CANCELED" });
+    return;
+  }
   res.status(typeof err?.status === "number" ? err.status : 500).json({ error: err?.message || String(err) });
 }
 
@@ -112,14 +120,19 @@ async function saveVideoResult(
   return { filename, url: `/generated/${encodeURIComponent(filename)}`, sourceUrl: options.videoUrl };
 }
 
-function requestSignal(req: Request, res: Response): AbortSignal {
+function envDeadline(name: string, fallbackMs: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value >= 1000 ? value : fallbackMs;
+}
+
+function requestSignal(req: Request, res: Response, timeoutMs: number): AbortSignal {
   const ac = new AbortController();
   const abort = () => {
     if (!res.writableEnded) ac.abort();
   };
   req.on("aborted", abort);
   res.on("close", abort);
-  return ac.signal;
+  return AbortSignal.any([ac.signal, AbortSignal.timeout(timeoutMs)]);
 }
 
 function requirePrompt(value: unknown): string | null {
@@ -151,7 +164,7 @@ export function registerVideoExtendedRoutes(app: Express, ctxRaw: RouteRuntimeCo
       if (!prompt) return res.status(400).json({ error: "prompt required", code: "PROMPT_REQUIRED", guidance: ACTIVE_VIDEO_PROMPT_GUIDANCE });
       if (!videoUrl || typeof videoUrl !== "string") return res.status(400).json({ error: "videoUrl required" });
       const validModel = validateEditModel(model);
-      const signal = requestSignal(req, res);
+      const signal = requestSignal(req, res, envDeadline("IMA2_VIDEO_EDIT_TIMEOUT_MS", 10 * 60_000));
 
       const { url, headers } = videoProxyUrl(ctx, "/v1/videos/edits");
       const video = await resolveVideoInput(ctx, videoUrl);
@@ -184,7 +197,7 @@ export function registerVideoExtendedRoutes(app: Express, ctxRaw: RouteRuntimeCo
       const validModel = validateEditModel(model);
       const dur = Number(duration);
       if (!Number.isInteger(dur) || dur < 2 || dur > 10) return res.status(400).json({ error: "duration must be an integer between 2 and 10" });
-      const signal = requestSignal(req, res);
+      const signal = requestSignal(req, res, envDeadline("IMA2_VIDEO_EXTEND_TIMEOUT_MS", 10 * 60_000));
 
       const { url, headers } = videoProxyUrl(ctx, "/v1/videos/extensions");
       const video = await resolveVideoInput(ctx, videoUrl);
@@ -235,6 +248,7 @@ export function registerVideoExtendedRoutes(app: Express, ctxRaw: RouteRuntimeCo
   // --- Video Analysis (Grok 4.3 Vision) ---
   app.post("/api/video/analyze", async (req: Request, res: Response) => {
     try {
+      const signal = requestSignal(req, res, envDeadline("IMA2_VIDEO_ANALYZE_TIMEOUT_MS", 2 * 60_000));
       const { videoUrl } = req.body ?? {};
       if (!videoUrl || typeof videoUrl !== "string") return res.status(400).json({ error: "videoUrl required" });
       if (/^https?:\/\//i.test(videoUrl) || videoUrl.startsWith("data:")) {
@@ -265,6 +279,7 @@ export function registerVideoExtendedRoutes(app: Express, ctxRaw: RouteRuntimeCo
               ],
             }],
           }),
+          signal,
         });
         if (!apiRes.ok) { const t = await apiRes.text(); return res.status(apiRes.status).json({ error: t }); }
         const data = (await apiRes.json()) as Record<string, unknown>;

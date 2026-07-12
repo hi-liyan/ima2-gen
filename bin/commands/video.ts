@@ -5,11 +5,31 @@ import { out, die, color, json, exitCodeForError } from "../lib/output.js";
 import { config } from "../../config.js";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
+import {
+  deriveVideoMode,
+  GROK_VIDEO_MODEL_15,
+  GROK_VIDEO_MODEL_15_PREVIEW_ALIAS,
+  GROK_VIDEO_MODEL_BASE,
+  validateVideoResolutionForRequest,
+  type VideoMode,
+  type VideoResolution,
+} from "../../lib/imageModels.js";
 
-const VALID_RESOLUTIONS = new Set(["480p", "720p"]);
+const VALID_RESOLUTIONS = new Set(["480p", "720p", "1080p"]);
 const VALID_ASPECT_RATIOS = new Set(["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "auto"]);
-const VALID_MODELS = new Set(["grok-imagine-video", "grok-imagine-video-1.5-preview"]);
+const VALID_MODELS = new Set([GROK_VIDEO_MODEL_BASE, GROK_VIDEO_MODEL_15, GROK_VIDEO_MODEL_15_PREVIEW_ALIAS]);
 const ACTIVE_VIDEO_PROMPT_GUIDANCE = "Active video prompt required: describe visual flow, motion flow, sound/no-music intent, dialogue/no-dialogue intent, and the desired ending frame. Pace the scene to naturally fill the selected duration with an opening composition, connected motion/emotion change, and stable ending frame.";
+
+function canonicalVideoModel(model: string): string {
+  return model === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS ? GROK_VIDEO_MODEL_15 : model;
+}
+
+function validateCliVideoResolution(model: string, resolution: string, mode: VideoMode): void {
+  const check = validateVideoResolutionForRequest(canonicalVideoModel(model), resolution as VideoResolution, mode, {
+    allowTextCanvasShim: true,
+  });
+  if (!("ok" in check)) die(2, check.error);
+}
 
 function parseIntegerFlag(value: unknown, fallback: number, label: string): number {
   const raw = value === undefined ? String(fallback) : String(value);
@@ -95,9 +115,9 @@ const HELP = `
 
   Options (generate mode):
         --duration <1..15>              Duration in seconds. Default: 5. Prompt motion should naturally fill this length
-        --resolution <480p|720p>        Default: 480p
+        --resolution <480p|720p|1080p>  Default: 480p. 1080p requires --model grok-imagine-video-1.5; prompt-only uses a white-canvas I2V shim
         --aspect-ratio <ratio|auto>     1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto. Default: auto
-        --model <name>                  grok-imagine-video, grok-imagine-video-1.5-preview
+        --model <name>                  grok-imagine-video, grok-imagine-video-1.5 (preview alias accepted)
         --planner-model <name>          Planner model override (e.g. grok-4.3, gpt-5.5)
         --storyboard                    Enable storyboard mode (maintains character/scene continuity)
         --topic <text>                  Series topic for prompt chain continuity
@@ -147,18 +167,20 @@ export default async function videoCmd(argv: string[]) {
   if (duration < 1 || duration > 15) die(2, "--duration must be between 1 and 15");
 
   const resolution = String(args.resolution);
-  if (!VALID_RESOLUTIONS.has(resolution)) die(2, "--resolution must be one of: 480p, 720p");
+  if (!VALID_RESOLUTIONS.has(resolution)) die(2, "--resolution must be one of: 480p, 720p, 1080p");
 
   const aspectRatio = String(args["aspect-ratio"]);
   if (!VALID_ASPECT_RATIOS.has(aspectRatio)) die(2, "--aspect-ratio must be one of: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto");
 
   if (args.model && !VALID_MODELS.has(String(args.model))) {
-    die(2, "--model must be one of: grok-imagine-video, grok-imagine-video-1.5-preview");
+    die(2, "--model must be one of: grok-imagine-video, grok-imagine-video-1.5");
   }
+  const model = args.model ? canonicalVideoModel(String(args.model)) : GROK_VIDEO_MODEL_BASE;
 
   const refs = (Array.isArray(args.ref) ? args.ref : []) as string[];
   if (refs.length > 7) die(2, "max 7 --ref attachments for video");
   if (refs.length >= 2 && duration > 10) die(2, "--duration must be between 1 and 10 when using 2 or more --ref attachments");
+  validateCliVideoResolution(model, resolution, deriveVideoMode(refs.length));
 
   const timeoutSeconds = parseIntegerFlag(args.timeout, 600, "--timeout");
   if (timeoutSeconds < 1) die(2, "--timeout must be at least 1");
@@ -183,7 +205,7 @@ export default async function videoCmd(argv: string[]) {
     aspectRatio,
     requestId,
   };
-  if (args.model) body.model = args.model;
+  if (args.model) body.model = model;
   if (args["planner-model"]) body.plannerModel = args["planner-model"];
   if (args.storyboard) body.storyboard = true;
   if (args.session) body.sessionId = args.session;
@@ -376,7 +398,7 @@ async function videoContinueCmd(argv: string[]) {
   const args = parseArgs(argv, spec);
   rejectUnknownFlags(args);
   if (args.help) {
-    out(`  ima2 video continue <prompt> --video <generated-file>\n\n  Generate a new clip from a generated video's last frame and carry branch-local revisedPrompt lineage.\n\n  Prompt must describe visual flow, motion, sound/music/no-music, dialogue/no-dialogue, ending frame, and how the selected duration should feel naturally filled.\n\n  Options:\n        --video <file>                 Generated .mp4 filename (required)\n        --duration <1..15>             Default: 5. Prompt motion should naturally fill this length\n        --resolution <480p|720p>       Default: 720p\n        --aspect-ratio <ratio|auto>    Default: auto\n        --model <name>                 grok-imagine-video, grok-imagine-video-1.5-preview\n    -o, --out <file>                   Download continued video to file\n        --output <file>                Alias for --out\n        --json                         Print JSON result\n        --timeout <sec>                Default: 600\n        --server <url>                 Override server URL`);
+    out(`  ima2 video continue <prompt> --video <generated-file>\n\n  Generate a new clip from a generated video's last frame and carry branch-local revisedPrompt lineage.\n\n  Prompt must describe visual flow, motion, sound/music/no-music, dialogue/no-dialogue, ending frame, and how the selected duration should feel naturally filled.\n\n  Options:\n        --video <file>                 Generated .mp4 filename (required)\n        --duration <1..15>             Default: 5. Prompt motion should naturally fill this length\n        --resolution <480p|720p|1080p> Default: 720p. 1080p requires --model grok-imagine-video-1.5\n        --aspect-ratio <ratio|auto>    Default: auto\n        --model <name>                 grok-imagine-video, grok-imagine-video-1.5 (preview alias accepted)\n    -o, --out <file>                   Download continued video to file\n        --output <file>                Alias for --out\n        --json                         Print JSON result\n        --timeout <sec>                Default: 600\n        --server <url>                 Override server URL`);
     return;
   }
   const prompt = args.positional.join(" ");
@@ -385,12 +407,14 @@ async function videoContinueCmd(argv: string[]) {
   const duration = parseIntegerFlag(args.duration, 5, "--duration");
   if (duration < 1 || duration > 15) die(2, "--duration must be between 1 and 15");
   const resolution = String(args.resolution);
-  if (!VALID_RESOLUTIONS.has(resolution)) die(2, "--resolution must be one of: 480p, 720p");
+  if (!VALID_RESOLUTIONS.has(resolution)) die(2, "--resolution must be one of: 480p, 720p, 1080p");
   const aspectRatio = String(args["aspect-ratio"]);
   if (!VALID_ASPECT_RATIOS.has(aspectRatio)) die(2, "--aspect-ratio must be one of: 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto");
   if (args.model && !VALID_MODELS.has(String(args.model))) {
-    die(2, "--model must be one of: grok-imagine-video, grok-imagine-video-1.5-preview");
+    die(2, "--model must be one of: grok-imagine-video, grok-imagine-video-1.5");
   }
+  const model = args.model ? canonicalVideoModel(String(args.model)) : GROK_VIDEO_MODEL_BASE;
+  validateCliVideoResolution(model, resolution, "image-to-video");
   parseTimeoutSeconds(args.timeout);
   let server;
   try { server = await resolveServer({ serverFlag: args.server }); } catch (e: unknown) { die(exitCodeForError(e), (e as Error).message); throw e; }
@@ -403,7 +427,7 @@ async function videoContinueCmd(argv: string[]) {
     aspectRatio,
     continueFromVideo: args.video,
   };
-  if (args.model) body.model = args.model;
+  if (args.model) body.model = model;
   if (args["planner-model"]) body.plannerModel = args["planner-model"];
   if (args.storyboard) body.storyboard = true;
   const data = await runVideoGenerateRequest(server.base, body, args.timeout, Boolean(args.json));

@@ -75,11 +75,12 @@ The CLI surface was expanded to near-feature-parity with the server API in #45 (
 | `ima2 defaults <subcommand>` | local or `/api/capabilities` | Inspect/change persistent model and reasoning defaults |
 | `ima2 capabilities` | `/api/capabilities` or local fallback | Print agent-facing capability metadata |
 | `ima2 skill` | local package | Print the packaged Markdown agent skill |
-| `ima2 inflight <subcommand>` | `/api/inflight*` | List/cancel running jobs (alias surface for `ps`/`cancel`) |
-| `ima2 storage <subcommand>` | `/api/storage*` | Storage status and open generated dir |
-| `ima2 billing` | `/api/billing` | Show billing/usage summary |
-| `ima2 providers` | `/api/providers` | Show available providers and modes |
-| `ima2 oauth <subcommand>` | `/api/oauth*` | OAuth status and helpers |
+| `ima2 inflight <subcommand>` | `/api/inflight*` | List/cancel running jobs (alias surface for `ps`/`cancel`; implemented in `bin/commands/observability.ts`) |
+| `ima2 storage <subcommand>` | `/api/storage*` | Storage status and open generated dir (via `observability.ts`) |
+| `ima2 backfill-thumbs` | `POST /api/history/backfill-thumbnails` | Recursive local thumbnail backfill for gallery/history |
+| `ima2 billing` | `/api/billing` | Show billing/usage summary (OpenAI/API-key probe; not Grok quota; via `observability.ts`) |
+| `ima2 providers` | `/api/providers` | Show available providers and modes (via `observability.ts`) |
+| `ima2 oauth <subcommand>` | `/api/oauth*` | OAuth status and helpers (via `observability.ts`) |
 | `ima2 ls` | `GET /api/history` | History list (legacy alias of `history list`) |
 | `ima2 show <name>` | `GET /api/history` plus file path | Show or reveal one history item |
 | `ima2 ps` | `GET /api/inflight` | List running classic/node/multimode jobs (legacy alias of `inflight list`) |
@@ -103,7 +104,7 @@ The CLI surface was expanded to near-feature-parity with the server API in #45 (
 | `--timeout <sec>` | `180` | HTTP request timeout |
 | `--server <url>` | auto-discovered | Override server discovery |
 | `--model <id>` | server default | Image model: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `grok-imagine-image`, `grok-imagine-image-quality`, or server-rejected `gpt-5.3-codex-spark` |
-| `--provider <auto|oauth|api|grok>` | server default | Per-request provider override; `api` requires a configured API key, `grok` uses bundled progrok |
+| `--provider <auto|oauth|api|grok|grok-api|agy|gemini-api>` | server default | Per-request provider override; `api`/`grok-api`/`gemini-api` require configured keys; `grok` uses bundled progrok OAuth; `agy` shells out to local `agy` CLI |
 | `--mode <auto|direct>` | `auto` | Prompt handling mode |
 | `--moderation <auto|low>` | `low` | OAuth moderation level |
 | `--reasoning-effort <none|low|medium|high|xhigh>` | server default | Reasoning effort hint for prompt-aware models |
@@ -131,6 +132,11 @@ from `extend`: `continue` persists `videoContinuity` lineage metadata and starts
 a fresh generated clip from the last frame; `extend` calls xAI's native
 extension endpoint.
 
+Video model contract, 2026-06-29: `grok-imagine-video-1.5` is the canonical
+1.5 model name; `grok-imagine-video-1.5-preview` is accepted as an alias. `1080p`
+is valid only for 1.5 image-to-video with one image/frame source. Prompt-only
+T2V, Ref2V/multi-ref, edit, and extension remain base-model or 480p/720p paths.
+
 ## `edit` Options
 
 | Option | Default | Description |
@@ -143,7 +149,7 @@ extension endpoint.
 | `--timeout <sec>` | `180` | HTTP request timeout |
 | `--server <url>` | auto-discovered | Target server URL |
 | `--model <id>` | server default | Image model: `gpt-5.5`, `gpt-5.4`, `gpt-5.4-mini`, `grok-imagine-image`, `grok-imagine-image-quality`, or server-rejected `gpt-5.3-codex-spark` |
-| `--provider <auto|oauth|api|grok>` | server default | Per-request provider override; `api` requires a configured API key, `grok` uses bundled progrok |
+| `--provider <auto|oauth|api|grok|grok-api|agy|gemini-api>` | server default | Per-request provider override; `api`/`grok-api`/`gemini-api` require configured keys; `grok` uses bundled progrok OAuth; `agy` shells out to local `agy` CLI |
 | `--mode <auto|direct>` | `auto` | Prompt handling mode |
 | `--moderation <auto|low>` | `low` | OAuth moderation level |
 | `--reasoning-effort <none|low|medium|high|xhigh>` | server default | Reasoning effort hint for prompt-aware models |
@@ -252,7 +258,8 @@ Deferred:
 - 2026-05-10: Re-audited CLI parity for #61. Web-search flags are wired for `gen`, `edit`, `multimode`, and `node generate`; follow-up work was planned for provider override, multimode refs/mode, `ps` multimode help, server-side favorites listing, masked edit CLI decision, and dedicated CLI payload tests.
 - 2026-05-11: Implemented the #61 CLI parity slice: provider overrides for generation commands, multimode refs/mode, multimode inflight help, server-side `ls --favorites`, and CLI feature-parity contract tests. `edit --mask` remains deferred to #31.
 - 2026-05-13: Added #62 agent discovery commands: packaged `skills/ima2/SKILL.md`, `ima2 skill`, `ima2 capabilities`, and `ima2 defaults`.
-- 2026-05-30: Updated the command reference for the 1.1.15 Grok publish surface: `ima2 grok`, `--provider <auto|oauth|api|grok>`, Grok image models, `none`/`xhigh` reasoning values, and `ima2 prompt build` as the prompt-builder CLI wrapper.
+- 2026-06-27: Expanded `--provider` enum (`grok-api`, `agy`, `gemini-api`), documented `ima2 backfill-thumbs`, and clarified billing vs quota CLI surfaces at ima2-gen 2.0.4.
+- 2026-06-28: WP6 — documented that `inflight`/`storage`/`billing`/`providers`/`oauth` aliases dispatch through `bin/commands/observability.ts`.
 
 Previous document: `[[01-file-function-map]]`
 

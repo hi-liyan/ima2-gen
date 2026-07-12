@@ -4,6 +4,7 @@ import { useAppStore } from "../store/useAppStore";
 import { useOAuthStatus } from "../hooks/useOAuthStatus";
 import { useGrokStatus } from "../hooks/useGrokStatus";
 import { useKeyStatus } from "../hooks/useKeyStatus";
+import { useModalFocus } from "../hooks/useModalFocus";
 
 const DISMISS_KEY = "ima2.onboardingDismissed";
 
@@ -32,8 +33,7 @@ export function OnboardingPopup() {
     ? !keyStatus.gemini?.configured && !keyStatus.vertex?.configured
     : false;
   const allUnauthenticated = loaded && oauthUnauth && grokUnauth && geminiUnauth;
-
-  if (dismissed || !allUnauthenticated) return null;
+  const open = !dismissed && allUnauthenticated;
 
   const dismiss = () => {
     try {
@@ -48,14 +48,19 @@ export function OnboardingPopup() {
     dismiss();
     openSettings("account");
   };
+  const modalRef = useModalFocus<HTMLDivElement>(open, dismiss);
+
+  if (!open) return null;
 
   return (
     <div className="modal-backdrop" role="presentation">
       <div
+        ref={modalRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
+        tabIndex={-1}
       >
         <div id="onboarding-title" className="modal__title">
           {t("onboarding.title")}
@@ -64,7 +69,7 @@ export function OnboardingPopup() {
           <p>{t("onboarding.body")}</p>
         </div>
         <div className="modal__actions">
-          <button type="button" className="modal__btn modal__btn--secondary" onClick={dismiss}>
+          <button type="button" className="modal__btn modal__btn--secondary" onClick={dismiss} data-modal-initial-focus>
             {t("onboarding.skip")}
           </button>
           <button type="button" className="modal__btn" onClick={goLogin}>

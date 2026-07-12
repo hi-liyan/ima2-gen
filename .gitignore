@@ -1,5 +1,6 @@
 .env
 .ima2/
+.codexclaw/
 node_modules
 generated/
 .DS_Store

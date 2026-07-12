@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 export function aspectToCanvas(aspectRatio: string, resolution: string): { width: number; height: number } {
-  const base = resolution === "720p" ? 720 : 480;
+  const base = resolution === "1080p" ? 1080 : resolution === "720p" ? 720 : 480;
   const ratios: Record<string, [number, number]> = {
     "16:9": [16, 9], "9:16": [9, 16], "4:3": [4, 3], "3:4": [3, 4],
     "3:2": [3, 2], "2:3": [2, 3], "1:1": [1, 1], "auto": [16, 9],

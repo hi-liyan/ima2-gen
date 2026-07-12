@@ -183,6 +183,16 @@ export async function attachCanvasVersionReferenceImpl(
   get().showToast(t("canvas.version.usingAsReference"));
 }
 
+// Canvas versions carry burned-in annotation pixels for UI display. Model
+// payloads must use the clean source instead (policy from #96): resolve a
+// canvas-version item to its original file before attaching it as a reference.
+function resolveModelReferenceSrc(item: GenerateItem): string {
+  if (item.canvasVersion && item.canvasSourceFilename) {
+    return `/generated/${encodeURIComponent(item.canvasSourceFilename)}`;
+  }
+  return item.image;
+}
+
 export async function useCurrentAsReferenceImpl(set: StoreSet, get: StoreGet): Promise<void> {
   const cur = get().currentImage;
   if (!cur) {
@@ -195,7 +205,10 @@ export async function useCurrentAsReferenceImpl(set: StoreSet, get: StoreGet): P
   }
   let dataUrl: string;
   try {
-    dataUrl = await compressReferenceSource(cur.image, cur.filename || "current-reference.png");
+    dataUrl = await compressReferenceSource(
+      resolveModelReferenceSrc(cur),
+      cur.canvasSourceFilename || cur.filename || "current-reference.png",
+    );
   } catch {
     get().showToast(t("toast.currentImageLoadFailed"), true);
     return;
@@ -218,7 +231,10 @@ export async function useImageAsReferenceImpl(
   }
   let dataUrl: string;
   try {
-    dataUrl = await compressReferenceSource(item.image, item.filename || "canvas-reference.png");
+    dataUrl = await compressReferenceSource(
+      resolveModelReferenceSrc(item),
+      item.canvasSourceFilename || item.filename || "canvas-reference.png",
+    );
   } catch {
     get().showToast(t("toast.currentImageLoadFailed"), true);
     return;

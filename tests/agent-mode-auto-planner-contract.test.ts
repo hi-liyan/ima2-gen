@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_AGENT_GENERATION_SETTINGS, normalizeAgentGenerationSettings } from "../lib/agentSettings.ts";
 import { parseAgentSlashCommand } from "../lib/agentCommandParser.ts";
-import { deriveAgentGenerationPlan } from "../lib/agentGenerationPlanner.ts";
+import { deriveAgentGenerationPlan, normalizeAgentGenerationPlan } from "../lib/agentGenerationPlanner.ts";
 
 describe("Agent Mode auto generation planner contract", () => {
   it("normalizes Agent generation settings against the configured 24-count limits", () => {
@@ -27,6 +27,7 @@ describe("Agent Mode auto generation planner contract", () => {
     assert.equal(single.plannedVariants, 1);
     assert.equal(single.plannedParallelism, 1);
     assert.equal(single.source, "auto-default");
+    assert.equal(single.sourceImagePolicy, "none");
 
     const fanout = deriveAgentGenerationPlan({
       prompt: "make three distinct poster variants",
@@ -37,6 +38,51 @@ describe("Agent Mode auto generation planner contract", () => {
     assert.equal(fanout.plannedVariants, 3);
     assert.equal(fanout.plannedParallelism, 2);
     assert.equal(fanout.source, "auto-request");
+    assert.equal(fanout.sourceImagePolicy, "none");
+  });
+
+  it("distinguishes fresh image requests from current-image reference requests", () => {
+    const fresh = deriveAgentGenerationPlan({
+      prompt: "i2i 말고 새로운 방식으로 개꼴리는 비키니입은 한국여성",
+      settings: DEFAULT_AGENT_GENERATION_SETTINGS,
+    });
+    assert.equal(fresh.mode, "single");
+    assert.equal(fresh.sourceImagePolicy, "none");
+
+    const separate = deriveAgentGenerationPlan({
+      prompt: "새로 별도 이미지 하나 생성",
+      settings: DEFAULT_AGENT_GENERATION_SETTINGS,
+    });
+    assert.equal(separate.sourceImagePolicy, "none");
+
+    const current = deriveAgentGenerationPlan({
+      prompt: "이 이미지 스타일 유지해서 다시 만들어줘",
+      settings: DEFAULT_AGENT_GENERATION_SETTINGS,
+    });
+    assert.equal(current.sourceImagePolicy, "current");
+
+    const video = deriveAgentGenerationPlan({
+      prompt: "방금 그 이미지를 10초 16:9 영상으로 만들어줘",
+      settings: DEFAULT_AGENT_GENERATION_SETTINGS,
+    });
+    assert.equal(video.mode, "video");
+    assert.equal(video.sourceImagePolicy, "auto");
+  });
+
+  it("infers source image policy for persisted plans missing the field", () => {
+    const plain = normalizeAgentGenerationPlan(
+      "make a quiet editorial poster",
+      { mode: "single", prompts: ["make a quiet editorial poster"], plannedVariants: 1, plannedParallelism: 1 },
+      DEFAULT_AGENT_GENERATION_SETTINGS,
+    );
+    assert.equal(plain.sourceImagePolicy, "none");
+
+    const current = normalizeAgentGenerationPlan(
+      "이 이미지 스타일 유지해서 다시 만들어줘",
+      { mode: "single", prompts: ["이 이미지 스타일 유지해서 다시 만들어줘"], plannedVariants: 1, plannedParallelism: 1 },
+      DEFAULT_AGENT_GENERATION_SETTINGS,
+    );
+    assert.equal(current.sourceImagePolicy, "current");
   });
 
   it("infers numeric Agent fanout requests up to the configured image limit", () => {

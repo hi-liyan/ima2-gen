@@ -16,6 +16,12 @@ describe("image model normalization", () => {
     assert.deepEqual(normalizeImageModel({}, "gpt-image-2"), { model: "gpt-image-2" });
   });
 
+  it("accepts GPT-5.6 rollout models", () => {
+    assert.deepEqual(normalizeImageModel({}, "gpt-5.6-sol"), { model: "gpt-5.6-sol" });
+    assert.deepEqual(normalizeImageModel({}, "gpt-5.6-terra"), { model: "gpt-5.6-terra" });
+    assert.deepEqual(normalizeImageModel({}, "gpt-5.6-luna"), { model: "gpt-5.6-luna" });
+  });
+
   it("rejects known unsupported OAuth models", () => {
     const result = normalizeImageModel({}, "gpt-5.3-codex-spark");
     assert.equal(result.code, "IMAGE_MODEL_UNSUPPORTED");

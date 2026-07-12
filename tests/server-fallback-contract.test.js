@@ -7,18 +7,41 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 
 function occupy(port) {
-  return new Promise((resolve) => {
-    const server = createServer().listen(port, "127.0.0.1", () => resolve(server));
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen({ port, host: "127.0.0.1", exclusive: true }, () => resolve(server));
   });
 }
 
-async function waitForAdvertise(path, timeoutMs = 8000) {
+async function assertPortOccupied(port) {
+  await new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.once("error", (err) => {
+      if (err?.code === "EADDRINUSE") resolve();
+      else reject(err);
+    });
+    probe.listen({ port, host: "127.0.0.1", exclusive: true }, () => {
+      probe.close(() => reject(new Error(`expected port ${port} to be occupied`)));
+    });
+  });
+}
+
+async function waitForAdvertise(path, predicate, timeoutMs = 8000) {
   const deadline = Date.now() + timeoutMs;
+  let lastInfo = null;
   while (Date.now() < deadline) {
-    if (existsSync(path)) return JSON.parse(readFileSync(path, "utf-8"));
+    if (existsSync(path)) {
+      try {
+        lastInfo = JSON.parse(readFileSync(path, "utf-8"));
+        if (predicate(lastInfo)) return lastInfo;
+      } catch {
+        // Another process may be replacing the advertisement; retry its final state.
+      }
+    }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  throw new Error("server advertisement did not appear");
+  throw new Error(`final server advertisement did not appear: ${JSON.stringify(lastInfo)}`);
 }
 
 test("server falls back when advertised localhost port is occupied", async (t) => {
@@ -28,6 +51,7 @@ test("server falls back when advertised localhost port is occupied", async (t) =
   }
   const preferred = 4700 + Math.floor(Math.random() * 300);
   const blocker = await occupy(preferred);
+  await assertPortOccupied(preferred);
   const home = mkdtempSync(join(tmpdir(), "ima2-server-fallback-"));
   const generated = mkdtempSync(join(tmpdir(), "ima2-server-fallback-generated-"));
   let child;
@@ -45,7 +69,10 @@ test("server falls back when advertised localhost port is occupied", async (t) =
       },
     });
     const advertisePath = join(home, "server.json");
-    const info = await waitForAdvertise(advertisePath);
+    const info = await waitForAdvertise(
+      advertisePath,
+      (candidate) => candidate?.backend?.actualPort !== preferred,
+    );
     assert.equal(info.backend.configuredPort, preferred);
     assert.notEqual(info.backend.actualPort, preferred, "should have fallen back to a different port");
     assert.ok(info.backend.actualPort > preferred, "fallback port should be higher than preferred");

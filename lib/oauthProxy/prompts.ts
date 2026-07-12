@@ -83,20 +83,42 @@ export const MULTIMODE_NO_SEARCH_DEVELOPER_PROMPT =
   "You are generating a multimode sequence. The selected value N is the maximum number of sequence outputs, not a visual subject count. You MUST create up to N separate image_generation_call outputs. First infer the user's intended sequence from the prompt. If the prompt explicitly asks for several images, steps, states, endings, or items one per image, map each requested unit to its own output up to N. Korean phrases such as '하나씩', '각각', '한 장씩', '이미지마다', and '네개를 그려줘' in a sequence context mean separate outputs, not four subjects inside one output. If the prompt uses arrows or ordered wording such as A -> B, generate the endpoint/state for A, then the endpoint/state for B, and continue in order up to N. Invoke the image_generation tool separately once per sequence output with a distinct stage-specific prompt. Each stage prompt must describe only that stage's single unit/state. Do not pass the same complete user prompt to every output when the user described a sequence. Do not include the whole list of sequence units inside any single image_generation prompt. Do not use words like all, four, 네개, collection, lineup, grid, sheet, or panels inside a stage prompt when the stage should contain one unit. Example: if the user asks for four different colored shapes one per image, call the tool four times: one image with only a red circle; one image with only a blue square; one image with only a green triangle; one image with only a yellow star. Do not satisfy this request with one image_generation_call. Never collapse multiple sequence outputs into one image. Do not create a collage. Do not create a grid. Do not create a contact sheet. Do not create a storyboard sheet. Do not put multiple panels inside one image. If you cannot complete all outputs, return as many separate image_generation_call outputs as possible. Stop after N image_generation_call outputs. Never respond with plain text only.\n\n" +
   VISIBLE_TEXT_LANGUAGE_POLICY;
 
+function sizeDirective(options: Record<string, unknown>): string {
+  const size = options.size as string | undefined;
+  if (!size || size === "auto") return "";
+  const m = /^(\d+)x(\d+)$/.exec(size.trim().toLowerCase());
+  if (!m) return `You MUST generate this image at exactly ${size} resolution.\n\n`;
+  const w = Number(m[1]);
+  const h = Number(m[2]);
+  // OAuth(Codex) backend honors aspect baked into the request; reinforcing the
+  // orientation (not just WxH) makes portrait/landscape more robust against the
+  // fidelity suffix. Verified by server E2E 2026-06-27. Square pixels are capped
+  // by the backend (~1.57M) but aspect is preserved.
+  const orient = w > h
+    ? " as a WIDE horizontal LANDSCAPE canvas (clearly wider than tall, never square or portrait)"
+    : w < h
+      ? " as a TALL vertical PORTRAIT canvas (clearly taller than wide, never square or landscape)"
+      : " as a SQUARE 1:1 canvas";
+  return `You MUST generate this image at exactly ${size} resolution${orient}.\n\n`;
+}
+
 export function buildUserTextPrompt(userPrompt: string | undefined, mode: string, options: Record<string, unknown> = {}) {
+  const prefix = sizeDirective(options);
   if (mode === "direct") {
-    return `Generate an image with this exact prompt, no modifications: ${userPrompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`;
+    return `${prefix}Generate an image with this exact prompt, no modifications: ${userPrompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`;
   }
   const researchSuffix = resolveWebSearchEnabled(options) ? RESEARCH_SUFFIX : "";
-  return `Generate an image: ${userPrompt}${researchSuffix}${AUTO_PROMPT_FIDELITY_SUFFIX}`;
+  return `${prefix}Generate an image: ${userPrompt}${researchSuffix}${AUTO_PROMPT_FIDELITY_SUFFIX}`;
 }
 
 export function buildMultimodeSequencePrompt(userPrompt: string, maxImages: number, options: Record<string, unknown> = {}) {
   const n = Math.max(1, Math.trunc(Number(maxImages) || 1));
+  const prefix = sizeDirective(options);
   const researchInstruction = resolveWebSearchEnabled(options)
     ? [`If factual visual accuracy is required and the prompt/context is not already sufficient for a stage, use one concise web_search call for references before generating that stage. If a stage is already visually sufficient, do not search or add clarifiers for that stage.`]
     : [];
   return [
+    ...(prefix ? [prefix.trim()] : []),
     `Create a multimode sequence with up to ${n} separate image_generation_call outputs.`,
     `The number ${n} is only the maximum sequence length. Do not add it to the visual prompt and do not treat it as a requested subject count unless the user's prompt itself asks for that many sequence units.`,
     `Infer the user's intended sequence and create one image_generation_call per sequence unit.`,
@@ -122,11 +144,12 @@ export function buildMultimodeSequencePrompt(userPrompt: string, maxImages: numb
 }
 
 export function buildEditTextPrompt(userPrompt: string | undefined, mode: string, options: Record<string, unknown> = {}) {
+  const prefix = sizeDirective(options);
   if (mode === "direct") {
-    return `Edit this image with this exact prompt, no modifications: ${userPrompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`;
+    return `${prefix}Edit this image with this exact prompt, no modifications: ${userPrompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`;
   }
   const researchSuffix = resolveWebSearchEnabled(options) ? RESEARCH_SUFFIX : "";
-  return `Edit this image: ${userPrompt}${researchSuffix}${AUTO_PROMPT_FIDELITY_SUFFIX}`;
+  return `${prefix}Edit this image: ${userPrompt}${researchSuffix}${AUTO_PROMPT_FIDELITY_SUFFIX}`;
 }
 
 export function buildEditResearchTextPrompt(userPrompt: string, mode: string) {

@@ -62,13 +62,15 @@ describe("Card News 42/43 editor and reopen contract", () => {
 
   it("exposes safe manifest download and richer set metadata", () => {
     const manifestStore = readSource("lib/cardNewsManifestStore.ts");
+    const cardNewsPath = readSource("lib/cardNewsPath.ts");
     const routes = readSource("routes/cardNews.ts");
     const cardNewsApi = readSource("ui/src/lib/cardNewsApi.ts");
     const api = readSource("ui/src/lib/api.ts");
     const types = readSource("ui/src/types.ts");
 
-    assert.match(manifestStore, /function assertSafeSetId/);
-    assert.match(manifestStore, /CARD_NEWS_SET_NOT_FOUND/);
+    assert.match(cardNewsPath, /function assertSafeSetId/);
+    assert.match(cardNewsPath, /CARD_NEWS_SET_NOT_FOUND/);
+    assert.match(manifestStore, /resolveCardNewsSetDir/);
     assert.match(manifestStore, /export async function readCardNewsManifest/);
     assert.match(manifestStore, /manifestUrl/);
     assert.match(manifestStore, /folderLabel/);

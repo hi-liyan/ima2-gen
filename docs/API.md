@@ -362,7 +362,7 @@ Generate a video via the Grok video provider. Returns Server-Sent Events on the 
 }
 ```
 
-**Models**: `grok-imagine-video` (default), `grok-imagine-video-1.5-preview`.
+**Models**: `grok-imagine-video` (default), `grok-imagine-video-1.5`. The legacy `grok-imagine-video-1.5-preview` string is accepted as a compatibility alias and normalized before the upstream request.
 
 **Mode** is auto-detected from reference inputs:
 
@@ -372,6 +372,8 @@ Generate a video via the Grok video provider. Returns Server-Sent Events on the 
 | 1 image (`sourceImage` or `sourceFilename`) | image-to-video | 1–15s |
 | 2–7 images (`referenceImages` / `referenceFilenames`) | reference-to-video | 1–10s |
 
+1080p is accepted for `grok-imagine-video-1.5` prompt-only text-to-video and image-to-video with one image/frame source, including `continueFromVideo` after the server extracts the parent video's last frame. Prompt-only 1.5 text-to-video uses the internal white-canvas image-to-video shim before the upstream request. 1.5 does not add Ref2V, V2V edit, or extension support.
+
 **Parameters**:
 
 | Field | Type | Default | Notes |
@@ -380,7 +382,7 @@ Generate a video via the Grok video provider. Returns Server-Sent Events on the 
 | `provider` | string | `"grok"` | `"grok"` or `"grok-api"` |
 | `model` | string | `grok-imagine-video` | Video model |
 | `duration` | integer | `5` | 1–15 seconds (clamped to 10 for reference-to-video) |
-| `resolution` | string | `"480p"` | `480p` or `720p` |
+| `resolution` | string | `"480p"` | `480p`, `720p`, or `1080p` (`1080p` uses 1.5 T2V canvas shim or I2V) |
 | `aspectRatio` | string | `"auto"` | 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3, auto |
 | `sourceImage` | string | — | Base64 image for image-to-video |
 | `sourceFilename` | string | — | Existing generated file for image-to-video |
@@ -459,7 +461,7 @@ Grok prompt surfaces used by video APIs:
 | `VIDEO_PROVIDER_UNSUPPORTED` | Provider is not `"grok"` |
 | `PROMPT_REQUIRED` | Empty or missing prompt |
 | `INVALID_GROK_VIDEO_MODEL` | Model not in valid set |
-| `INVALID_VIDEO_RESOLUTION` | Resolution not 480p or 720p |
+| `INVALID_VIDEO_RESOLUTION` | Resolution is not 480p/720p/1080p, or 1080p was requested outside `grok-imagine-video-1.5` prompt-only T2V / I2V |
 | `INVALID_VIDEO_ASPECT_RATIO` | Aspect ratio not in valid set |
 | `INVALID_VIDEO_DURATION` | Duration not 1–15 integer |
 | `GROK_VIDEO_REF_TOO_MANY` | More than 7 reference images |
@@ -493,7 +495,7 @@ Extend a video from its last frame. This is a blocking JSON endpoint that starts
 }
 ```
 
-`duration` must be an integer from 2 to 10 seconds. Edit and extension support `grok-imagine-video` only; `grok-imagine-video-1.5-preview` is not accepted for these endpoints.
+`duration` must be an integer from 2 to 10 seconds. Edit and extension support `grok-imagine-video` only; `grok-imagine-video-1.5` and its preview alias are not accepted for these endpoints.
 
 ### `GET /api/video/frame`
 
@@ -515,6 +517,12 @@ Analyze first and last frames from a generated `.mp4` using Grok 4.3 image under
 ```
 
 Remote URLs and `data:` inputs are intentionally rejected to avoid server-side URL fetching through `ffmpeg`.
+
+## Generation Request Log
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/generation-requests` | Returns `{ items: GenerationRequestLogEntry[] }` — the last 200 generation attempts (prompt, requested/succeeded flags, error). Surfaced in the web UI dev panel (`GenerationRequestLogPanel`); no CLI wrapper (#95). |
 
 ## History
 
@@ -560,6 +568,62 @@ X-Ima2-Tab-Id
 | `POST` | `/api/sessions/:id/style-sheet/extract` | Extract style fields from prompt/reference |
 
 Style-sheet extraction can require an API key/openai client. Image generation also supports `provider: "api"` through the shared Responses API image adapter when an API key is configured.
+
+## Prompt Library
+
+Backed by `routes/prompts.ts` and SQLite prompt tables in `lib/db.ts`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/prompts` | List prompts (`folderId`, `q`, `favoritesOnly`, pagination) |
+| `POST` | `/api/prompts` | Create prompt |
+| `GET` | `/api/prompts/:id` | Fetch one prompt |
+| `PATCH` | `/api/prompts/:id` | Update prompt fields |
+| `DELETE` | `/api/prompts/:id` | Delete prompt |
+| `POST` | `/api/prompts/:id/favorite` | Toggle favorite |
+| `POST` | `/api/prompts/import` | Legacy bulk import (JSON body) |
+| `GET` | `/api/prompts/export` | Export prompt library JSON |
+| `GET` | `/api/prompts/folders` | List folders |
+| `POST` | `/api/prompts/folders` | Create folder |
+| `PATCH` | `/api/prompts/folders/:id` | Rename folder |
+| `DELETE` | `/api/prompts/folders/:id` | Delete folder |
+
+## Prompt Import
+
+Preview/commit import flow for local files, GitHub folders, curated sources, and discovery review. Implemented in `routes/promptImport.ts`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/prompts/import/curated-sources` | List curated source registry entries |
+| `GET` | `/api/prompts/import/discovery` | List discovery review queue |
+| `POST` | `/api/prompts/import/discovery-search` | Search GitHub for prompt-pack candidates |
+| `POST` | `/api/prompts/import/discovery-review` | Approve/reject discovery candidate |
+| `POST` | `/api/prompts/import/curated-search` | Search indexed curated sources |
+| `POST` | `/api/prompts/import/curated-refresh` | Refresh curated index cache |
+| `POST` | `/api/prompts/import/folder-files` | List files in a GitHub folder |
+| `POST` | `/api/prompts/import/folder-preview` | Preview selected GitHub folder files |
+| `POST` | `/api/prompts/import/preview` | Preview local/GitHub import candidates |
+| `POST` | `/api/prompts/import/commit` | Commit selected candidates into the prompt library |
+
+## Card News (dev-gated)
+
+Registered only when `config.features.cardNews` is true (`routes/cardNews.ts`). Web UI requires `VITE_IMA2_CARD_NEWS=1` or `VITE_IMA2_DEV=1`; CLI uses `ima2 cardnews …`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/cardnews/image-templates` | List image templates |
+| `GET` | `/api/cardnews/image-templates/:templateId/preview` | Template preview image |
+| `GET` | `/api/cardnews/role-templates` | Built-in role templates |
+| `GET` | `/api/cardnews/sets` | List card-news sets |
+| `GET` | `/api/cardnews/sets/:setId` | Fetch one set |
+| `GET` | `/api/cardnews/sets/:setId/manifest` | Set manifest JSON |
+| `POST` | `/api/cardnews/draft` | Create planner draft |
+| `POST` | `/api/cardnews/generate` | Start card generation job |
+| `POST` | `/api/cardnews/jobs` | Create job record |
+| `GET` | `/api/cardnews/jobs/:jobId` | Poll job status |
+| `POST` | `/api/cardnews/jobs/:jobId/retry` | Retry failed job |
+| `POST` | `/api/cardnews/cards/:cardId/regenerate` | Regenerate one card |
+| `POST` | `/api/cardnews/export` | Export completed set assets |
 
 ## Common Error Codes
 
@@ -629,6 +693,28 @@ Keys saved via PUT are stored in `config.json` and hot-updated in the runtime co
 
 Thumbnails are also generated automatically on server startup for any media files that lack them.
 
+## Agent Mode
+
+Agent Mode is a conversational image workspace (web UI only — no CLI). All routes are under `/api/agent/*` and are backed by `routes/agent.ts` + `lib/agent*.ts`.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/agent/tools` | Slash-command and tool metadata |
+| `GET` | `/api/agent/sessions` | List sessions (`?limit=`) |
+| `POST` | `/api/agent/sessions` | Create session (`title`, `currentImage`, `webSearchEnabled`) → `201` |
+| `GET` | `/api/agent/sessions/:sessionId` | Fetch one session |
+| `PATCH` | `/api/agent/sessions/:sessionId` | Update title, `webSearchEnabled`, `generationSettings`, `currentImage`, locks |
+| `DELETE` | `/api/agent/sessions/:sessionId` | Delete session |
+| `POST` | `/api/agent/sessions/:sessionId/compact` | Session compaction |
+| `GET` | `/api/agent/sessions/:sessionId/manifest` | XML manifest export |
+| `POST` | `/api/agent/sessions/:sessionId/turns` | Synchronous turn (`prompt`, provider, quality, size, model, …) |
+| `GET` | `/api/agent/sessions/:sessionId/errors` | Recent errors (`?limit=`, default 10) |
+| `GET` | `/api/agent/sessions/:sessionId/queue` | Per-session queue items |
+| `POST` | `/api/agent/sessions/:sessionId/queue` | Enqueue async turn / slash command → `202` |
+| `GET` | `/api/agent/queue` | Global queue listing |
+| `POST` | `/api/agent/queue/:itemId/cancel` | Cancel queued item |
+| `POST` | `/api/agent/queue/:itemId/retry` | Retry failed item |
+
 ## Endpoint → CLI Mapping
 
 Most server routes under `/api/*` have a CLI wrapper. The exception is **Agent Mode** (`/api/agent/*`), which is server + web-UI-only and has no `ima2` subcommand. The prompt builder HTTP route (`POST /api/prompt-builder/chat`) is wrapped by `ima2 prompt build`. Use this table to find the command that calls a given endpoint. (See README.md "Client" section for full flag lists.)
@@ -665,7 +751,7 @@ Most server routes under `/api/*` have a CLI wrapper. The exception is **Agent M
 | `GET /api/events` (SSE multiplex) | Web UI only (persistent `EventSource`; no CLI wrapper) |
 | `GET /api/storage/status` / `POST /api/storage/open-generated-dir` | `ima2 storage status` / `ima2 storage open` |
 | `GET /api/billing` / `GET /api/providers` / `GET /api/oauth/status` / `GET /api/grok/status` | `ima2 billing` / `ima2 providers` / `ima2 oauth status` / `ima2 grok status` |
-| `GET /api/quota` | `ima2 billing` (includes Grok `usedUsd`/`limitUsd`) |
+| `GET /api/quota` | Web UI only (Grok quota bar in Settings) |
 | `POST /api/auth/switch` / `GET /api/auth/switch/:sessionId` | Web UI only (Settings > QuotaCard > Switch Account) |
 | `GET /api/health` | `ima2 ping` |
 | `GET /api/capabilities` | `ima2 capabilities` |

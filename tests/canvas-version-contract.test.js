@@ -43,7 +43,7 @@ describe("canvas version frontend contract", () => {
     assert.match(source, /canvasVersionItem\?\.filename/);
     assert.match(source, /updateCanvasVersion\(canvasVersionItem\.filename/);
     assert.match(source, /createCanvasVersion\(/);
-    assert.match(source, /const savedItem = withSourcePrompt\(result\.item, source\)/);
+    assert.match(source, /const savedItem = withSourcePrompt\(bakedResult\.item, source\)/);
     assert.match(source, /setCanvasVersionItem\(savedItem\)/);
   });
 

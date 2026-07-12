@@ -2,7 +2,7 @@ import { useState } from "react";
 import { usePromptBuilderStore, type PromptBuilderModel } from "../../store/promptBuilderStore";
 import { useI18n } from "../../i18n";
 
-const MODELS: PromptBuilderModel[] = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini"];
+const MODELS: PromptBuilderModel[] = ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
 
 export function PromptBuilderModelMenu() {
   const model = usePromptBuilderStore((s) => s.model);

@@ -221,14 +221,15 @@ export function buildGrokSearchPayload(prompt: string, plannerModel = "grok-4.3"
 export async function searchGrokVisualContext(
   prompt: string,
   ctx: RouteRuntimeContext,
-  options: { signal?: AbortSignal; requestId?: string; directApiKey?: string } = {},
+  options: { signal?: AbortSignal; requestId?: string; directApiKey?: string; plannerModel?: string } = {},
 ): Promise<GrokSearchResult> {
   const planner = getPlannerConfig(ctx);
-  const payload = buildGrokSearchPayload(prompt, planner.model);
+  const plannerModel = options.plannerModel || planner.model;
+  const payload = buildGrokSearchPayload(prompt, plannerModel);
   const { url, headers } = getGrokEndpoint(ctx, "/v1/responses", options.directApiKey);
   const { combinedSignal, timer } = withTimeoutSignal(options.signal, planner.timeoutMs);
 
-  logEvent("grok", "search:start", { requestId: options.requestId, plannerModel: planner.model, promptChars: prompt.length });
+  logEvent("grok", "search:start", { requestId: options.requestId, plannerModel, promptChars: prompt.length });
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -248,7 +249,7 @@ export async function searchGrokVisualContext(
 
     const summary = extractResponsesText(await res.json() as GrokResponsesResponse);
     if (!summary) throw grokError("Grok web search returned no research summary", 502, "GROK_SEARCH_EMPTY_RESPONSE");
-    logEvent("grok", "search:done", { requestId: options.requestId, plannerModel: planner.model, summaryChars: summary.length });
+    logEvent("grok", "search:done", { requestId: options.requestId, plannerModel, summaryChars: summary.length });
     return { summary };
   } catch (e: any) {
     clearTimeout(timer);
@@ -293,18 +294,20 @@ export async function planGrokImage(
     referenceCount?: number;
     references?: GrokReferenceImage[];
     directApiKey?: string;
+    plannerModel?: string;
   } = {},
 ): Promise<GrokImagePlan> {
   const imageModel = options.model || (ctx.config as any).grokProvider?.defaultImageModel || "grok-imagine-image";
   const planner = getPlannerConfig(ctx);
+  const plannerModel = options.plannerModel || planner.model;
   const sizeParams = mapSizeToGrokImageParams(options.size);
-  const search = await searchGrokVisualContext(prompt, ctx, { signal: options.signal, requestId: options.requestId, directApiKey: options.directApiKey });
+  const search = await searchGrokVisualContext(prompt, ctx, { signal: options.signal, requestId: options.requestId, directApiKey: options.directApiKey, plannerModel });
   const payload = buildGrokPlannerPayload(
     prompt,
     imageModel,
     options.size,
     sizeParams,
-    planner.model,
+    plannerModel,
     search.summary,
     options.references || options.referenceCount || 0,
   );
@@ -320,7 +323,7 @@ export async function planGrokImage(
   let httpStatus: number | undefined;
   let response: Record<string, unknown> = {};
 
-  logEvent("grok", "planner:start", { requestId: options.requestId, plannerModel: planner.model, imageModel, size: options.size });
+  logEvent("grok", "planner:start", { requestId: options.requestId, plannerModel, imageModel, size: options.size });
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -350,7 +353,7 @@ export async function planGrokImage(
     });
     logEvent("grok", "planner:done", {
       requestId: options.requestId,
-      plannerModel: planner.model,
+      plannerModel,
       imageModel,
       promptChars: plan.prompt.length,
       aspectRatio: sizeParams.aspect_ratio,
@@ -388,6 +391,7 @@ export async function generateViaGrok(
     webSearchCalls?: number;
     references?: GrokReferenceImage[];
     directApiKey?: string;
+    plannerModel?: string;
   } = {},
 ): Promise<GrokGenerateResult> {
   const model = options.model || (ctx.config as any).grokProvider?.defaultImageModel || "grok-imagine-image";

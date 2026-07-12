@@ -11,7 +11,7 @@ export const DEFAULT_AGENT_GENERATION_SETTINGS: AgentGenerationSettings = {
   size: "1024x1024",
   format: "png",
   moderation: "low",
-  reasoningEffort: "medium",
+  reasoningEffort: "none",
   webSearchEnabled: true,
   generationStrategy: "auto",
   variants: 1,

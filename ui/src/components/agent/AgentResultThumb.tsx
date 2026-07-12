@@ -15,7 +15,7 @@ export const AgentResultThumb = forwardRef<HTMLButtonElement, Props>(function Ag
   ref,
 ) {
   const { t } = useI18n();
-  const label = `${t("agent.selectImage")}: ${image.prompt ?? image.filename}`;
+  const label = `${t("agent.mediaSelect")}: ${image.prompt ?? image.filename}`;
   const className = `${compact ? "agent-result-thumb agent-result-thumb--compact" : "agent-result-thumb"}${selected ? " is-selected" : ""}`;
 
   return (
@@ -26,7 +26,7 @@ export const AgentResultThumb = forwardRef<HTMLButtonElement, Props>(function Ag
       aria-label={label}
       aria-current={selected ? "true" : undefined}
       onClick={() => onSelect(image.id)}
-      title={t("agent.selectImage")}
+      title={t("agent.mediaSelect")}
     >
       <AgentSafeImage
         src={image.thumbUrl ?? image.url}

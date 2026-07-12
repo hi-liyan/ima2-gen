@@ -17,6 +17,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 
@@ -50,8 +51,8 @@ describe("web search toggle contract", () => {
   });
 
   it("keeps server search on by default and removes web_search when off", () => {
-    const generate = readSource("routes/generate.ts");
-    const nodes = readSource("routes/nodes.ts");
+    const generate = (readSource("routes/generate.ts") + readSource("lib/generatePipeline.ts"));
+    const nodes = (readSource("routes/nodes.ts") + readSource("lib/nodeGeneration.ts") + readSource("lib/nodeValidation.ts"));
     const providerOptions = readSource("lib/providerOptions.ts");
     const oauth = readSource("lib/oauthProxy.ts");
     const responsesTools = readSource("lib/responsesTools.ts");
@@ -66,3 +67,4 @@ describe("web search toggle contract", () => {
     assert.match(responsesTools, /\.\.\(webSearchEnabled \? \[\{ type: "web_search" \}\] : \[\]\)/);
   });
 });
+

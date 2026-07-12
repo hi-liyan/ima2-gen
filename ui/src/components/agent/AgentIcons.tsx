@@ -42,6 +42,14 @@ export function MenuIcon(props: IconProps) {
   return <Svg {...props}><path d="M4 6h16" /><path d="M4 12h16" /><path d="M4 18h16" /></Svg>;
 }
 
+export function ArrowLeftIcon(props: IconProps) {
+  return <Svg {...props}><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></Svg>;
+}
+
+export function QueueIcon(props: IconProps) {
+  return <Svg {...props}><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><circle cx="3" cy="6" r="1" /><circle cx="3" cy="12" r="1" /><circle cx="3" cy="18" r="1" /></Svg>;
+}
+
 export function TrashIcon(props: IconProps) {
   return <Svg {...props}><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /></Svg>;
 }

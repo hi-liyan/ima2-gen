@@ -66,6 +66,7 @@ export function updateCanvasVersion(
     image: Blob;
     sourceFilename?: string | null;
     prompt?: string | null;
+    pixelEdited?: boolean;
   },
 ): Promise<{ item: GenerateItem }> {
   const qs = new URLSearchParams();
@@ -75,8 +76,30 @@ export function updateCanvasVersion(
     method: "PUT",
     headers: {
       "Content-Type": "image/png",
+      ...(payload.pixelEdited ? { "X-Ima2-Canvas-Pixel-Edited": "true" } : {}),
     },
     body: payload.image,
   });
 }
 
+export function recordCanvasAnnotationBake(
+  filename: string,
+  snapshot: SavedCanvasAnnotations,
+  annotationOnly: boolean,
+): Promise<{ item: GenerateItem }> {
+  return jsonFetch(`/api/canvas-versions/${encodeURIComponent(filename)}/annotation-bake`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ snapshot, annotationOnly }),
+  });
+}
+
+export function revertCanvasAnnotations(filename: string): Promise<{
+  item: GenerateItem;
+  snapshot: SavedCanvasAnnotations | null;
+  annotationOnly: boolean;
+}> {
+  return jsonFetch(`/api/canvas-versions/${encodeURIComponent(filename)}/revert-annotations`, {
+    method: "POST",
+  });
+}

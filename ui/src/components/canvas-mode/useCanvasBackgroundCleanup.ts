@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { createCanvasVersion } from "../../lib/api";
+import { createCanvasVersion, updateCanvasVersion } from "../../lib/api";
 import { imageUsesAlpha } from "../../lib/canvas/alphaDetect";
 import {
   floodFillMaskInto,
@@ -363,11 +363,18 @@ export function useCanvasBackgroundCleanup({
         imageElement: imageElementRef.current,
         mask: finalMask,
       });
-      const response = await createCanvasVersion({
-        sourceFilename: source.canvasSourceFilename ?? source.filename,
-        image: result.blob,
-        prompt: source.prompt,
-      });
+      const response = canvasDisplayImage?.canvasVersion && canvasDisplayImage.filename
+        ? await updateCanvasVersion(canvasDisplayImage.filename, {
+            sourceFilename: source.canvasSourceFilename ?? source.filename,
+            image: result.blob,
+            prompt: source.prompt,
+            pixelEdited: true,
+          })
+        : await createCanvasVersion({
+            sourceFilename: source.canvasSourceFilename ?? source.filename,
+            image: result.blob,
+            prompt: source.prompt,
+          });
       const savedItem = withSourcePrompt(response.item, source);
       lastMergedDataUrlRef.current = result.dataUrl;
       setCanvasVersionItem(savedItem);
@@ -385,7 +392,7 @@ export function useCanvasBackgroundCleanup({
     } finally {
       setIsBackgroundCleanupApplying(false);
     }
-  }, [applyMergedCanvasImage, attachCanvasVersionReference, backgroundCleanupBrushStrokes, backgroundCleanupTolerance, canvasSourceImageRef, currentImage, imageElementRef, lastMergedDataUrlRef, pushUndo, rebuildMasks, setCanvasSaveState, setCanvasVersionItem, showToast, t]);
+  }, [applyMergedCanvasImage, attachCanvasVersionReference, backgroundCleanupBrushStrokes, backgroundCleanupTolerance, canvasDisplayImage, canvasSourceImageRef, currentImage, imageElementRef, lastMergedDataUrlRef, pushUndo, rebuildMasks, setCanvasSaveState, setCanvasVersionItem, showToast, t]);
 
   const handleBackgroundCleanupEscape = useCallback((): boolean => {
     if (!isBackgroundCleanupActive) return false;

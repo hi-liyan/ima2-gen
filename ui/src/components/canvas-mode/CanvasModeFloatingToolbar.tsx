@@ -11,9 +11,11 @@ interface CanvasModeFloatingToolbarProps {
     isApplying: boolean;
     isExporting: boolean;
     isEditingWithMask: boolean;
+    canRevertAnnotations: boolean;
   };
   actions: {
     handleApplyCanvas: () => Promise<void>;
+    handleRevertAnnotations: () => Promise<void>;
     handleExportCanvas: () => Promise<void>;
     handleEditWithMask: () => Promise<void>;
     setExportBackground: (mode: CanvasExportBackground) => void;
@@ -39,6 +41,9 @@ export function CanvasModeFloatingToolbar({
       onToolChange={annotations.setTool}
       onClear={annotations.clear}
       onApply={() => void actions.handleApplyCanvas()}
+      onRevertAnnotations={canvasState.canRevertAnnotations
+        ? () => void actions.handleRevertAnnotations()
+        : undefined}
       onExport={() => void actions.handleExportCanvas()}
       onUndo={annotations.undo}
       onRedo={annotations.redo}

@@ -12,6 +12,9 @@ export const IMAGE_MODEL_OPTIONS: Array<{
   { value: "gpt-5.4-mini", shortLabel: "5.4m", fullLabelKey: "settings.imageModel.gpt54Mini" },
   { value: "gpt-5.4", shortLabel: "5.4", fullLabelKey: "settings.imageModel.gpt54" },
   { value: "gpt-5.5", shortLabel: "5.5", fullLabelKey: "settings.imageModel.gpt55" },
+  { value: "gpt-5.6-sol", shortLabel: "5.6s", fullLabelKey: "settings.imageModel.gpt56Sol" },
+  { value: "gpt-5.6-terra", shortLabel: "5.6t", fullLabelKey: "settings.imageModel.gpt56Terra" },
+  { value: "gpt-5.6-luna", shortLabel: "5.6l", fullLabelKey: "settings.imageModel.gpt56Luna" },
   { value: "gpt-image-2", shortLabel: "image2", fullLabelKey: "settings.imageModel.gptImage2", providerHint: "api" },
   { value: "grok-imagine-image", shortLabel: "grok", fullLabelKey: "settings.imageModel.grokImagine" },
   { value: "grok-imagine-image-quality", shortLabel: "grok+", fullLabelKey: "settings.imageModel.grokImagineQuality" },
@@ -75,13 +78,22 @@ export function getImageModelShortLabel(value: string | null | undefined, provid
 }
 
 // ── Grok video model (separate kind from image models) ───────────────────
+export const GROK_VIDEO_MODEL_BASE = "grok-imagine-video";
+export const GROK_VIDEO_MODEL_15 = "grok-imagine-video-1.5";
+export const GROK_VIDEO_MODEL_15_PREVIEW_ALIAS = "grok-imagine-video-1.5-preview";
+
 export const VIDEO_MODEL_OPTIONS: Array<{ value: VideoModel; shortLabel: string; fullLabelKey: string }> = [
-  { value: "grok-imagine-video", shortLabel: "grokv", fullLabelKey: "settings.videoModel.grokImagine" },
-  { value: "grok-imagine-video-1.5-preview", shortLabel: "grokv1.5", fullLabelKey: "settings.videoModel.grokImagine15" },
+  { value: GROK_VIDEO_MODEL_BASE, shortLabel: "grokv", fullLabelKey: "settings.videoModel.grokImagine" },
+  { value: GROK_VIDEO_MODEL_15, shortLabel: "grokv1.5", fullLabelKey: "settings.videoModel.grokImagine15" },
 ];
 
 export function isVideoModelValue(v: unknown): v is VideoModel {
-  return v === "grok-imagine-video" || v === "grok-imagine-video-1.5-preview";
+  return v === GROK_VIDEO_MODEL_BASE || v === GROK_VIDEO_MODEL_15 || v === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS;
+}
+
+export function normalizeVideoModelValue(v: unknown): VideoModel | false {
+  if (!isVideoModelValue(v)) return false;
+  return v === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS ? GROK_VIDEO_MODEL_15 : v;
 }
 
 export const MAX_REF2V_DURATION_UI = 10;
@@ -94,4 +106,9 @@ export function deriveVideoModeUI(refCount: number): "text-to-video" | "image-to
 
 export function clampVideoDurationUI(duration: number, mode: string): number {
   return mode === "reference-to-video" ? Math.min(duration, MAX_REF2V_DURATION_UI) : duration;
+}
+
+export function supportsVideoResolutionUI(model: string | false, resolution: string, mode: string): boolean {
+  if (resolution !== "1080p") return true;
+  return model === GROK_VIDEO_MODEL_15 && (mode === "text-to-video" || mode === "image-to-video");
 }

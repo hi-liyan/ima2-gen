@@ -46,6 +46,10 @@ export function GalleryModal() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sessionGroups, setSessionGroups] = useState<GallerySessionGroup[]>([]);
   const [loose, setLoose] = useState<GenerateItem[]>([]);
+  const [sessionGroupsLoading, setSessionGroupsLoading] = useState(false);
+  const [sessionGroupsError, setSessionGroupsError] = useState(false);
+  const [sessionGroupsTruncated, setSessionGroupsTruncated] = useState(false);
+  const [sessionGroupsRetry, setSessionGroupsRetry] = useState(0);
   const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null);
   const [storageDismissed, setStorageDismissed] = useState(() => {
     try {
@@ -112,6 +116,11 @@ export function GalleryModal() {
   useEffect(() => {
     if (!open || groupBy !== "session") return;
     let cancelled = false;
+    setSessionGroups([]);
+    setLoose([]);
+    setSessionGroupsLoading(true);
+    setSessionGroupsError(false);
+    setSessionGroupsTruncated(false);
     (async () => {
       try {
         const page = await getHistoryGrouped({
@@ -119,6 +128,7 @@ export function GalleryModal() {
           sessionId: galleryScope === "current-session" ? currentSessionId : undefined,
         });
         if (cancelled) return;
+        setSessionGroupsTruncated(page.nextCursor !== null || page.total >= 500);
         const toItem = (h: (typeof page.loose)[number]): GenerateItem => {
           const k = h.kind;
           const narrowedKind: GenerateItem["kind"] =
@@ -135,14 +145,27 @@ export function GalleryModal() {
             videoSeries: h.videoSeries ?? null,
             videoContinuity: h.videoContinuity ?? null,
             prompt: h.prompt ?? undefined,
+            userPrompt: h.userPrompt ?? null,
+            revisedPrompt: h.revisedPrompt ?? null,
+            promptMode: h.promptMode ?? null,
+            composerPrompt: h.composerPrompt ?? null,
+            composerInsertedPrompts: h.composerInsertedPrompts ?? null,
             size: h.size ?? undefined,
             quality: h.quality ?? undefined,
+            format: h.format,
+            moderation: h.moderation ?? undefined,
             model: h.model ?? undefined,
+            reasoningEffort: h.reasoningEffort as GenerateItem["reasoningEffort"],
             provider: h.provider,
+            providerUrl: h.providerUrl ?? null,
+            usage: h.usage as GenerateItem["usage"],
+            elapsed: h.elapsed ?? undefined,
             createdAt: h.createdAt,
             sessionId: h.sessionId ?? null,
             nodeId: h.nodeId ?? null,
+            parentNodeId: h.parentNodeId ?? null,
             clientNodeId: h.clientNodeId ?? null,
+            requestId: h.requestId ?? null,
             kind: narrowedKind,
             setId: h.setId ?? null,
             cardId: h.cardId ?? null,
@@ -150,6 +173,13 @@ export function GalleryModal() {
             headline: h.headline ?? null,
             body: h.body ?? null,
             cards: h.cards,
+            refsCount: h.refsCount ?? 0,
+            webSearchCalls: h.webSearchCalls ?? 0,
+            sequenceId: h.sequenceId ?? null,
+            sequenceIndex: h.sequenceIndex ?? null,
+            sequenceTotalRequested: h.sequenceTotalRequested ?? null,
+            sequenceTotalReturned: h.sequenceTotalReturned ?? null,
+            sequenceStatus: h.sequenceStatus ?? null,
             isFavorite: h.isFavorite ?? false,
           };
         };
@@ -164,13 +194,15 @@ export function GalleryModal() {
         );
         setLoose(uniqueGalleryItems(page.loose.filter(isGalleryVisibleItem).map(toItem)));
       } catch {
-        // Fallback: use current history only.
+        if (!cancelled) setSessionGroupsError(true);
+      } finally {
+        if (!cancelled) setSessionGroupsLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [open, groupBy, galleryScope, currentSessionId]);
+  }, [open, groupBy, galleryScope, currentSessionId, sessionGroupsRetry]);
 
   useEffect(() => {
     if (!open || groupBy === "session" || !favoritesOnly) return;
@@ -426,7 +458,21 @@ export function GalleryModal() {
           }}
         >
           {showSessions ? (
-            <>
+            sessionGroupsLoading ? (
+              <div className="gallery__empty">{t("gallery.sessionLoading")}</div>
+            ) : sessionGroupsError ? (
+              <div className="gallery__empty" role="alert">
+                <span>{t("gallery.sessionLoadFailed")}</span>
+                <button type="button" onClick={() => setSessionGroupsRetry((value) => value + 1)}>
+                  {t("gallery.retry")}
+                </button>
+              </div>
+            ) : <>
+              {sessionGroupsTruncated ? (
+                <div className="gallery__limit-notice" role="status">
+                  {t("gallery.sessionLimitNotice", { count: 500 })}
+                </div>
+              ) : null}
               <GallerySessionGroups
                 groups={visibleSessionGroups}
                 loose={visibleLoose}

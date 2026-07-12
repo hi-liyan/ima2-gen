@@ -9,8 +9,10 @@ import LocalAndOAuth from '../../components/LocalAndOAuth.astro';
 import InstallFooter from '../../components/InstallFooter.astro';
 import FAQ from '../../components/FAQ.astro';
 import SiteFooter from '../../components/SiteFooter.astro';
+import Marquee from '../../components/Marquee.astro';
 
 const lang = 'ko' as const;
+const marqueeItems = ['100% LOCAL GALLERY', 'NO API KEY NEEDED', 'IMAGE + VIDEO', 'NODE BRANCHING', 'CANVAS MODE', 'AGENT SKILLS', 'OPEN SOURCE · MIT', 'CHATGPT OAUTH', 'GROK VIDEO'];
 ---
 
 <Base lang={lang}>
@@ -21,6 +23,7 @@ const lang = 'ko' as const;
     <LatestCapabilities lang={lang} />
     <WhyBranch lang={lang} />
     <LocalAndOAuth lang={lang} />
+    <Marquee items={marqueeItems} angle={2} />
     <InstallFooter lang={lang} />
     <FAQ lang={lang} />
   </main>

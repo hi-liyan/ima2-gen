@@ -57,7 +57,7 @@ const d = (slug: string) => docsPath(import.meta.env.BASE_URL, 'ko', slug);
       <tr><td><code>grok-imagine-image</code></td><td>기본 Grok 이미지 모델.</td></tr>
       <tr><td><code>grok-imagine-image-quality</code></td><td>고품질 Grok 이미지 모델. Grok Node high quality 요청에서도 선택됩니다.</td></tr>
       <tr><td><code>grok-imagine-video</code></td><td>기본 Grok 비디오 모델 (T2V/I2V).</td></tr>
-      <tr><td><code>grok-imagine-video-1.5-preview</code></td><td>개선된 품질의 프리뷰 Grok 비디오 모델.</td></tr>
+      <tr><td><code>grok-imagine-video-1.5</code></td><td>단일 이미지/프레임 I2V와 지원 시 1080p에 쓰는 정식 Grok Video 1.5 모델. 기존 <code>grok-imagine-video-1.5-preview</code> 값은 alias로 받습니다.</td></tr>
       <tr><td><code>nano-banana-2</code></td><td>Gemini 이미지 모델(Flash). <code>agy</code> 경로는 1024×1024 고정. <code>gemini-api</code> 경로는 512px–4K·가변 화면비 지원.</td></tr>
       <tr><td><code>nano-banana-pro</code></td><td>Gemini Pro 이미지 모델. <code>gemini-api</code> 전용. 1K–4K 해상도, 10개 화면비 지원.</td></tr>
     </tbody>
@@ -87,9 +87,12 @@ const d = (slug: string) => docsPath(import.meta.env.BASE_URL, 'ko', slug);
   <h2>Grok 비디오</h2>
   <p>
     Grok 비디오 생성은 <code>grok-imagine-video</code>(기본) 또는
-    <code>grok-imagine-video-1.5-preview</code>를 사용합니다. 세 가지 모드가 레퍼런스 수에서 자동
+    정식 <code>grok-imagine-video-1.5</code>를 사용합니다. 기존
+    <code>grok-imagine-video-1.5-preview</code> 값은 호환 alias로만 받습니다. 세 가지 모드가 레퍼런스 수에서 자동
     감지됩니다: text-to-video (0개), image-to-video (1개), reference-to-video (2–7개, 최대 10초).
-    컨트롤: 길이(1–15초), 해상도(480p, 720p), 화면비. 비디오 설정 또는 CLI
+    컨트롤: 길이(1–15초), 해상도(480p, 720p, 1.5 단일 이미지/프레임 I2V의 1080p), 화면비.
+    1.5는 Ref2V, V2V edit, extension 지원을 추가하지 않으므로 해당 경로는 기본 모델만 사용합니다.
+    비디오 설정 또는 CLI
     <code>--planner-model</code>로 플래너 모델을 고를 수 있습니다. 엔드포인트
     <code>POST /api/video/generate</code>는 SSE 이벤트를 스트리밍합니다: planning → submitted →
     progress → done. CLI: <code>ima2 video "prompt" --duration 5 --resolution 720p</code>.

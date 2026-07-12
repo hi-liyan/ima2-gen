@@ -45,12 +45,18 @@ const faviconHref = `${base}/favicon.svg`;
 
     <link rel="icon" type="image/svg+xml" href={faviconHref} />
 
+    <link rel="preconnect" href="https://api.fontshare.com" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=clash-display@600,700&f[]=satoshi@400,500,700&display=swap" />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
     />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css" />
+
+    <script is:inline>document.documentElement.classList.add('js');</script>
 
     <script is:inline>
       // Language detection — runs before paint to minimize FOUC.
@@ -94,5 +100,28 @@ const faviconHref = `${base}/favicon.svg`;
   </head>
   <body>
     <slot />
+    <script is:inline>
+      (function () {
+        var reveals = Array.prototype.slice.call(document.querySelectorAll('.reveal'));
+        var visible = function (el) {
+          var rect = el.getBoundingClientRect();
+          return rect.bottom >= 0 && rect.top <= window.innerHeight;
+        };
+        reveals.forEach(function (el) { if (visible(el)) el.classList.add('in'); });
+        if (!('IntersectionObserver' in window)) {
+          reveals.forEach(function (el) { el.classList.add('in'); });
+          return;
+        }
+        var observer = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('in');
+              observer.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.15 });
+        reveals.forEach(function (el) { if (!el.classList.contains('in')) observer.observe(el); });
+      })();
+    </script>
   </body>
 </html>

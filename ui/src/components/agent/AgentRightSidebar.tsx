@@ -49,17 +49,22 @@ export function AgentRightSidebar({
   onRetryQueue,
 }: Props) {
   const { t } = useI18n();
+  const panelProps = (tab: AgentSidebarTab) => ({
+    id: `agent-sidebar-panel-${tab}`,
+    role: "tabpanel" as const,
+    "aria-labelledby": `agent-sidebar-tab-${tab}`,
+  });
 
   return (
     <aside className="agent-right-sidebar">
       <AgentSidebarTabs activeTab={sidebarTab} onChange={onSidebarTabChange} />
       {sidebarTab === "image" ? (
-        <AgentImagePane currentImage={currentImage} images={images} activeTab={contextTab} onTabChange={onContextTabChange} onImageSelect={onImageSelect} />
+        <div {...panelProps("image")} className="agent-sidebar-panel"><AgentImagePane currentImage={currentImage} images={images} activeTab={contextTab} onTabChange={onContextTabChange} onImageSelect={onImageSelect} /></div>
       ) : null}
-      {sidebarTab === "library" ? <AgentPromptLibraryPanel mode="library" onInsert={onInsertPrompt} /> : null}
-      {sidebarTab === "forms" ? <AgentFormTemplatePanel onInsert={onInsertPrompt} /> : null}
+      {sidebarTab === "library" ? <div {...panelProps("library")} className="agent-sidebar-panel"><AgentPromptLibraryPanel mode="library" onInsert={onInsertPrompt} /></div> : null}
+      {sidebarTab === "forms" ? <div {...panelProps("forms")} className="agent-sidebar-panel"><AgentFormTemplatePanel onInsert={onInsertPrompt} /></div> : null}
       {sidebarTab === "quality" ? (
-        <section className="agent-sidebar-section" aria-label={t("agent.quality")}>
+        <section {...panelProps("quality")} className="agent-sidebar-panel agent-sidebar-section" aria-label={t("agent.quality")}>
           <header>
             <div>
               <span>{t("agent.quality")}</span>
@@ -70,7 +75,7 @@ export function AgentRightSidebar({
         </section>
       ) : null}
       {sidebarTab === "model" ? (
-        <section className="agent-sidebar-section" aria-label={t("agent.modelSettings")}>
+        <section {...panelProps("model")} className="agent-sidebar-panel agent-sidebar-section" aria-label={t("agent.modelSettings")}>
           <header>
             <div>
               <span>{t("agent.modelSettings")}</span>
@@ -81,7 +86,7 @@ export function AgentRightSidebar({
         </section>
       ) : null}
       {sidebarTab === "queue" ? (
-        <AgentQueuePanel items={queueItems} summary={runSummary} onCancel={onCancelQueue} onRetry={onRetryQueue} />
+        <div {...panelProps("queue")} className="agent-sidebar-panel"><AgentQueuePanel items={queueItems} summary={runSummary} onCancel={onCancelQueue} onRetry={onRetryQueue} /></div>
       ) : null}
     </aside>
   );

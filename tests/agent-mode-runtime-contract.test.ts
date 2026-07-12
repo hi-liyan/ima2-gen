@@ -2,7 +2,7 @@ import { after, afterEach, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import sharp from "sharp";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -12,6 +12,9 @@ process.env.IMA2_DB_PATH = join(TEST_DIR, "sessions.db");
 
 const { registerAgentRoutes } = await import("../routes/agent.ts");
 const { isRuntimeRestartableError } = await import("../lib/agentRuntime.ts");
+const { runAgentVideoGeneration } = await import("../lib/agentImageVideoGen.ts");
+const { createAgentSession } = await import("../lib/agentStore.ts");
+const { config } = await import("../config.ts");
 const db = await import("../lib/db.ts");
 const originalFetch = globalThis.fetch;
 
@@ -48,7 +51,11 @@ async function pngB64() {
   return buffer.toString("base64");
 }
 
-async function withApp(fn: (baseUrl: string) => Promise<void>) {
+function fakeMp4Bytes() {
+  return Buffer.from([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
+}
+
+async function withApp(fn: (baseUrl: string, generatedDir: string) => Promise<void>) {
   const generatedDir = join(TEST_DIR, `generated-${Date.now()}`);
   const app = express();
   app.use(express.json({ limit: "8mb" }));
@@ -65,7 +72,7 @@ async function withApp(fn: (baseUrl: string) => Promise<void>) {
   });
   const addr = server.address() as import("node:net").AddressInfo;
   try {
-    await fn(`http://127.0.0.1:${addr.port}`);
+    await fn(`http://127.0.0.1:${addr.port}`, generatedDir);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
   }
@@ -93,14 +100,26 @@ describe("Agent Mode runtime contract", () => {
   it("exposes only ima2 image-agent tools", async () => {
     await withApp(async (baseUrl) => {
       const res = await fetch(`${baseUrl}/api/agent/tools`);
-      assert.deepEqual(await res.json(), {
-        tools: ["ima2.get_image_context", "ima2.web_search", "ima2.generate_image", "ima2.generate_video"],
-      });
+      const payload = await res.json() as { tools: string[]; manifest: Array<{ name: string; description: string; parameters: unknown }> };
+      assert.deepEqual(payload.tools, [
+        "ima2.get_image_context",
+        "ima2.web_search",
+        "ima2.generate_image",
+        "ima2.generate_video",
+        "ima2.get_generation_errors",
+      ]);
+      assert.deepEqual(payload.manifest.map((entry) => entry.name), payload.tools);
+      for (const entry of payload.manifest) {
+        assert.equal(typeof entry.description, "string");
+        assert.ok(entry.parameters && typeof entry.parameters === "object");
+      }
     });
   });
 
   it("keeps the image context manifest across compact/resume", async () => {
-    await withApp(async (baseUrl) => {
+    await withApp(async (baseUrl, generatedDir) => {
+      mkdirSync(generatedDir, { recursive: true });
+      writeFileSync(join(generatedDir, "seed.png"), Buffer.from(await pngB64(), "base64"));
       const created = await createSession(baseUrl);
       assert.match(created.manifest, /img_seed/);
       await fetch(`${baseUrl}/api/agent/sessions/${created.selectedSessionId}`, {
@@ -161,10 +180,10 @@ describe("Agent Mode runtime contract", () => {
       assert.ok(turns.some((turn) => turn.text.includes("ima2.get_image_context")));
       const assistantImageTurn = turns.find((turn) => turn.role === "assistant" && turn.imageIds?.length);
       assert.ok(assistantImageTurn);
-      const modelTextIndex = assistantImageTurn.text.indexOf("Use a crisp frontal composition.");
-      const artifactTextIndex = assistantImageTurn.text.indexOf("Generated 1 image artifact.");
-      assert.ok(modelTextIndex >= 0);
-      assert.ok(artifactTextIndex > modelTextIndex);
+      // Prose-first contract: when the model returned text, the assistant turn
+      // reads like a normal chat reply — no mechanical artifact summary.
+      assert.ok(assistantImageTurn.text.includes("Use a crisp frontal composition."));
+      assert.ok(!assistantImageTurn.text.includes("Generated 1 image artifact."));
     });
   });
 
@@ -212,7 +231,7 @@ describe("Agent Mode runtime contract", () => {
         body: JSON.stringify({
           prompt: "make a Grok agent poster",
           provider: "grok",
-          model: "grok-imagine-image",
+          model: "grok-4.3",
           quality: "high",
           webSearchEnabled: false,
         }),
@@ -228,9 +247,185 @@ describe("Agent Mode runtime contract", () => {
       assert.equal(calls.filter((call) => call.url.endsWith("/v1/responses")).length, 1);
       assert.equal(calls.filter((call) => call.url.endsWith("/v1/chat/completions")).length, 1);
       assert.equal(calls.filter((call) => call.url.endsWith("/v1/images/generations")).length, 1);
+      assert.equal(calls.filter((call) => call.url.endsWith("/v1/images/edits")).length, 0);
       assert.equal(calls.find((call) => call.url.endsWith("/v1/images/generations"))?.body.model, "grok-imagine-image-quality");
+      assert.equal(calls.find((call) => call.url.endsWith("/v1/images/generations"))?.body.model === "grok-4.3", false);
       assert.match(calls.find((call) => call.url.endsWith("/v1/chat/completions"))?.body.messages[1].content[0].text, /English only/);
     });
+  });
+
+  it("routes Agent 1080p I2V video through Grok Video 1.5 and records sidecar metadata", async () => {
+    const generatedDir = join(TEST_DIR, `generated-video-${Date.now()}`);
+    mkdirSync(generatedDir, { recursive: true });
+    writeFileSync(join(generatedDir, "seed.png"), Buffer.from(await pngB64(), "base64"));
+    const session = createAgentSession({
+      title: "agent 1080p video",
+      currentImage: {
+        id: "img_video_seed",
+        filename: "seed.png",
+        url: "/generated/seed.png",
+        prompt: "seed image",
+      },
+    });
+    const starts: any[] = [];
+    globalThis.fetch = async (url, init) => {
+      const href = String(url);
+      if (href.includes("/v1/responses")) {
+        return Response.json({ output: [{ type: "message", content: [{ type: "text", text: "video context" }] }] });
+      }
+      if (href.includes("/v1/chat/completions")) {
+        return Response.json({
+          choices: [{
+            message: {
+              tool_calls: [{
+                type: "function",
+                function: { name: "generate_video", arguments: JSON.stringify({ prompt: "Agent 1080p I2V prompt." }) },
+              }],
+            },
+          }],
+        });
+      }
+      if (href.includes("/v1/videos/generations")) {
+        starts.push(JSON.parse(String(init?.body || "{}")));
+        return Response.json({ request_id: "vid-agent-1080" });
+      }
+      if (href.includes("/v1/videos/vid-agent-1080")) {
+        return Response.json({
+          status: "done",
+          progress: 100,
+          video: { url: "https://vidgen.example/agent-1080.mp4", duration: 5, respect_moderation: true },
+          usage: { cost_in_usd_ticks: 1000000000 },
+        });
+      }
+      if (href.includes("vidgen.example")) {
+        return new Response(fakeMp4Bytes(), { headers: { "Content-Type": "video/mp4" } });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await runAgentVideoGeneration(
+      {
+        rootDir: process.cwd(),
+        packageVersion: "test",
+        config: {
+          ...config,
+          storage: { ...config.storage, generatedDir },
+          grokProvider: {
+            ...config.grokProvider,
+            proxyHost: "127.0.0.1",
+            proxyPort: 18645,
+            videoPollIntervalMs: 1,
+            videoStartTimeoutMs: 5000,
+            videoTimeoutMs: 30000,
+            videoDownloadTimeoutMs: 5000,
+            plannerTimeoutMs: 5000,
+          },
+        },
+      } as any,
+      session.id,
+      "animate the seed image in 1080p",
+      {
+        skipUserTurn: true,
+        videoParams: { duration: 5, resolution: "1080p", aspectRatio: "16:9" },
+        requestId: "agent_video_1080p",
+      },
+    );
+
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].model, "grok-imagine-video-1.5");
+    assert.equal(starts[0].resolution, "1080p");
+    assert.ok(starts[0].image?.url?.startsWith("data:image/"));
+    const sidecarName = readdirSync(generatedDir).find((name) => name.endsWith("_agent.mp4.json"));
+    assert.ok(sidecarName);
+    const sidecar = JSON.parse(readFileSync(join(generatedDir, sidecarName), "utf8"));
+    assert.equal(sidecar.model, "grok-imagine-video-1.5");
+    assert.equal(sidecar.requestedModel, "grok-imagine-video-1.5");
+    assert.equal(sidecar.effectiveModel, "grok-imagine-video-1.5");
+    assert.equal(sidecar.modelFallback, null);
+    assert.equal(sidecar.video.resolution, "1080p");
+    assert.equal(sidecar.video.requestedModel, "grok-imagine-video-1.5");
+    assert.equal(sidecar.video.effectiveModel, "grok-imagine-video-1.5");
+  });
+
+  it("routes Agent prompt-only 1080p video through Grok Video 1.5 canvas shim", async () => {
+    const generatedDir = join(TEST_DIR, `generated-video-t2v-${Date.now()}`);
+    mkdirSync(generatedDir, { recursive: true });
+    const session = createAgentSession({ title: "agent 1080p t2v" });
+    const starts: any[] = [];
+    globalThis.fetch = async (url, init) => {
+      const href = String(url);
+      if (href.includes("/v1/responses")) {
+        return Response.json({ output: [{ type: "message", content: [{ type: "text", text: "video context" }] }] });
+      }
+      if (href.includes("/v1/chat/completions")) {
+        return Response.json({
+          choices: [{
+            message: {
+              tool_calls: [{
+                type: "function",
+                function: { name: "generate_video", arguments: JSON.stringify({ prompt: "Agent 1080p T2V prompt." }) },
+              }],
+            },
+          }],
+        });
+      }
+      if (href.includes("/v1/videos/generations")) {
+        starts.push(JSON.parse(String(init?.body || "{}")));
+        return Response.json({ request_id: "vid-agent-1080-t2v" });
+      }
+      if (href.includes("/v1/videos/vid-agent-1080-t2v")) {
+        return Response.json({
+          status: "done",
+          progress: 100,
+          video: { url: "https://vidgen.example/agent-1080-t2v.mp4", duration: 5, respect_moderation: true },
+          usage: { cost_in_usd_ticks: 1000000000 },
+        });
+      }
+      if (href.includes("vidgen.example")) {
+        return new Response(fakeMp4Bytes(), { headers: { "Content-Type": "video/mp4" } });
+      }
+      throw new Error(`unexpected fetch: ${href}`);
+    };
+
+    await runAgentVideoGeneration(
+      {
+        rootDir: process.cwd(),
+        packageVersion: "test",
+        config: {
+          ...config,
+          storage: { ...config.storage, generatedDir },
+          grokProvider: {
+            ...config.grokProvider,
+            proxyHost: "127.0.0.1",
+            proxyPort: 18645,
+            videoPollIntervalMs: 1,
+            videoStartTimeoutMs: 5000,
+            videoTimeoutMs: 30000,
+            videoDownloadTimeoutMs: 5000,
+            plannerTimeoutMs: 5000,
+          },
+        },
+      } as any,
+      session.id,
+      "make a new 1080p video",
+      {
+        skipUserTurn: true,
+        videoParams: { duration: 5, resolution: "1080p", aspectRatio: "16:9" },
+        requestId: "agent_video_1080p_t2v",
+      },
+    );
+
+    assert.equal(starts.length, 1);
+    assert.equal(starts[0].model, "grok-imagine-video-1.5");
+    assert.equal(starts[0].resolution, "1080p");
+    assert.ok(starts[0].image?.url?.startsWith("data:image/png;base64,"));
+    assert.match(starts[0].prompt, /blank white canvas.*technical placeholder/);
+    const sidecarName = readdirSync(generatedDir).find((name) => name.endsWith("_agent.mp4.json"));
+    assert.ok(sidecarName);
+    const sidecar = JSON.parse(readFileSync(join(generatedDir, sidecarName), "utf8"));
+    assert.equal(sidecar.video.mode, "text-to-video");
+    assert.equal(sidecar.video.resolution, "1080p");
+    assert.equal(sidecar.video.requestedModel, "grok-imagine-video-1.5");
   });
 
   it("persists selected Agent image focus and rejects cross-session image ids", async () => {
@@ -257,7 +452,7 @@ describe("Agent Mode runtime contract", () => {
         currentImageId: string;
         imagesById: Record<string, { id: string }>;
         imageIdsBySession: Record<string, string[]>;
-        turnsBySession: Record<string, Array<{ text: string; imageIds?: string[] }>>;
+        turnsBySession: Record<string, Array<{ role: string; text: string; imageIds?: string[] }>>;
       };
       const turns = generatedBody.turnsBySession[created.selectedSessionId];
 
@@ -265,7 +460,11 @@ describe("Agent Mode runtime contract", () => {
       assert.notEqual(generatedBody.currentImageId, "img_seed");
       assert.ok(generatedBody.imageIdsBySession[created.selectedSessionId].includes("img_seed"));
       assert.equal(generatedBody.imageIdsBySession[created.selectedSessionId].length, 2);
-      assert.ok(turns.some((turn) => turn.text.includes("Generated 1 image artifact.")));
+      const assistantImageTurn = turns.find((turn) => turn.role === "assistant" && turn.imageIds?.includes(generatedBody.currentImageId));
+      assert.ok(assistantImageTurn);
+      assert.ok(!assistantImageTurn.text.includes("Generated 1 image artifact."));
+      assert.ok(!assistantImageTurn.text.includes("Single-image plan completed."));
+      assert.equal(assistantImageTurn.text, "Done - I generated the image.");
       assert.ok(turns.some((turn) => turn.imageIds?.includes(generatedBody.currentImageId)));
 
       const selected = await fetch(`${baseUrl}/api/agent/sessions/${created.selectedSessionId}`, {
@@ -287,6 +486,36 @@ describe("Agent Mode runtime contract", () => {
       const rejectedBody = await rejected.json() as { code: string };
       assert.equal(rejected.status, 404);
       assert.equal(rejectedBody.code, "AGENT_IMAGE_NOT_FOUND");
+    });
+  });
+
+  it("imports a patched current image into an existing Agent session", async () => {
+    await withApp(async (baseUrl) => {
+      const created = await createSession(baseUrl);
+      const patched = await fetch(`${baseUrl}/api/agent/sessions/${created.selectedSessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentImage: {
+            id: "img_pasted",
+            filename: "pasted.png",
+            url: "/generated/pasted.png",
+            prompt: "pasted clipboard image",
+          },
+        }),
+      });
+      const body = await patched.json() as {
+        currentImageId: string;
+        imageIdsBySession: Record<string, string[]>;
+        manifest: string;
+      };
+
+      assert.equal(patched.status, 200);
+      assert.equal(body.currentImageId, "img_pasted");
+      assert.ok(body.imageIdsBySession[created.selectedSessionId].includes("img_seed"));
+      assert.ok(body.imageIdsBySession[created.selectedSessionId].includes("img_pasted"));
+      assert.match(body.manifest, /id: img_pasted/);
+      assert.match(body.manifest, /pasted clipboard image/);
     });
   });
 

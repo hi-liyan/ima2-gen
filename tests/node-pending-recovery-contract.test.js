@@ -8,10 +8,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const storePath = join(__dirname, "..", "ui", "src", "store", "useAppStore.ts");
 const historyPath = join(__dirname, "..", "lib", "historyList.ts");
 const nodesRoutePath = join(__dirname, "..", "routes", "nodes.ts");
+const nodeGenerationPath = join(__dirname, "..", "lib", "nodeGeneration.ts");
 
 const storeSrc = readStoreBundle();
 const historySrc = await readFile(historyPath, "utf8");
-const nodesRouteSrc = await readFile(nodesRoutePath, "utf8");
+const nodesRouteSrc =
+  (await readFile(nodesRoutePath, "utf8")) +
+  (await readFile(nodeGenerationPath, "utf8"));
 
 assert.ok(
   storeSrc.includes("pendingRequestId: flightId") &&

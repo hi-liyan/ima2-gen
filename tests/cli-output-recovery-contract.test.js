@@ -99,7 +99,7 @@ describe("cli-output-recovery-contract: recover-output.ts exports", () => {
   const src = readSrc("bin/lib/recover-output.ts");
   const historyRoute = readSrc("routes/history.ts");
   const editRoute = readSrc("routes/edit.ts");
-  const multimodeRoute = readSrc("routes/multimode.ts");
+  const multimodeRoute = (readSrc("routes/multimode.ts") + readSrc("lib/multimodePipeline.ts"));
 
   it("exports createCliRequestId", () => {
     assert.match(src, /export function createCliRequestId/);
@@ -152,3 +152,4 @@ describe("cli-output-recovery-contract: recover-output.ts exports", () => {
     assert.match(multimodeRoute, /filenames: images\.map\(\(image\) => image\.filename\)/);
   });
 });
+

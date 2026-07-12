@@ -18,6 +18,8 @@ export function AgentSidebarTabs({ activeTab, onChange }: Props) {
           key={tab}
           type="button"
           role="tab"
+          id={`agent-sidebar-tab-${tab}`}
+          aria-controls={`agent-sidebar-panel-${tab}`}
           className={activeTab === tab ? "active" : ""}
           aria-selected={activeTab === tab}
           onClick={() => onChange(tab)}

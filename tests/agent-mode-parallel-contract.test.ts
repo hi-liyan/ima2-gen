@@ -58,6 +58,7 @@ async function withApp(fn: (baseUrl: string) => Promise<void>) {
     config: {
       storage: { generatedDir },
       log: { level: "silent" },
+      agentPlanner: { enabled: false },
     },
     packageVersion: "test",
   });

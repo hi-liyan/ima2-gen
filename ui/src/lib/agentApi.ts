@@ -10,6 +10,7 @@ type AgentSessionPatch = {
   title?: string;
   webSearchEnabled?: boolean;
   currentImageId?: string;
+  currentImage?: AgentImageHandle | null;
   generationSettings?: Partial<AgentGenerationSettings>;
 };
 

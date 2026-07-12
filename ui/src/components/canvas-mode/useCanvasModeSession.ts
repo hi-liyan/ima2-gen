@@ -3,6 +3,9 @@ import {
   createCanvasVersion,
   deleteCanvasAnnotations,
   postEdit,
+  recordCanvasAnnotationBake,
+  revertCanvasAnnotations,
+  saveCanvasAnnotations,
   updateCanvasVersion,
 } from "../../lib/api";
 import { renderMergedCanvasImage } from "../../lib/canvas/mergeRenderer";
@@ -17,6 +20,7 @@ import {
   makeCanvasExportFilename,
 } from "../../lib/canvas/exportRenderer";
 import { objectKeyMatches } from "../../lib/canvas/objectKeys";
+import { useAppStore } from "../../store/useAppStore";
 import type { Format, GenerateItem, ImageModel, Moderation, Provider, Quality } from "../../types";
 import type { ReasoningEffort } from "../../lib/reasoning";
 import {
@@ -122,10 +126,33 @@ export function useCanvasModeSession({
             image: merged.blob,
             prompt: source.prompt,
           });
-      const savedItem = withSourcePrompt(result.item, source);
+      const snapshot = annotations.toPayload();
+      const annotationOnlyAtBake = !canvasVersionItem || Boolean(canvasVersionItem.annotationOnly);
+      const bakedResult = await recordCanvasAnnotationBake(
+        result.item.filename!,
+        snapshot,
+        annotationOnlyAtBake,
+      );
+      const savedItem = withSourcePrompt(bakedResult.item, source);
       setCanvasVersionItem(savedItem);
       applyMergedCanvasImage(savedItem);
       await attachCanvasVersionReference(savedItem, cleanDataUrl);
+      // Annotations reach the model as text instructions, never as pixels:
+      // surface the memo instructions as a removable composer chip so the
+      // next generation carries the annotation intent alongside the clean
+      // reference image.
+      const memoInstructions = buildMemoEditInstructions(annotations.memos);
+      const chipId = `canvas-annotations:${source.canvasSourceFilename ?? source.filename}`;
+      const { insertPromptToComposer, removeInsertedPromptFromComposer } = useAppStore.getState();
+      removeInsertedPromptFromComposer(chipId);
+      if (memoInstructions) {
+        insertPromptToComposer({
+          id: chipId,
+          name: t("canvas.annotationInstructionsChip"),
+          text: memoInstructions,
+          placement: "after",
+        });
+      }
       await deleteCanvasAnnotations(source.filename).catch(() => {});
       annotations.resetLocal();
       annotations.markSaved();
@@ -158,6 +185,36 @@ export function useCanvasModeSession({
 
   const handleApplyCanvas = async (): Promise<void> => {
     await saveCanvasVersionAndUseReference();
+  };
+
+  const handleRevertAnnotations = async (): Promise<void> => {
+    if (!canvasVersionItem?.filename || !canvasVersionItem.annotationsBaked) return;
+    if (!canvasVersionItem.annotationOnly && !window.confirm(t("canvas.revert.mixedConfirm"))) return;
+    setIsApplying(true);
+    setCanvasSaveState("saving");
+    try {
+      const result = await revertCanvasAnnotations(canvasVersionItem.filename);
+      const source = canvasSourceImageRef.current ?? currentImage ?? canvasVersionItem;
+      const revertedItem = withSourcePrompt(result.item, source);
+      setCanvasVersionItem(revertedItem);
+      applyMergedCanvasImage(revertedItem);
+      lastMergedDataUrlRef.current = null;
+      if (result.annotationOnly && result.snapshot) {
+        annotations.load(result.snapshot);
+        const sourceFilename = revertedItem.canvasSourceFilename ?? source.filename;
+        if (sourceFilename) await saveCanvasAnnotations(sourceFilename, result.snapshot);
+        showToast(t("canvas.revert.restored"));
+      } else {
+        annotations.resetLocal();
+        showToast(t("canvas.revert.completed"));
+      }
+      setCanvasSaveState("saved");
+    } catch {
+      setCanvasSaveState("error");
+      showToast(t("canvas.revert.failed"), true);
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const handleCloseCanvas = async (): Promise<void> => {
@@ -253,6 +310,7 @@ export function useCanvasModeSession({
   return {
     saveCanvasVersionAndUseReference,
     handleApplyCanvas,
+    handleRevertAnnotations,
     handleCloseCanvas,
     handleExportCanvas,
     handleEditWithMask,

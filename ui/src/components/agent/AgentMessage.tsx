@@ -14,9 +14,12 @@ export function AgentMessage({ turn, imagesById, currentImageId, onImageSelect }
   const roleLabel =
     turn.role === "user"
       ? t("agent.user")
-      : t("agent.assistant");
+      : turn.status === "error"
+        ? t("agent.errorRole")
+        : t("agent.assistant");
   const imageIds = turn.imageIds ?? [];
-  const className = `agent-message agent-message--${turn.role}${turn.status === "streaming" ? " is-streaming" : ""}`;
+  const stateClass = turn.status === "streaming" ? " is-streaming" : turn.status === "error" ? " is-error" : "";
+  const className = `agent-message agent-message--${turn.role}${stateClass}`;
 
   return (
     <article

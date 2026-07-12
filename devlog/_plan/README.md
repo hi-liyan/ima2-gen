@@ -1,6 +1,6 @@
 ---
 created: 2026-04-23
-updated: 2026-06-11
+updated: 2026-07-11
 tags: [ima2-gen, devlog, roadmap]
 aliases: [ima2 active plan, image_gen current roadmap, ima2 개발계획]
 ---
@@ -18,25 +18,19 @@ aliases: [ima2 active plan, image_gen current roadmap, ima2 개발계획]
 - `YYMMDD_issue<NN>-<kebab-slug>`: 단일 GitHub 이슈가 canonical scope일 때.
 - `YYMMDD_<kebab-slug>`: 단일 이슈가 없는 연구, triage, 다중 이슈 map일 때.
 
-Deferred / 미래 항목은 `_plan/`이 아니라 `devlog/_future/`에 둔다.
+Deferred / 미래 항목은 `_plan/` 직속이 아니라 `_plan/_future/`에 둔다.
 
 ## 현재 Active Lane
 
 | 순서 | 경로 | 상태 | 역할 |
 |---:|---|---|---|
-| 1 | `260430_issue31-provider-masked-edit/` | open / hardened | GitHub #31. Provider-backed masked edit. 업스트림 API 지원 대기 중. |
-| 2 | `260430_issue27-canvas-svg-export/` | open / hardened | GitHub #27. Canvas annotation → SVG/vector export. |
-| 3 | `260430_issue28-canvas-pptx-export/` | open / hardened | GitHub #28. Canvas → one-slide PPTX. #27 SVG overlay 재사용 경로. |
-| 4 | `260514_canvas-library-research/` | research | Canvas export/editing library reference. |
-| 5 | `260514_canvas-background-removal-library-research/` | research | Background removal reference. |
-| 6 | `260516_issue71-classic-prompt-context-injection/` | planning | GitHub #71. Prompt Studio server-backed context injection. 가장 큰 feature. |
-| 7 | `260515_fork-prompting-modularization-research/` | research | Prompt Builder/composer modularization reference. |
-| 8 | `260516_agent-mode-followup-jawdev/` | plan | Agent Mode follow-up: layout, queue, parallel gen, sidebar. |
-| 9 | `260517_agent-ui-polish-jawdev/` | plan | Agent Mode UI polish/crash triage. |
-| 10 | `260529_issue80-batch-comparison-matrix/` | planning / P2 | GitHub #80. Batch comparison matrix. 외부 기여자 제안. |
-| 11 | `260531_pr-issue-review-rebase-plan/` | reference | PR #81/#3 통합 계획 + 이슈 triage 문서. |
-| 12 | `260531_video-settings-persistence/` | investigated / not fixed | Video setting localStorage persistence. |
-| 13 | `260601_video-mode-persistence-refresh/` | investigated / not fixed | Video mode refresh persistence and continue-from-video mode switch. |
+| 1 | `260515_fork-prompting-modularization-research/` | research | Prompt Builder/composer modularization reference. |
+| 2 | `260531_pr-issue-review-rebase-plan/` | reference | PR #81/#3 통합 계획 + 이슈 triage 문서. |
+| 3 | `260711_production-hardening/` | closeout 단계 | 프로덕션 하드닝 멀티 WP: devlog closeout, Agent(비디오) 탭 전면 개선, persistence 검증, 500줄 분할, 캔버스 G1, 하드닝 스캔/수정, 최종 검증. 상세는 레인 내 000/010/011/012/020/021/030/090 문서. |
+
+Deferred (`_plan/_future/`): `260430_issue27-canvas-svg-export/`,
+`260430_issue28-canvas-pptx-export/`, `260430_issue31-provider-masked-edit/`,
+`260529_issue80-batch-comparison-matrix/`, `260602_storyboard-planner-skill/`.
 
 ## 2026-05-16 GH / Devlog Closeout
 
@@ -65,11 +59,11 @@ Detailed issue-to-evidence matrix:
 
 | Issue | Devlog | Next gate |
 |---|---|---|
-| #31 | `260430_issue31-provider-masked-edit/` | 업스트림 API mask 지원 확인 후 활성화. |
-| #27 | `260430_issue27-canvas-svg-export/` | SVG serializer 구현. |
-| #28 | `260430_issue28-canvas-pptx-export/` | PptxGenJS export, #27 overlay 재사용. |
-| #71 | `260516_issue71-classic-prompt-context-injection/` | 가장 큰 feature. 별도 sprint. |
-| #80 | `260529_issue80-batch-comparison-matrix/` | MVP 기획 후 별도 마일스톤 (P2). |
+| #31 | `_future/260430_issue31-provider-masked-edit/` | 업스트림 API mask 지원 확인 후 활성화. |
+| #27 | `_future/260430_issue27-canvas-svg-export/` | SVG serializer 구현. |
+| #28 | `_future/260430_issue28-canvas-pptx-export/` | PptxGenJS export, #27 overlay 재사용. |
+| #71 | `../_fin/260516_issue71-classic-prompt-context-injection/` (planning 문서; 이슈는 open) | 가장 큰 feature. 별도 sprint. |
+| #80 | `_future/260529_issue80-batch-comparison-matrix/` | MVP 기획 후 별도 마일스톤 (P2). |
 | #84 | — | Common video generation pipeline. Structural refactor, not quick. |
 | #85 | — | AssetRef / asset ID model. Structural migration, not quick. |
 | #88 | — | Last-frame extraction service abstraction. Current same-origin/server paths work; full fallback chain remains. |
@@ -86,6 +80,42 @@ Detailed issue-to-evidence matrix:
 
 ## 변경 기록
 
+- 2026-07-11 (3차): production-hardening 구현 라운드 완료. `_fin` 이동:
+  `260605_stabilize-split/` (Phase 3 분할 완료 — 4파일 전부 500줄 이하),
+  `260516_agent-mode-followup-jawdev/` + `260517_agent-ui-polish-jawdev/`
+  (잔여 스코프 구현 완료; Refs/Web projection·forms/style-lock은 future로
+  disposition). 최종 게이트: typecheck/typecheck:tests 통과, `npm test`
+  1120개 중 1118 pass 0 fail(2 skip), ui:build 통과, 전역 설치본 동기화 +
+  서버 재기동, agbrowse 브라우저 QA (Agent 데스크톱/Queue 탭/모바일 탑바).
+- 2026-07-11 (2차): 비디오 persistence 2개 레인 `_fin` 이동 완료 — 계약 테스트
+  `tests/video-defaults-persistence-contract.test.js` 신설(7 pass)로 reload/탭
+  sync/continue-from-video 모드 전환 검증. `_fin`의 기존 stale 사본은 최신
+  closeout 포함 본으로 갱신.
+- 2026-07-11: production-hardening pass 시작 (`260711_production-hardening/`,
+  goalplan `ima2-gen-production-hardening-devlog-fin-closeou`). `_fin` 이동:
+  `260711_skill-structured-prompting/` (closeout + 계약 테스트 통과),
+  `260711_canvas-i2i-annotation-cleanup/` (closeout + 1094 테스트; G1 후속은
+  새 레인 WP7 승계), `260707_gpt56-oidc-devlog-hardening/` (v2.0.15 npm 게시
+  확인 — publish.yml `windows-consumer` 게이트 통과가 publish 선행 조건).
+  비디오 persistence 2개 레인은 sol 탐사 결과 현재 코드에 수정 반영 확인
+  (`persistenceRegistry.ts:31`, `storePersistence.ts:237`, `useAppStore.ts:145/388`,
+  `storeSettingsImpl.ts:77`, `storeUIImpl.ts:66`, `continueFromItem.ts:31`) —
+  계약 테스트 증거 확보 후 이동 예정.
+- 2026-07-10: `v2.0.14` preview/latest provenance, 동일 release SHA,
+  Luna/Terra `medium` 생성은 통과했다. 이후 Windows 전역 업데이트에서
+  package-local Codex를 PATH에서 찾지 못하고 `.cmd`를 직접 실행하는 OAuth
+  회귀가 확인돼 archive를 보류하고 corrective release 단계를 추가했다.
+- 2026-07-07: devlog hardening pass (`260707_gpt56-oidc-devlog-hardening/030_wp3`).
+  `_fin` 이동: `260624_agy-pr-integration/`, `260627_docs-refresh/`,
+  `260627_preview-deploy-pipeline/`, `260628_wp6_docs_code_grounding/`,
+  `260629_grok-video-15-1080p/` (v2.0.4-2.0.5 출하), loose 문서
+  `260601_model-selector-visibility.md` (pill trigger 출하 확인). `_plan`에
+  남아있던 `_fin`/`_future` 중복 사본 11건 제거 (byte-diff로 동일성 확인:
+  sidecar-atomicity, sidebar-parity, api-key-accordion, shimmer-f5fix,
+  grok-gemini-research, security_audit, switch_account, grok-url-continue,
+  issue93, issue80, storyboard-planner + SSE/audit 낱개 .md 7건).
+  KEEP: `260605_stabilize-split/` — Phase 3 backend 분할 미완
+  (4개 파일 500줄 초과). Active lane 표를 실제 폴더 목록과 1:1로 재작성.
 - 2026-06-11: `_plan/260611_provider-brand-ui-polish/` implemented and moved to `_fin/260611_provider-brand-ui-polish/`. Provider identity metadata, provider card selector, Gemini copy cleanup, Agent provider card parity, contracts, full test/build, and Browser visual QA completed.
 - 2026-06-01: `_plan` cleanup pass. `_fin` 이동: `260519_issue72-slash-command-dropup/` (GH #72 implemented; dropup/filter/Tab/arrow/Enter/Escape/click contracts exist), `260531_video-integration-audit/` (audit complete; follow-ups split to #84/#85/#88/#89), `260531_video-phase2-full-api/` (edit/extend/frame/analyze/continue API+CLI shipped), `260531_video-provider-expansion/` (xAI video contract research complete), `260531_video-series-and-agent-tool/` (trash fallback, video topic chain, Agent `ima2.generate_video` shipped), `260601_video-continuity-workflow-research/` (ContinuityJob/lineage/CLI continue/planner prompt guidance shipped). Remaining fast candidates: video defaults persistence, video mode refresh persistence, agent video sidecar atomicity, source provenance chip.
 - 2026-05-31: 오늘 66 commits (v1.1.15→v1.1.18) 후 정리. `_fin` 이동: `260529_issue78-prompt-autofill-perf/` (GH #78 closed), `260529_issue79-metadata-ui-polish/` (GH #79 closed), `260530_grok-provider-integration/` (shipped), `260530_grok-publish-pages-readiness/` (shipped), `260530_grok_tool_pipeline/` (shipped), `260531_grok-video-i2v-ship/` (build completion report 확인), `260517_agent-mode-auto-generation-jawdev/` (implementation-patched). PR #81 (Nix flake) + PR #3 (validation errors) 리뷰 및 리베이스 계획 문서화 (`260531_pr-issue-review-rebase-plan/`). 열린 이슈 6개 (#80/#72/#71/#31/#28/#27) 모두 아직 미구현 확인 — 닫을 대상 없음.

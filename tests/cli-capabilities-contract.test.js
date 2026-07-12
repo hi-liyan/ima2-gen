@@ -34,6 +34,10 @@ describe("CLI capabilities contract", () => {
     assert.match(src, /maxGeneratedImages:\s*appConfig\.limits\.maxGeneratedImages/);
     assert.match(src, /enforced:\s*true/);
     assert.match(src, /server-side inflight capacity guard/);
+    assert.match(src, /supported:\s*\["grok-imagine-video", "grok-imagine-video-1\.5"\]/);
+    assert.match(src, /aliases:\s*\{ "grok-imagine-video-1\.5-preview": "grok-imagine-video-1\.5" \}/);
+    assert.match(src, /resolutions:\s*\["480p", "720p", "1080p"\]/);
+    assert.match(src, /resolutionNotes:\s*\{ "1080p": "grok-imagine-video-1\.5 text-to-video canvas shim or image-to-video; reference-to-video unsupported" \}/);
   });
 
   it("capabilities marks Agent Mode as web-UI only while exposing Grok defaults", () => {

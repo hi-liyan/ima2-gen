@@ -5,10 +5,11 @@ export const IS_DEV_UI =
 
 export const ENABLE_NODE_MODE = import.meta.env.VITE_IMA2_NODE_MODE !== "0";
 
+// Card News remains a dev workspace. It can be hidden inside dev with
+// VITE_IMA2_CARD_NEWS=0, but it must not appear in packaged/product UI.
 export const ENABLE_CARD_NEWS_MODE =
-  import.meta.env.VITE_IMA2_CARD_NEWS === "1" ||
-  import.meta.env.VITE_IMA2_DEV === "1";
+  IS_DEV_UI && import.meta.env.VITE_IMA2_CARD_NEWS !== "0";
 
-export const ENABLE_AGENT_MODE =
-  import.meta.env.VITE_IMA2_AGENT_MODE === "1" ||
-  import.meta.env.VITE_IMA2_DEV === "1";
+// Agent mode is a product feature in packaged builds; set
+// VITE_IMA2_AGENT_MODE=0 only when a release must hide it.
+export const ENABLE_AGENT_MODE = import.meta.env.VITE_IMA2_AGENT_MODE !== "0";

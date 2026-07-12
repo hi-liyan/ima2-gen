@@ -16,8 +16,9 @@ export function buildMemoEditInstructions(memos: CanvasMemo[]): string {
     .filter((memo) => memo.text.length > 0);
   if (entries.length === 0) return "";
   return [
-    "Apply the following annotation instructions at the specified image locations (percentages are relative to image width and height):",
+    "The numbered notes below are temporary editing instructions written on the image. They are not image content: interpret each one to locate and apply the requested change (percentages are relative to image width and height).",
     ...entries.map((memo, index) => `${index + 1}. At the ${describeMemoPosition(memo.x, memo.y)}: ${memo.text}`),
-    "Do not render any annotation text, sticky notes, boxes, arrows, or markup in the output image.",
+    "After applying every numbered instruction, remove all annotation markup. Do not render any annotation text, sticky notes, boxes, arrows, or markup in the output image. Where markup covered the image, show the underlying content reconstructed to match the surrounding texture, lighting, and perspective, with no residue, outline, or discoloration.",
+    "Keep everything not named in the numbered instructions exactly the same as the source image: composition, subjects, lighting, colors, and background.",
   ].join("\n");
 }

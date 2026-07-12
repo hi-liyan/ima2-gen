@@ -11,8 +11,8 @@ function readSource(path) {
 
 test("history index invalidates after every generated asset writer finalizes metadata", () => {
   const writers = [
-    "routes/generate.ts",
-    "routes/multimode.ts",
+    "lib/generatePipeline.ts",
+    "lib/multimodePipeline.ts",
     "routes/edit.ts",
     "lib/nodeStore.ts",
     "lib/localImportStore.ts",
@@ -38,3 +38,4 @@ test("favorite toggles stay browser-scoped and do not rebuild the global history
   assert.match(favoriteRoute, /invalidateFavoriteOverlay\(\)/);
   assert.doesNotMatch(favoriteRoute, /invalidateHistoryIndex\(\)/);
 });
+

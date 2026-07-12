@@ -9,7 +9,7 @@ import { errInfo } from "../../lib/errInfo.js";
 const VALID_MODES = new Set(["auto", "direct"]);
 const VALID_MODERATION = new Set(["auto", "low"]);
 const VALID_PROVIDERS = new Set(["auto", "oauth", "api", "grok", "grok-api", "agy", "gemini-api"]);
-const KNOWN_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark", "grok-imagine-image", "grok-imagine-image-quality", "nano-banana-2", "nano-banana-pro"]);
+const KNOWN_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.3-codex-spark", "grok-imagine-image", "grok-imagine-image-quality", "nano-banana-2", "nano-banana-pro"]);
 const MAX_GENERATION_COUNT = Math.max(1, Math.trunc(Number(config.limits.maxGeneratedImages) || 24));
 const MAX_REFERENCE_COUNT = Math.max(1, Math.trunc(Number(config.limits.maxRefCount) || 5));
 
@@ -61,13 +61,13 @@ const HELP = `
         --stdin                              Read prompt from stdin
         --timeout <sec>                     Default: 180
         --server <url>                      Override server URL
-        --model <gpt-5.5|gpt-5.4|gpt-5.4-mini|grok-imagine-image|grok-imagine-image-quality|nano-banana-2|nano-banana-pro>
+        --model <gpt-5.5|gpt-5.4|gpt-5.4-mini|gpt-5.6-sol|gpt-5.6-terra|gpt-5.6-luna|grok-imagine-image|grok-imagine-image-quality|nano-banana-2|nano-banana-pro>
         --provider <auto|oauth|api|grok|grok-api|agy|gemini-api>
                                             Provider (oauth = GPT OAuth; grok = xAI Grok; agy/gemini-api = Gemini)
         --mode <auto|direct>                Prompt handling mode. Default: auto
         --moderation <auto|low>             Default: low
         --session <id>                      Apply session style sheet if enabled
-        --reasoning-effort <none|low|medium|high|xhigh>
+        --reasoning-effort <none|low|medium|high|xhigh|max>
                                             Override server's reasoning effort
         --web-search / --no-web-search      Override default web-search toggle
 
@@ -98,11 +98,11 @@ export default async function genCmd(argv: string[]) {
     die(2, "--provider must be one of: auto, oauth, api, grok, grok-api, agy, gemini-api");
   }
   if (args.model && !KNOWN_IMAGE_MODELS.has(String(args.model))) {
-    die(2, "--model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.3-codex-spark, grok-imagine-image, grok-imagine-image-quality, nano-banana-2, nano-banana-pro");
+    die(2, "--model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.3-codex-spark, grok-imagine-image, grok-imagine-image-quality, nano-banana-2, nano-banana-pro");
   }
-  const VALID_REASONING = new Set(["none", "low", "medium", "high", "xhigh"]);
+  const VALID_REASONING = new Set(["none", "low", "medium", "high", "xhigh", "max"]);
   if (args["reasoning-effort"] && !VALID_REASONING.has(String(args["reasoning-effort"]))) {
-    die(2, "--reasoning-effort must be one of: none, low, medium, high, xhigh");
+    die(2, "--reasoning-effort must be one of: none, low, medium, high, xhigh, max");
   }
   if (args["web-search"] && args["no-web-search"]) {
     die(2, "--web-search and --no-web-search are mutually exclusive");

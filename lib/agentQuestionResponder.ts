@@ -92,9 +92,7 @@ export async function requestAgentQuestionAnswer(
         contentType: res.headers.get("content-type"),
       });
       if (!res.ok) throw await questionHttpError(res, options.provider);
-      const parsed = res.headers.get("content-type")?.includes("text/event-stream")
-        ? await readTextStream(res)
-        : readTextBody(await res.json() as TextResponseBody);
+      const parsed = await readResponsesTextPayload(res);
       if (!parsed.text.trim()) throw questionError("Agent question returned an empty response", "AGENT_QUESTION_EMPTY", 502);
       return { text: parsed.text.trim().slice(0, 4_000), usage: parsed.usage };
     } finally {
@@ -149,6 +147,15 @@ async function questionHttpError(res: Response, provider: string | undefined): P
   } catch (error) {
     throw errInfo(error).raw;
   }
+}
+
+// Shared with the agent planner: the bundled OAuth proxy returns an empty
+// `output` array for stream:false Responses calls, so any text consumer must
+// be able to read the SSE stream instead of relying on the JSON body.
+export async function readResponsesTextPayload(res: Response): Promise<AgentQuestionResult> {
+  return res.headers.get("content-type")?.includes("text/event-stream")
+    ? readTextStream(res)
+    : readTextBody(await res.json() as TextResponseBody);
 }
 
 async function readTextStream(res: Response): Promise<AgentQuestionResult> {

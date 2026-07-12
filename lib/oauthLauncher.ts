@@ -1,7 +1,7 @@
-import { isWin } from "../bin/lib/platform.js";
 import { config } from "../config.js";
 import { parseLocalhostPortFromUrl, parseOAuthReadyUrl } from "./runtimePorts.js";
-import { hasAuthFile } from "./codexDetect.js";
+import { detectCodexAuth } from "./codexDetect.js";
+import { resolvePackageBin } from "./packageCli.js";
 import { type ChildProcess, spawn } from "node:child_process";
 
 export function startOAuthProxy(options: any = {}) {
@@ -13,24 +13,43 @@ export function startOAuthProxy(options: any = {}) {
   let hasBeenReady = false;
   let restartCount = 0;
   const MAX_RESTARTS = 3;
+  const detectAuth = options.detectAuth ?? detectCodexAuth;
+  const execPath = options.execPath ?? process.execPath;
+  const resolveOAuthBin = options.resolveOAuthBin ?? (() => resolvePackageBin("openai-oauth", "openai-oauth"));
+  const spawnImpl = options.spawnImpl ?? spawn;
 
   const spawnProxy = () => {
     // Guard: don't start if no auth file exists (avoids pointless crash loops
     // and prevents openai-oauth from corrupting state on refresh failure)
-    if (!hasAuthFile()) {
-      console.log("[gpt-oauth] No Codex auth file found. Skipping GPT OAuth proxy.");
-      options.onExit?.({ code: 0 });
+    const auth = detectAuth();
+    if (!auth.proxyReady || typeof auth.proxyAuthFile !== "string") {
+      console.log("[gpt-oauth] No file-backed Codex session found. Run `ima2 login` to enable GPT OAuth.");
+      options.onExit?.({ code: 0, reason: "missing-auth-file" });
       return;
     }
 
     console.log(`Starting GPT OAuth proxy (openai-oauth) on port ${oauthPort}...`);
     const spawnedAt = Date.now();
-    const child = spawn("npx", ["openai-oauth", "--port", String(oauthPort)], {
+    let oauthBin: string;
+    try {
+      oauthBin = resolveOAuthBin();
+    } catch (error) {
+      console.error(`[gpt-oauth] failed to resolve bundled proxy: ${(error as Error).message}`);
+      options.onExit?.({ code: 1 });
+      return;
+    }
+    const child = spawnImpl(execPath, [
+      oauthBin,
+      "--port",
+      String(oauthPort),
+      "--oauth-file",
+      auth.proxyAuthFile,
+    ], {
       stdio: ["ignore", "pipe", "pipe"],
-      shell: isWin,
+      shell: false,
       windowsHide: true,
       env: { ...process.env },
-    });
+    }) as ChildProcess;
     currentChild = child;
 
     child.on("error", (err) => {

@@ -35,12 +35,14 @@ graph TD
 | Item | Current value |
 |---|---|
 | package name | `ima2-gen` |
-| version | `1.1.15` |
+| version | `package.json` is authoritative; release commits update it before promotion |
 | type | `module` |
 | bin | `ima2` -> `./bin/ima2.js` |
 | package engine | `node >=20` |
-| publish files | `bin/`, `lib/`, `routes/`, `skills/`, `ui/dist/`, `docs/`, `assets/`, `assets/card-news/templates/`, `integrations/comfyui/ima2_gen_bridge/*`, `server.ts`, `server.js`, `config.ts`, `config.js`, `.env.example`, `README.md` |
-| major dependencies | `express`, `openai`, `openai-oauth`, `better-sqlite3`, `dotenv`, `sharp`, `trash`, `ulid` |
+| release toolchain | Node `24.17.0` from `.node-version`; npm `11.18.0` from `packageManager` |
+| publish files | `bin/**/*.js`, `lib/**/*.js`, `routes/**/*.js`, `skills/`, `ui/dist/`, `docs/`, `vendor/`, `assets/card-news/templates/`, `integrations/comfyui/ima2_gen_bridge/*`, `server.js`, `config.js`, `.env.example`, `README.md`, `CHANGELOG.md`, `LICENSE` |
+| bundled dependencies | `progrok`, patched `openai-oauth` |
+| major dependencies | exact `@openai/codex@0.144.1`, `express`, `openai`, `openai-oauth`, `better-sqlite3`, `dotenv`, `sharp`, `trash`, `ulid`, exact `zod@3.25.76` |
 
 README may still mention a different Node baseline. The operational baseline is the current `engines.node` field in `package.json`.
 
@@ -51,7 +53,7 @@ README may still mention a different Node baseline. The operational baseline is 
 | `npm start` | `node bin/ima2.js serve` | Start the server like a user would |
 | `npm run dev` | `node scripts/dev.mjs` | Build UI, then run watched server |
 | `npm run dev:server` | `tsx watch server.ts` | Watch the TypeScript server source directly |
-| `npm run ui:install` | `cd ui && npm install` | Install UI dependencies |
+| `npm run ui:install` | `npm --prefix ui ci` | Install the exact UI lockfile |
 | `npm run ui:dev` | `cd ui && npm run dev` | Vite dev server |
 | `npm run ui:build` | `cd ui && npm run build` | TypeScript build and Vite build |
 | `npm run build` | `npm run ui:build` | Build UI bundle before publish |
@@ -64,10 +66,16 @@ README may still mention a different Node baseline. The operational baseline is 
 | `npm run setup` | `node bin/ima2.js setup` | Configure provider |
 | `npm run lint:pkg` | package metadata check | Validate package fields and publish file list |
 | `npm run test:package-install` | temp tarball install smoke | Installs packed package and checks `ima2 doctor`, `/api/health`, and `/api/storage/status` |
+| `npm run test:native-deps` | native import smoke | Fail closed unless `better-sqlite3` and `sharp` load |
+| `npm run test:install-policy` | manifest/lock policy check | Require every install script to be approved and both bundled dependencies to match the lock root |
+| `npm run test:install-policy:npm12` | npm pending-script oracle | Require npm 12 to report no pending root/UI install scripts |
+| `npm run verify:release:source` | canonical source gate | Native imports, typechecks, inventory, builds, full tests, package lint, install policy, root production audit, and UI build-dependency audit |
+| `npm run verify:release` | canonical release gate | Source gate plus a real packed-package install and server smoke |
+| `npm run docs:refresh-line-counts` | `node scripts/refresh-structure-line-counts.mjs` | Refresh `structure/01-file-function-map.md` lib/bin/route line counts; pass `--check` in CI |
 | `prepack` | `ui:build && build:server && build:cli` | Refresh all committed runtime artifacts (UI, server, CLI) before tarball |
-| `prepublishOnly` | `typecheck && typecheck:tests && test:inventory && ui:build && build:server && build:cli && lint:pkg && test:package-install` | Full pre-publish gate: type checks (incl. `tests/` overlay), test-inventory gate, builds, package metadata lint, and tarball install smoke. Note: `npm test` is no longer in this chain — run it explicitly before publish. |
+| `prepublishOnly` | OIDC context assertion + `verify:release` | Blocks accidental directory publishing outside the registered OIDC workflow; the workflow publishes only its already-tested tarball with lifecycle scripts disabled. |
 
-`release:*` scripts include npm publish and git push. Agents must not run them unless the user explicitly asks.
+`release:*` scripts delegate to `scripts/release.sh`, which runs the verified preview -> stable-tag OIDC flow and creates the GitHub Release only after npm proof. Agents must not run them unless the user explicitly asks.
 
 ## Config And Data Locations
 
@@ -155,6 +163,19 @@ Every `/api/*` request gets a sanitized `X-Request-Id` header. Static UI files a
 
 Logs intentionally use counts rather than sensitive values: `promptChars`, `refs`, `imageChars`, `durationMs`, and `errorCode`. Do not add raw prompts, style-sheet bodies, data URLs, generated base64, tokens, cookies, or raw upstream response bodies to logs.
 
+## npm Publish (OIDC)
+
+Production releases use GitHub Actions `.github/workflows/publish.yml` with npm **trusted publishing** (OIDC):
+
+| Trigger | npm dist-tag | Notes |
+|---|---|---|
+| Push to `preview` | `preview` | Publishes `X.Y.Z-preview.YYMMDD.RUN_ID.ATTEMPT`; a stable-tagged SHA already at `latest` is skipped |
+| Push stable tag `vX.Y.Z` | `latest` | Tag/version must match, version must advance npm `latest`, and tag SHA must equal `origin/main` |
+
+`workflow_dispatch` and GitHub Release events are not publish triggers. All third-party Actions use full commit SHAs. The workflow has `prepare`, `package`, `windows-consumer`, `publish`, and `verify-existing` jobs; only `publish` receives `id-token: write`. The package job runs the canonical source gate, packs once, embeds the source `gitHead`, records SHA-512/integrity in `release-manifest.json`, generates `sbom.cdx.json`, and install-smokes that exact tarball. Before publish, Windows Node 22/npm 11 and Node 24/npm 12 consumers install the previous registry release into an isolated global prefix, update it with that exact tarball, and prove the package-local Codex/OAuth path from an unrelated working directory. Codex login is launched from the package-local JavaScript bin with `cli_auth_credentials_store="file"`; the proxy starts only when a concrete auth file exists and receives that path through `--oauth-file`, so a keyring-only Codex session cannot be reported as proxy-ready. The publish job then downloads and verifies those bytes, rechecks live refs, publishes the tarball, and reads npm metadata plus the SLSA attestation back. Repository, workflow path, push ref, commit, original run/attempt, GitHub-hosted builder, in-toto/SLSA schema, package subject, and SHA-512 must all match; `npm audit signatures` cryptographically verifies registry signatures and Sigstore provenance. A full stable-workflow rerun after an immutable version exists takes `verify-existing`. A failed-job-only rerun reaches a second registry guard inside the publish job: a correctly signed existing version skips `npm publish` and verifies its original provenance attempt, while a fresh publication must prove the current run/attempt.
+
+`scripts/release.sh` creates the version commit on a clean, fast-forwarded local `main`, verifies it, promotes that exact SHA to `preview`, and waits for registry/provenance proof. Only then does it create the stable tag and atomically push `main`, `dev`, and the tag; stable prepare/publish additionally require `preview` to remain on the same SHA. A GitHub Release is created after `latest` proof and receives the release manifest and SBOM from the original provenance run. Local scripts never run `npm publish` and require the exact release Node/npm pair plus authenticated `gh`. If publishing succeeded but finalization stopped, `./scripts/release.sh finalize X.Y.Z` verifies immutable npm/remote-tag/provenance state, creates or reuses the matching GitHub Release with `--verify-tag`, attaches evidence, and reconciles branches without rewinding any descendant work.
+
 ## Development And Verification
 
 | Task | Command | Expected result |
@@ -165,17 +186,19 @@ Logs intentionally use counts rather than sensitive values: `promptChars`, `refs
 | Package sanity | `npm run lint:pkg` | Required `files[]`, `bin`, and version fields are checked |
 | Package smoke | `npm pack --dry-run --json` | Verifies the publish manifest includes release-critical files |
 | Package install smoke | `npm run test:package-install` | Installs the tarball in a temp project and checks `doctor`, `/api/health`, and `/api/storage/status` |
+| Release contract | `node --import tsx --test tests/release-pipeline-contract.test.ts` | Exercises event/ref/version, immutable preview/rerun guards, npm 11/12 pack output, artifact digest, provenance, and local-publish guards |
+| Windows global update | `npm run test:package-global-update` | Installs the previous release into an isolated global prefix, updates with the candidate tarball, and probes package-local Codex/OAuth without PATH assistance |
+| npm 12 policy | `npx --yes --package npm@12.0.0 npm run test:install-policy:npm12` | npm and the custom checker report no unapproved install scripts |
 | CLI health | `ima2 ping` | Checks `/api/health` on the running server |
 
 ## Pre-Release Checklist
 
-- [ ] Run `npm test`.
-- [ ] Run `npm run build` to refresh `ui/dist`.
-- [ ] Run `npm run lint:pkg` to verify the publish file list.
-- [ ] Run `npm pack --dry-run --json` or rely on `tests/package-smoke.test.js` to confirm README, recovery docs, storage routes, doctor files, `skills/ima2/SKILL.md`, and `ui/dist/index.html` are included in the publish manifest.
-- [ ] Run `npm run test:package-install` before publish when you want a full tarball install smoke. This is opt-in because it performs a real temp `npm install`.
+- [ ] Run `npm ci` and `npm --prefix ui ci` with the pinned toolchain.
+- [ ] Run `npm run verify:release`; this includes the full tests, builds, package lint, audit, and real tarball install smoke.
+- [ ] Run the npm 12 root/UI clean-install lanes and `npm run test:install-policy:npm12`.
+- [ ] Run `actionlint .github/workflows/publish.yml .github/workflows/ci.yml` and the focused release-contract test.
 - [ ] Check README and `structure/` docs for Node baseline, provider wording, and CLI table drift.
-- [ ] Do not run release scripts automatically; they include push/publish behavior.
+- [ ] Run release scripts only with explicit authorization; they move remote refs and trigger immutable npm versions.
 
 ## Change Checklist
 
@@ -200,6 +223,11 @@ Logs intentionally use counts rather than sensitive values: `promptChars`, `refs
 - 2026-05-13: Added `skills/` to the package contract for #62 and documented `IMA2_REASONING_EFFORT` as the OAuth/default reasoning env override exposed by `ima2 defaults`.
 - 2026-05-30: Updated the package version snapshot to `ima2-gen` 1.1.14 (re-grounding pass). Agent Mode (`routes/agent.ts` + `lib/agent*.ts`) and the prompt builder (`routes/promptBuilder.ts`) ship inside the existing `routes/` and `lib/` publish paths; see `[[00-structure-hub]]` and `[[03-server-api]]` for the added runtime surface since 1.1.10.
 - 2026-06-01: Updated the package/runtime note for shipped Grok video support: progrok-backed video generation, edit, extension, frame extraction, analysis, and branch-local continuation are in the runtime scope; the older image-only wording no longer applies.
+- 2026-06-27: Bumped operational baseline to ima2-gen 2.0.4; documented OIDC trusted publishing via `publish.yml` (`latest` on GitHub Release, `preview` on preview branch push).
+- 2026-06-28: WP6 — added `npm run docs:refresh-line-counts` and documented `tests/{structure-line-counts,api-docs,cli-feature-parity}-contract.test.js` as docs drift gates.
+- 2026-07-07: OIDC-only release flow — `scripts/release.sh` and `release:*` no longer run credentialed `npm publish`; the GitHub Release (via `gh release create`) is the sole production publish trigger, and `publish.yml` gained a release-tag/package-version guard. GPT-5.6 model rollout (`gpt-5.6-sol/terra/luna` + `max` reasoning) landed in the same cycle.
+- 2026-07-10: Replaced Release-event publishing with preview-branch/stable-tag push contracts. Added exact tested-tarball handoff, SHA-512 manifest, CycloneDX SBOM, exact signed-provenance read-back, OIDC job isolation, immutable Action pins, verify-only reruns, npm 12 install policy, root/UI audits, pinned release toolchain, completion-only recovery, and post-publish GitHub Release creation.
+- 2026-07-10: Added package-local dependency CLI execution for Codex/OAuth and a two-lane Windows global-update consumer gate before npm publish, closing the native `.cmd`/PATH regression exposed by `v2.0.14` updates.
 
 Previous document: `[[05-node-mode]]`
 

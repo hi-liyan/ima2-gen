@@ -1,31 +1,58 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import net from "node:net";
+import { parsePackOutput } from "../scripts/release-artifact-contract.mjs";
+import { spawnNpmSync } from "../scripts/npm-subprocess.mjs";
 
-function npmCommand() {
-  return process.platform === "win32" ? "npm.cmd" : "npm";
-}
-
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+function spawnOptions(options) {
+  return {
     encoding: "utf8",
     ...options,
     env: {
       ...process.env,
-      npm_config_loglevel: "silent",
+      npm_config_loglevel: "error",
       ...(options.env || {}),
     },
-  });
+  };
+}
+
+function assertSuccess(result, label, args) {
   assert.equal(
     result.status,
     0,
-    `${command} ${args.join(" ")} failed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
+    `${label} ${args.join(" ")} failed\nerror:\n${result.error?.message || ""}\nstdout:\n${result.stdout || ""}\nstderr:\n${result.stderr || ""}`,
   );
   return result;
+}
+
+function run(command, args, options = {}) {
+  return assertSuccess(spawnSync(command, args, spawnOptions(options)), command, args);
+}
+
+function runNpm(args, options = {}) {
+  return assertSuccess(spawnNpmSync(args, spawnOptions(options)), "npm", args);
+}
+
+function npmMajor() {
+  const version = runNpm(["--version"]).stdout.trim();
+  return Number(version.split(".")[0]);
+}
+
+function configureProjectInstallPolicy(projectDir) {
+  if (npmMajor() < 12) return;
+  const packagePath = join(projectDir, "package.json");
+  const manifest = JSON.parse(readFileSync(packagePath, "utf8"));
+  manifest.allowScripts = {
+    "better-sqlite3": true,
+    "ima2-gen": true,
+    sharp: true,
+  };
+  writeFileSync(packagePath, `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
 async function freePort() {
@@ -89,23 +116,80 @@ test("packaged tarball installs, serves core status routes, and keeps Card News 
 
   let child = null;
   try {
-    const pack = run(npmCommand(), ["pack", "--json", "--pack-destination", packDir], {
-      cwd: process.cwd(),
-    });
-    const packJson = pack.stdout.match(/\[\s*\{[\s\S]*\}\s*\]\s*$/);
-    assert.ok(packJson, `npm pack output should end with a JSON manifest array\nstdout:\n${pack.stdout}`);
-    const packManifest = JSON.parse(packJson[0]);
-    const tarball = join(packDir, packManifest[0].filename);
+    let tarball = process.env.IMA2_PACKAGE_TARBALL;
+    if (tarball) {
+      assert.equal(existsSync(tarball), true, `provided release tarball should exist: ${tarball}`);
+    } else {
+      const pack = runNpm(["pack", "--json", "--pack-destination", packDir], {
+        cwd: process.cwd(),
+      });
+      const packManifest = [parsePackOutput(pack.stdout)];
+      for (const bundled of ["progrok", "openai-oauth"]) {
+        assert.ok(packManifest[0].bundled.includes(bundled), `packed artifact should bundle ${bundled}`);
+      }
+      tarball = join(packDir, packManifest[0].filename);
+    }
 
-    run(npmCommand(), ["init", "-y"], { cwd: projectDir });
-    run(npmCommand(), ["install", tarball], { cwd: projectDir });
+    runNpm(["init", "-y"], { cwd: projectDir });
+    configureProjectInstallPolicy(projectDir);
+    runNpm(["install", tarball], { cwd: projectDir });
 
     const packageRoot = join(projectDir, "node_modules", "ima2-gen");
     const cliPath = join(packageRoot, "bin", "ima2.js");
-    const progrokBin = join(packageRoot, "node_modules", ".bin", process.platform === "win32" ? "progrok.cmd" : "progrok");
-    assert.equal(existsSync(progrokBin), true, "packaged install should include bundled progrok bin");
+    const binShim = (name) => join(packageRoot, "node_modules", ".bin", process.platform === "win32" ? `${name}.cmd` : name);
+    assert.equal(existsSync(binShim("progrok")), true, "packaged install should include bundled progrok bin");
+    assert.equal(existsSync(binShim("openai-oauth")), true, "packaged install should include bundled openai-oauth bin");
+
+    const installedRequire = createRequire(join(packageRoot, "package.json"));
+    const packageManifest = (packageName) => {
+      try {
+        return installedRequire.resolve(`${packageName}/package.json`);
+      } catch (error) {
+        if (error?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
+      }
+      let current = dirname(installedRequire.resolve(packageName));
+      while (true) {
+        const candidate = join(current, "package.json");
+        if (existsSync(candidate)) {
+          const manifest = JSON.parse(readFileSync(candidate, "utf8"));
+          if (manifest.name === packageName) return candidate;
+        }
+        const parent = dirname(current);
+        if (parent === current) throw new Error(`Could not locate ${packageName}/package.json`);
+        current = parent;
+      }
+    };
+    const packageBin = (packageName, binName) => {
+      const manifestPath = packageManifest(packageName);
+      const dependencyRoot = dirname(manifestPath);
+      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+      const entry = typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.[binName];
+      assert.equal(typeof entry, "string", `${packageName} should declare the ${binName} bin`);
+      return join(dependencyRoot, entry);
+    };
+    const progrokBin = packageBin("progrok", "progrok");
+    const oauthBin = packageBin("openai-oauth", "openai-oauth");
+    const codexBin = packageBin("@openai/codex", "codex");
+    assert.doesNotThrow(() => installedRequire.resolve("zod"));
+
+    const oauthRoot = join(packageRoot, "node_modules", "openai-oauth");
+    const oauthPackage = JSON.parse(readFileSync(join(oauthRoot, "package.json"), "utf8"));
+    assert.equal(oauthPackage.version, "1.0.2-ima2.1");
+    assert.match(oauthPackage.ima2Patch, /originator\/version headers/);
+    const oauthRuntime = readdirSync(join(oauthRoot, "dist"))
+      .filter((name) => name.endsWith(".js"))
+      .map((name) => readFileSync(join(oauthRoot, "dist", name), "utf8"))
+      .join("\n");
+    for (const marker of ["codex_cli_rs", "IMA2_CODEX_CLIENT_VERSION", "0.144.0"]) {
+      assert.ok(oauthRuntime.includes(marker), `installed OAuth runtime should include ${marker}`);
+    }
+    if (process.env.IMA2_PACKAGE_TARBALL && process.env.GITHUB_SHA) {
+      const installedPackage = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf8"));
+      assert.equal(installedPackage.gitHead, process.env.GITHUB_SHA, "release tarball should embed its source SHA");
+    }
 
     mkdirSync(configDir, { recursive: true });
+    mkdirSync(join(homeDir, ".codex"), { recursive: true });
     writeFileSync(join(configDir, "config.json"), JSON.stringify({ provider: "oauth" }));
     const env = {
       ...process.env,
@@ -115,6 +199,7 @@ test("packaged tarball installs, serves core status routes, and keeps Card News 
       IMA2_GENERATED_DIR: generatedDir,
       IMA2_DB_PATH: join(configDir, "sessions.db"),
       IMA2_ADVERTISE_FILE: join(configDir, "server.json"),
+      CODEX_HOME: join(homeDir, ".codex"),
       IMA2_NO_OAUTH_PROXY: "1",
       IMA2_NO_GROK_PROXY: "1",
     };
@@ -122,13 +207,33 @@ test("packaged tarball installs, serves core status routes, and keeps Card News 
     const grokHelp = run(process.execPath, [cliPath, "grok", "--help"], { cwd: projectDir, env });
     assert.match(grokHelp.stdout, /bundled progrok runtime/);
 
-    const progrokHelp = run(progrokBin, ["--help"], { cwd: projectDir, env });
+    const progrokHelp = run(process.execPath, [progrokBin, "--help"], { cwd: projectDir, env });
     assert.match(progrokHelp.stdout, /Usage: progrok/);
 
-    const doctor = run(process.execPath, [cliPath, "doctor"], { cwd: projectDir, env });
+    const oauthHelp = run(process.execPath, [oauthBin, "--help"], { cwd: projectDir, env });
+    assert.match(oauthHelp.stdout, /openai-oauth|Options/i);
+
+    const codexStatus = spawnSync(process.execPath, [codexBin, "login", "status"], spawnOptions({
+      cwd: projectDir,
+      env: { ...env, PATH: "" },
+    }));
+    assert.equal(codexStatus.error, undefined, `package-local Codex should execute: ${codexStatus.error?.message || ""}`);
+    assert.equal(codexStatus.status, 1);
+    assert.match(`${codexStatus.stdout}\n${codexStatus.stderr}`, /Not logged in/i);
+
+    const status = run(process.execPath, [cliPath, "status"], {
+      cwd: projectDir,
+      env: { ...env, PATH: "" },
+    });
+    assert.doesNotMatch(status.stdout, /codex CLI not found/i);
+    assert.match(status.stdout, /not logged in/i);
+
+    const doctor = spawnSync(process.execPath, [cliPath, "doctor"], spawnOptions({ cwd: projectDir, env }));
+    assert.equal(doctor.status, 1, "doctor should fail when OAuth is configured without a file-backed session");
     assert.match(doctor.stdout, /Doctor/);
     assert.match(doctor.stdout, /runtime dependencies resolvable/);
     assert.match(doctor.stdout, /Storage/);
+    assert.match(doctor.stdout, /no file-backed Codex session/i);
 
     const port = await freePort();
     const logs = { stdout: "", stderr: "" };

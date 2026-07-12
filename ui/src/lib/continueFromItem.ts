@@ -43,7 +43,7 @@ export async function continueFromItem(item: ContinueableItem): Promise<Continue
       store.setVideoTopic(item.videoSeries.topic);
     }
     if (!store.videoModelSelected) {
-      store.selectVideoModel("grok-imagine-video-1.5-preview");
+      store.selectVideoModel("grok-imagine-video-1.5");
     }
   } else {
     await store.useImageAsReference(item as GenerateItem);

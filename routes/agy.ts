@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { spawn } from "node:child_process";
+import { buildAgyPathEnv, resolveAgyBin } from "../lib/agyCli.js";
 
 // Detect whether the Antigravity CLI (`agy`) is installed, using the same
 // spawn-and-catch style as lib/agyImageAdapter.ts (no shell `which`/`where`).
@@ -14,7 +15,10 @@ function isAgyInstalled(): Promise<boolean> {
       resolve(value);
     };
     try {
-      const child = spawn("agy", ["--version"], { stdio: "ignore" });
+      const child = spawn(resolveAgyBin(), ["--version"], {
+        stdio: "ignore",
+        env: { ...process.env, PATH: buildAgyPathEnv() },
+      });
       child.on("error", () => done(false)); // ENOENT when not on PATH
       child.on("exit", (code) => done(code === 0));
       // Safety timeout so a hung binary never blocks the request.

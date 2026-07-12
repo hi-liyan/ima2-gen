@@ -72,7 +72,9 @@ fi
 if [ "$MAJOR" -lt "$MIN_NODE" ]; then
   fail "Node $MAJOR is too old. ima2-gen requires Node >= $MIN_NODE. Run: nvm install --lts"
 fi
-ok "Node $(node --version), npm $(npm --version)"
+NPM_VERSION="$(npm --version)"
+NPM_MAJOR="${NPM_VERSION%%.*}"
+ok "Node $(node --version), npm $NPM_VERSION"
 
 # ── 3. Kill stale processes ─────────────────────────────────────────
 
@@ -85,12 +87,19 @@ fi
 # ── 4. Install ima2-gen ─────────────────────────────────────────────
 
 print "Installing ima2-gen globally…"
-if npm install -g ima2-gen 2>/dev/null; then
+INSTALL_ARGS=(install -g ima2-gen)
+if [ "$NPM_MAJOR" -ge 12 ]; then
+  INSTALL_ARGS+=(--allow-scripts=ima2-gen,better-sqlite3,sharp)
+fi
+if npm "${INSTALL_ARGS[@]}" 2>/dev/null; then
   ok "ima2-gen $(ima2 --version 2>/dev/null || echo 'installed')"
 else
   warn "Permission denied. Trying with sudo…"
-  sudo npm install -g ima2-gen || fail "Install failed. Set a user prefix: npm config set prefix ~/.npm-global"
+  sudo npm "${INSTALL_ARGS[@]}" || fail "Install failed. Set a user prefix: npm config set prefix ~/.npm-global"
 fi
+print "Verifying runtime dependencies…"
+ima2 doctor >/dev/null || fail "Runtime verification failed. Re-run the installer and inspect 'ima2 doctor'."
+ok "Runtime dependencies verified"
 
 # ── 5. Launch ────────────────────────────────────────────────────────
 

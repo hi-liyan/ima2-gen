@@ -19,6 +19,7 @@ import {
 import type { AppState, ImageNodeData } from "./storeTypes";
 import type { ClientNodeId } from "../lib/graph";
 import { clearFlightAbort, registerFlightAbort } from "./flightAbortRegistry";
+import { t } from "../i18n";
 
 type StoreSet = (p: Partial<AppState>) => void;
 type StoreGet = () => AppState;
@@ -58,7 +59,9 @@ export async function runVideoGenerateImpl(
             videoContinuity: null,
           });
           continueFromVideo = parentNode.data.imageUrl.replace(/^\/generated\//, "");
-        } catch { /* fallback to T2V */ }
+        } catch {
+          get().showToast(t("video.continuationFallbackT2V"), true);
+        }
       } else {
         parentSourceFilename = parentNode.data.imageUrl.replace(/^\/generated\//, "");
       }

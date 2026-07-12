@@ -226,13 +226,13 @@
   .right-panel-backdrop {
     position: fixed;
     inset: 0;
-    pointer-events: none;
-    background: transparent;
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.38);
     z-index: 40;
+    animation: drawer-fade 160ms ease-out;
   }
   @keyframes drawer-fade {
     from { opacity: 0; }
     to { opacity: 1; }
   }
 }
-

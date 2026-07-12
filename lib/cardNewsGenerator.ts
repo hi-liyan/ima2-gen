@@ -9,6 +9,40 @@ import { invalidateHistoryIndex } from "./historyIndex.js";
 import { requireRuntimeContext, type RouteRuntimeContext } from "./runtimeContext.js";
 
 import { errInfo } from "./errInfo.js";
+import { assertSafeSetId, resolveCardNewsSetDir } from "./cardNewsPath.js";
+
+const MAX_CARDS = 30;
+const MAX_CONCURRENCY = 4;
+const MAX_TEXT_CHARS = 20_000;
+const MAX_REFERENCES_PER_CARD = 8;
+const MAX_REFERENCE_CHARS = 10 * 1024 * 1024;
+
+function inputError(message: string, code: string): never {
+  throw Object.assign(new Error(message), { status: 400, code });
+}
+
+function validateInput(input: GenerateCardSetInput, cards: CardInput[]): number {
+  if (cards.length > MAX_CARDS) inputError(`cards must contain at most ${MAX_CARDS} items`, "CARD_NEWS_TOO_MANY_CARDS");
+  const concurrency = input.concurrency === undefined ? 2 : Number(input.concurrency);
+  if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > MAX_CONCURRENCY) {
+    inputError(`concurrency must be an integer between 1 and ${MAX_CONCURRENCY}`, "CARD_NEWS_INVALID_CONCURRENCY");
+  }
+  for (const card of cards) {
+    const text = [card.headline, card.body, card.visualPrompt, ...(Array.isArray(card.textFields) ? card.textFields.map((f) => f?.text) : [])]
+      .filter((value): value is string => typeof value === "string").join("");
+    if (text.length > MAX_TEXT_CHARS) inputError(`card text must not exceed ${MAX_TEXT_CHARS} characters`, "CARD_NEWS_TEXT_TOO_LARGE");
+    const refs = Array.isArray(card.references) ? card.references : [];
+    if (refs.length > MAX_REFERENCES_PER_CARD || refs.some((ref) => typeof ref !== "string" || ref.length > MAX_REFERENCE_CHARS)) {
+      inputError("card references exceed the allowed size", "CARD_NEWS_REFERENCES_TOO_LARGE");
+    }
+  }
+  return concurrency;
+}
+
+export function validateCardNewsInput(input: GenerateCardSetInput): void {
+  if (input.setId !== undefined) assertSafeSetId(input.setId);
+  validateInput(input, Array.isArray(input.cards) ? input.cards : []);
+}
 
 interface CardTextField {
   renderMode?: string;
@@ -153,8 +187,9 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, index: nu
 
 export async function generateCardNewsSet(ctxIn: RouteRuntimeContext, input: GenerateCardSetInput, options: GenerateCardSetOptions = {}) {
   const ctx = requireRuntimeContext(ctxIn);
-  const setId = input.setId || `cs_${ulid()}`;
+  const setId = assertSafeSetId(input.setId || `cs_${ulid()}`);
   const cards = Array.isArray(input.cards) ? input.cards : [];
+  const concurrency = validateInput(input, cards);
   const cardsToGenerate = cards.filter((card) => !card.locked);
   if (cardsToGenerate.length === 0) {
     const err: any = new Error("cards are required");
@@ -165,7 +200,7 @@ export async function generateCardNewsSet(ctxIn: RouteRuntimeContext, input: Gen
 
   const imageTemplateId = input.imageTemplateId || "academy-lesson-square";
   const { template, templateBase, b64: templateB64 } = await readTemplateBaseB64(ctx, imageTemplateId);
-  const dir = join(ctx.config.storage.generatedDir, "cardnews", setId);
+  const dir = resolveCardNewsSetDir(ctx.config.storage.generatedDir, setId);
   await mkdir(dir, { recursive: true });
 
   const quality = input.quality || "medium";
@@ -174,7 +209,7 @@ export async function generateCardNewsSet(ctxIn: RouteRuntimeContext, input: Gen
   const model = input.model || ctx.config.imageModels.default;
   const generateFn = options.generateFn || generateViaOAuth;
 
-  const generatedCards = await mapLimit(cardsToGenerate, Number(input.concurrency) || 2, async (card: CardInput, index: number) => {
+  const generatedCards = await mapLimit(cardsToGenerate, concurrency, async (card: CardInput, index: number) => {
     const cardOrder = Number(card.cardOrder || card.order || index + 1);
     const baseFilename = `card-${String(cardOrder).padStart(2, "0")}`;
     const imageFilename = `${baseFilename}.png`;

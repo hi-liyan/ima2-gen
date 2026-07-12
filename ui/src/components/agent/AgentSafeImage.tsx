@@ -22,7 +22,7 @@ export function AgentSafeImage({ src, alt, className, fallbackClassName, iconSiz
   }
 
   if (isVideoUrl(src)) {
-    return <video className={className} src={src} controls loop playsInline muted />;
+    return <video className={className} src={src} preload="metadata" playsInline muted onError={() => setFailed(true)} aria-label={alt} />;
   }
 
   return <img className={className} src={src} alt={alt} onError={() => setFailed(true)} />;

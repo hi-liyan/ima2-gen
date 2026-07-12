@@ -116,7 +116,7 @@ export type ImageNodeData = {
   partialImageUrl?: string | null;
   error?: string;
   elapsed?: number;
-  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh";
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   webSearchCalls?: number;
   model?: string | null;
   size?: string | null;

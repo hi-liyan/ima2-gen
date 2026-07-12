@@ -36,6 +36,9 @@ export type HistoryItem = {
   canvasSourceFilename?: string | null;
   canvasEditableFilename?: string | null;
   canvasMergedAt?: number | null;
+  annotationsBaked?: boolean;
+  annotationSnapshot?: import("../types/canvas").SavedCanvasAnnotations | null;
+  annotationOnly?: boolean;
   setId?: string | null;
   cardId?: string | null;
   cardOrder?: number | null;

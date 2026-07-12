@@ -107,7 +107,11 @@ function safeUpstreamClientMessage(upstream: UpstreamError | null | undefined, s
   const code = normalizedCode(upstream);
   if (code === "AUTH_API_KEY_INVALID") return "API key is invalid or unavailable.";
   if (code === "MODERATION_REFUSED") return "OpenAI refused the image request for safety reasons.";
-  if (code === "INVALID_REQUEST") return "OpenAI rejected the image request parameters.";
+  if (code === "INVALID_REQUEST") {
+    return upstream?.param
+      ? "OpenAI rejected the image request parameters."
+      : "OpenAI rejected the image request.";
+  }
   if (status === 401 || status === 403) return "OpenAI authentication failed.";
   if (status === 429) return "OpenAI rate limited the image request.";
   return "OpenAI rejected the image request.";
@@ -358,8 +362,8 @@ export async function generateViaResponses(provider: string | undefined, prompt:
   const toolChoiceKind = imageToolChoiceKind(toolChoice);
   const referenceInputs = references.map(normalizeRef);
   const userContent = referenceInputs.length
-    ? [...referenceInputs, { type: "input_text", text: buildUserTextPrompt(prompt, mode, { webSearchEnabled }) }]
-    : buildUserTextPrompt(prompt, mode, { webSearchEnabled });
+    ? [...referenceInputs, { type: "input_text", text: buildUserTextPrompt(prompt, mode, { webSearchEnabled, size }) }]
+    : buildUserTextPrompt(prompt, mode, { webSearchEnabled, size });
   const result = await postResponses({
     ctx,
     provider,
@@ -440,7 +444,7 @@ export async function generateMultimodeViaResponses(provider: string | undefined
       ? `${prompt}${DIRECT_PROMPT_FIDELITY_SUFFIX}`
       : `${prompt}${webSearchEnabled ? "" : ""}${AUTO_PROMPT_FIDELITY_SUFFIX}`,
     maxImages,
-    { webSearchEnabled },
+    { webSearchEnabled, size },
   );
   const referenceInputs = references.map(normalizeRef);
   const userContent = referenceInputs.length
@@ -498,7 +502,7 @@ export async function editViaResponses(provider: string | undefined, prompt: str
     { type: "input_image", image_url: `data:image/jpeg;base64,${imageForRequest.b64}` },
     ...referenceImages.map(({ b64 }) => ({ type: "input_image", image_url: `data:image/jpeg;base64,${b64}` })),
     ...maskContent,
-    { type: "input_text", text: buildEditTextPrompt(prompt, mode, { webSearchEnabled }) },
+    { type: "input_text", text: buildEditTextPrompt(prompt, mode, { webSearchEnabled, size }) },
   ];
   const result = await postResponses({
     ctx,

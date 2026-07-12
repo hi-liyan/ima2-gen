@@ -12,7 +12,7 @@
 
 `ima2-gen`은 무료 ChatGPT와 SuperGrok만으로 이미지와 영상을 만드는 로컬 AI 스튜디오입니다.
 
-전역 설치 후 ChatGPT 또는 Grok OAuth로 로그인하면 바로 시작됩니다. API 키 없이 이미지 생성, 비디오 생성, 노드 분기, 멀티모드 배치, Canvas 정리까지 전부 가능합니다.
+전역 설치 후 ChatGPT 또는 Grok OAuth로 로그인하면 바로 시작됩니다. 기본 OAuth 경로는 API 키 없이 동작하며, 선택적으로 API 키 공급자(`api`, `grok-api`, `gemini-api`, `agy`)도 지원합니다.
 
 ![프롬프트 작성창, 생성 이미지, 모델 표시, 결과 메타데이터가 보이는 ima2-gen 클래식 생성 화면](../assets/screenshots/classic-generate-light.png)
 
@@ -24,7 +24,20 @@ ima2 setup
 ima2 serve
 ```
 
+npm 12에서는 의존성 설치 스크립트를 기본 차단하므로 다음 명령을 사용하세요.
+
+```bash
+npm install -g ima2-gen --allow-scripts=ima2-gen,better-sqlite3,sharp
+```
+
 그다음 `http://localhost:3333`을 엽니다.
+
+CLI에서 영상 생성:
+
+```bash
+ima2 video "고양이가 피아노 치는 장면" --duration 5 --resolution 720p
+ima2 video "이 장면을 애니메이션으로" --ref photo.png --duration 10
+```
 
 `3333`이 이미 사용 중이면 다음 사용 가능한 포트로 열리고 실제 URL은 `~/.ima2/server.json`에 기록됩니다. 포트를 추측하지 말고 터미널에 출력된 URL이나 `ima2 open`을 사용하세요.
 
@@ -49,7 +62,7 @@ irm https://lidge-jun.github.io/ima2-gen/install-windows.ps1 | iex
 curl -fsSL https://lidge-jun.github.io/ima2-gen/install-linux.sh | bash
 ```
 
-각 스크립트가 nvm/fnm/brew/winget을 감지하고, 없으면 Node LTS를 자동 설치한 뒤, ima2-gen을 설치합니다.
+각 스크립트가 nvm/fnm/brew/winget을 감지하고, 없으면 Node LTS를 자동 설치한 뒤 ima2-gen을 설치합니다. npm 12 승인 옵션과 잔여 프로세스 정리를 자동 처리하고, 마지막에 `ima2 doctor`로 native runtime도 확인합니다.
 
 ### 업데이트
 
@@ -59,17 +72,17 @@ Ctrl+C로 서버를 종료한 뒤:
 npm install -g ima2-gen@latest
 ```
 
+npm 12라면 업데이트 명령에도 `--allow-scripts=ima2-gen,better-sqlite3,sharp`를 붙이세요. 원클릭 설치 스크립트는 npm 버전을 감지해 자동으로 처리합니다.
+
 v1.1.22부터 Ctrl+C가 DB, 소켓, 자식 프로세스를 깨끗하게 정리합니다. 이전 버전이거나 Windows에서 `EBUSY` 에러가 나면 위의 설치 스크립트를 다시 실행하세요 — 잔여 프로세스를 자동으로 정리합니다.
 
-## v1.1.22 주요 변경
+## 최근 주요 변경
 
-- **스토리보드 모드**: 컴포저 토글로 인물/장면 연속성 유지. 이미지와 비디오 파이프라인 모두 지원.
-- **플래너 모델 선택**: 비디오 설정 또는 `--planner-model` CLI 플래그로 Grok 플래너 모델 변경 가능.
-- **비디오 프레임 복사**: 처음/중간/마지막 프레임 추출 버튼.
-- **다중 인물 대사**: 플래너가 인물을 이름이 아닌 외형(옷, 체형, 소품)으로 구분.
-- **Graceful shutdown**: Ctrl+C가 DB, 소켓, 자식 프로세스를 정리 — Windows EBUSY 해결.
-- **크로스플랫폼 설치 스크립트**: macOS/Windows/Linux 원클릭 설치.
-- **Atomic sidecar writes**: 메타데이터 파일 크래시 방지.
+- **검증형 OIDC 배포**: release commit을 `preview`에서 먼저 검증한 뒤 같은 SHA를 tag/`latest`로 배포하고, npm provenance 확인 후 GitHub Release를 만듭니다.
+- **npm 12 설치 안정화**: native/build 스크립트 승인 목록과 설치 후 `ima2 doctor` 검증을 추가했습니다.
+- **결과 메타데이터 인스펙터** (#108), **생성 요청 로그** (#95, dev UI)
+- **OAuth size directive**: LANDSCAPE/PORTRAIT/SQUARE orientation 강조
+- **추가 공급자**: `grok-api`, `agy`, `gemini-api` (Vertex 우선)
 
 ### 설정
 
@@ -80,7 +93,7 @@ v1.1.22부터 Ctrl+C가 DB, 소켓, 자식 프로세스를 깨끗하게 정리�
 3. **Both** — GPT + Grok 둘 다 (전체 기능)
 4. **Web setup** — 웹 UI에서 전체 설정
 
-영상 생성은 Grok OAuth(2번 또는 3번)가 필요합니다.
+영상 생성은 Grok OAuth(2번 또는 3번)가 필요합니다. GPT OAuth만 설정한 뒤 영상을 추가하려면 `ima2 grok login`을 별도로 실행하세요.
 
 ## 무엇을 할 수 있나요?
 
@@ -88,9 +101,10 @@ v1.1.22부터 Ctrl+C가 DB, 소켓, 자식 프로세스를 깨끗하게 정리�
 - **Node mode**: 마음에 드는 이미지를 여러 방향으로 분기해 실험합니다.
 - **Multimode batches**: 하나의 프롬프트에서 여러 후보 슬롯을 동시에 만들고, 가장 좋은 결과에서 이어갑니다.
 - **Canvas Mode**: 확대/이동, 주석, 지우개, 배경 정리, 투명 체크보드 미리보기, alpha/matte export를 지원합니다.
-- **Video 생성**: 텍스트, 이미지, 또는 여러 레퍼런스에서 짧은 영상을 만듭니다. 기획→제출→진행률→완료까지 실시간으로 보여줍니다.
-- **Local gallery**: 생성물을 내 컴퓨터에 저장하고 세션별 히스토리로 봅니다.
-- **Reference images**: 레퍼런스를 드래그, 붙여넣기, 파일 선택으로 추가합니다. 큰 이미지는 업로드 전에 자동 압축됩니다.
+- **Video 생성**: 텍스트, 이미지, 또는 여러 레퍼런스에서 짧은 영상을 만듭니다. SSE로 기획→제출→진행률→완료를 실시간 표시합니다. 생성된 영상에서 First/Mid/Last 프레임 복사 버튼으로 키프레임을 추출할 수 있습니다.
+- **Storyboard mode**: 컴포저에서 스토리보드 모드를 켜면 연속 프레임의 인물·장면 연속성을 유지합니다. 이미지와 영상 생성 모두 지원합니다.
+- **Local gallery**: 생성물을 내 컴퓨터에 저장하고 세션별 히스토리로 봅니다. 기본적으로 현재 세션만 보이며 All Images 토글로 전체 히스토리를 볼 수 있습니다. 각 이미지의 생성 시간·reasoning effort가 메타데이터에 기록됩니다.
+- **Reference images**: 레퍼런스를 드래그, 붙여넣기, 파일 선택으로 추가합니다. 이미지 최대 5장, 영상 최대 7장. 큰 이미지는 업로드 전에 자동 압축됩니다.
 - **Prompt library imports**: 로컬 prompt pack, GitHub folder, curated GPT-image hint를 내장 prompt library로 가져옵니다.
 - **Mobile shell**: 작은 화면에서는 app bar, compose sheet, compact settings toggle로 조작합니다.
 - **Observable jobs**: 진행 중인 작업과 최근 완료된 작업을 request ID로 추적합니다.
@@ -106,12 +120,15 @@ v1.1.22부터 Ctrl+C가 DB, 소켓, 자식 프로세스를 깨끗하게 정리�
 - `provider: "oauth"`는 로컬 Codex OAuth 프록시를 사용합니다.
 - `provider: "api"`는 OpenAI Responses API의 `image_generation` 도구를 사용합니다.
 - `provider: "grok"`는 번들 `progrok`을 `127.0.0.1:18645`에서 띄우고, xAI Web Search와 플래너(기본: `grok-4.3`, 설정 또는 `--planner-model`로 변경 가능)를 거친 뒤 xAI Images API를 호출합니다.
+- `provider: "grok-api"`는 `XAI_API_KEY`로 xAI Images API를 직접 호출합니다 (progrok OAuth 없음).
+- `provider: "agy"`는 로컬 Antigravity CLI(`agy -p`)로 Gemini `nano-banana-2` 이미지를 생성합니다 (`IMA2_AGY_BIN`).
+- `provider: "gemini-api"`는 Google Generative Language API 또는 Vertex AI를 사용합니다 (`GEMINI_API_KEY` / `VERTEX_SERVICE_ACCOUNT_JSON`; 둘 다 있으면 Vertex 우선).
 
 Grok은 Classic, Node, Agent 흐름을 지원합니다. Classic 레퍼런스, Node 부모 이미지, Agent 현재 이미지가 있으면 최종 Grok 호출은 xAI image edit 경로로 전환되어 image-to-image 맥락을 유지합니다. 기본 모델은 `grok-imagine-image`이고, `quality: "high"`에서는 `grok-imagine-image-quality`를 사용합니다.
 
-Grok video 생성(T2V/I2V/ref2v)은 v1.1.16부터 사용 가능합니다. 텍스트 프롬프트, 단일 이미지, 또는 최대 7장의 레퍼런스에서 짧은 영상을 만들 수 있으며, 실시간 진행률 스트리밍을 지원합니다.
+Grok video는 `grok-imagine-video`(기본) 또는 정식 `grok-imagine-video-1.5`를 사용합니다. 기존 `grok-imagine-video-1.5-preview` 문자열은 호환 alias로 계속 받습니다. 레퍼런스 수에 따라 T2V(0), I2V(1), Ref2V(2-7, 최대 10초)가 자동 선택되며, 1080p는 `grok-imagine-video-1.5` 프롬프트 전용 T2V와 단일 이미지/프레임 I2V에서 활성화됩니다. 프롬프트 전용 1.5 T2V는 upstream 요청 전에 내부 흰 캔버스 I2V shim을 사용합니다. 1.5는 Ref2V, V2V edit, extension 지원을 추가하지 않으므로 해당 경로는 기본 모델만 사용합니다. duration(1-15s), resolution(480p/720p/지원 시 1080p), aspect ratio 컨트롤을 제공합니다.
 
-설정 화면에 **API key provider available**이나 **Grok provider available**이 보이면 해당 공급자가 감지됐고 생성 요청에 사용할 수 있다는 뜻입니다.
+설정 화면의 QuotaCard에 Grok billing `$used/$limit` 바와 **Switch Account** 버튼(`POST /api/auth/switch`)이 표시됩니다.
 
 ![GPT OAuth 활성화와 API 키 비활성 상태를 보여주는 설정 화면](../assets/screenshots/settings-oauth-generation.png)
 
@@ -189,6 +206,7 @@ Settings 워크스페이스는 계정, 모델, 테마, 언어 설정을 생성 �
 | `ima2 setup` | 인증 설정 다시 구성 |
 | `ima2 status` | config와 OAuth 상태 확인 |
 | `ima2 doctor` | Node, 패키지, config, auth 진단 |
+| `ima2 doctor image-probe [--json]` | 이미지 없이 진단용 sanitized probe 실행 |
 | `ima2 open` | 웹 UI 열기 |
 | `ima2 reset` | 저장된 config 삭제 |
 
@@ -201,6 +219,7 @@ Settings 워크스페이스는 계정, 모델, 테마, 언어 설정을 생성 �
 | `ima2 gen <prompt>` | CLI에서 이미지 생성 |
 | `ima2 edit <file> --prompt <text>` | 기존 이미지 수정 |
 | `ima2 multimode <prompt>` | 멀티 이미지 SSE 생성 |
+| `ima2 video <prompt>` | Grok 영상 생성 (SSE 진행률) |
 | `ima2 ls [--session <id>] [--favorites]` | 로컬 히스토리 보기 |
 | `ima2 show <name> [--metadata]` | 생성 파일 열기 |
 | `ima2 prompt ls -q <검색어>` | 프롬프트 라이브러리 검색 |
@@ -239,6 +258,11 @@ environment variables > ~/.ima2/config.json > built-in defaults
 | `IMA2_LOG_LEVEL` | `info` | 일반 `serve`는 `info`, dev 모드는 `debug`. `debug`, `info`, `warn`, `error`, `silent` 지원 |
 | `IMA2_INFLIGHT_TERMINAL_TTL_MS` | `300000` | 디버그용 최근 작업 보존 시간 (5분) |
 | `OPENAI_API_KEY` | — | `provider: "api"` Responses 이미지 경로와 보조 기능용 API 키 |
+| `XAI_API_KEY` | — | `provider: "grok-api"` 직접 xAI Images API 경로 |
+| `GEMINI_API_KEY` | — | `provider: "gemini-api"` Generative Language API |
+| `VERTEX_SERVICE_ACCOUNT_JSON` | — | Vertex AI 서비스 계정 JSON (API 키보다 우선) |
+| `IMA2_AGY_BIN` | PATH의 `agy` | `provider: "agy"` 바이너리 경로 |
+| `IMA2_MAX_PARALLEL` | `24` | 서버 전역 병렬 생성 상한 |
 
 ### 로그 모드
 
@@ -288,7 +312,8 @@ environment variables > ~/.ima2/config.json > built-in defaults
 ```bash
 git clone https://github.com/lidge-jun/ima2-gen.git
 cd ima2-gen
-npm install
+npm ci
+npm --prefix ui ci
 npm run dev
 npm run typecheck
 npm test

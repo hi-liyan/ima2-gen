@@ -13,6 +13,7 @@ const HISTORY_INDEX_TTL_MS = 3000;
 
 let snapshot: HistoryIndexSnapshot | null = null;
 let pending: Promise<HistoryIndexSnapshot> | null = null;
+let generation = 0;
 
 function isFreshIndex(current: HistoryIndexSnapshot | null, baseDir: string): boolean {
   return Boolean(
@@ -28,18 +29,22 @@ export async function getHistoryIndex(
   if (isFreshIndex(snapshot, baseDir)) return snapshot!;
   if (pending) return pending;
 
-  pending = (async () => {
+  const scanGeneration = generation;
+  const scan = (async () => {
     const rows = await listHistoryRows(baseDir);
     const next = { baseDir, builtAt: Date.now(), rows };
-    snapshot = next;
+    if (scanGeneration === generation) snapshot = next;
     return next;
-  })().finally(() => {
-    pending = null;
+  })();
+  const tracked = scan.finally(() => {
+    if (pending === tracked) pending = null;
   });
+  pending = tracked;
   return pending;
 }
 
 export function invalidateHistoryIndex(): void {
+  generation += 1;
   snapshot = null;
   pending = null;
 }

@@ -2,6 +2,7 @@ import { useI18n } from "../i18n";
 import { IMAGE_MODEL_OPTIONS } from "../lib/imageModels";
 import { useAppStore } from "../store/useAppStore";
 import { useProviderAvailability } from "./ProviderSelect";
+import { useModalFocus } from "../hooks/useModalFocus";
 
 export function ProviderReadinessPopup() {
   const { t } = useI18n();
@@ -15,6 +16,7 @@ export function ProviderReadinessPopup() {
   const availability = useProviderAvailability();
   const isGrok = provider === "grok";
   const imageModelOption = IMAGE_MODEL_OPTIONS.find((option) => option.value === imageModel);
+  const modalRef = useModalFocus<HTMLDivElement>(open, close);
 
   if (!open) return null;
   const current = availability[provider];
@@ -28,10 +30,12 @@ export function ProviderReadinessPopup() {
   return (
     <div className="modal-backdrop provider-readiness-backdrop" onClick={close} role="presentation">
       <div
+        ref={modalRef}
         className="modal provider-readiness"
         role="dialog"
         aria-modal="true"
         aria-labelledby="provider-readiness-title"
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         <div id="provider-readiness-title" className="modal__title">
@@ -73,7 +77,7 @@ export function ProviderReadinessPopup() {
           </dl>
         </div>
         <div className="modal__actions">
-          <button type="button" className="modal__btn modal__btn--secondary" onClick={close}>
+          <button type="button" className="modal__btn modal__btn--secondary" onClick={close} data-modal-initial-focus>
             {t("common.close")}
           </button>
           <button type="button" className="modal__btn" onClick={goAccount}>

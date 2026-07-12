@@ -99,7 +99,7 @@ export async function retryPromptOnlyJsonImage({
           model,
           input: [
             ...(plan.developerPromptDroppedOnRetry ? [] : [{ role: "developer", content: developerPrompt }]),
-            { role: "user", content: buildUserTextPrompt(prompt, mode, { webSearchEnabled: false }) },
+            { role: "user", content: buildUserTextPrompt(prompt, mode, { webSearchEnabled: false, size }) },
           ],
           tools: tools(false, { quality, size, moderation }),
           tool_choice: imageToolChoice(true),

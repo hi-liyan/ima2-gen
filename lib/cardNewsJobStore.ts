@@ -1,4 +1,5 @@
 import { ulid } from "ulid";
+import { assertSafeSetId } from "./cardNewsPath.js";
 
 interface CardNewsCard {
   id: string;
@@ -37,6 +38,7 @@ interface CardNewsJob {
 
 const jobs = new Map<string, CardNewsJob>();
 const TTL_MS = 30 * 60 * 1000;
+const MAX_ACTIVE_JOBS = 3;
 
 function summarize(job: CardNewsJob) {
   const generated = job.cards.filter((card) => card.status === "generated").length;
@@ -64,6 +66,14 @@ function statusFromCards(cards: CardNewsCard[]) {
 }
 
 export function createCardNewsJob(plan: CardNewsPlan) {
+  assertSafeSetId(plan.setId);
+  const activeJobs = [...jobs.values()].filter((job) => job.status === "queued" || job.status === "running").length;
+  if (activeJobs >= MAX_ACTIVE_JOBS) {
+    throw Object.assign(new Error(`At most ${MAX_ACTIVE_JOBS} Card News jobs may be active`), {
+      status: 400,
+      code: "CARD_NEWS_ACTIVE_JOB_LIMIT",
+    });
+  }
   const now = Date.now();
   const job: CardNewsJob = {
     jobId: `cj_${ulid()}`,

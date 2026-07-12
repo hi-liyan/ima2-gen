@@ -12,7 +12,7 @@ export type NodeGenerateRequest = {
   format: string;
   moderation: "low" | "auto";
   model?: ImageModel;
-  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh";
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   provider?: Provider;
   mode?: "auto" | "direct";
   contextMode?: "parent-plus-refs" | "parent-only" | "ancestry";
@@ -33,7 +33,7 @@ export type NodeGenerateResponse = {
   filename: string;
   url: string;
   elapsed: number;
-  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh";
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "xhigh" | "max";
   usage?: { total_tokens?: number } & Record<string, unknown>;
   webSearchCalls: number;
   provider: Provider;

@@ -5,7 +5,7 @@ import { readStoreBundle } from "./_storeBundle.mjs";
 
 const store = readStoreBundle();
 const imageNode = readFileSync("ui/src/components/ImageNode.tsx", "utf-8");
-const nodes = readFileSync("routes/nodes.ts", "utf-8");
+const nodes = (readFileSync("routes/nodes.ts", "utf-8") + readFileSync("lib/nodeGeneration.ts", "utf-8") + readFileSync("lib/nodeValidation.ts", "utf-8"));
 // NOTE: lib/oauthProxy.ts was split into lib/oauthProxy/*.ts behind a facade.
 const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy.ts",
@@ -16,6 +16,7 @@ const OAUTH_PROXY_SOURCES = [
   "lib/oauthProxy/runtime.ts",
   "lib/oauthProxy/streams.ts",
   "lib/oauthProxy/generators.ts",
+  "lib/oauthProxy/multimodeGenerators.ts",
   "lib/oauthProxy/index.ts",
 ];
 const oauth = OAUTH_PROXY_SOURCES.map((p) => readFileSync(p, "utf-8")).join("\n");
@@ -48,3 +49,4 @@ describe("child node references contract", () => {
     assert.doesNotMatch(oauth, /logEvent\("oauth-edit", "request", \{[^}]*references:/);
   });
 });
+

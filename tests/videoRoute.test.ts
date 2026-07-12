@@ -39,7 +39,7 @@ async function makeTinyMp4(path: string): Promise<void> {
 }
 
 // Mock progrok upstream: search -> planner -> start -> poll(done) -> download.
-function makeProxy(options: { failFirstGeneration?: boolean } = {}) {
+function makeProxy(options: { failFirstGeneration?: boolean; captureStart?: (body: any) => void } = {}) {
   let polls = 0;
   let starts = 0;
   const server = createServer((req, res) => {
@@ -53,13 +53,21 @@ function makeProxy(options: { failFirstGeneration?: boolean } = {}) {
       return res.end(JSON.stringify({ choices: [{ message: { tool_calls: [{ type: "function", function: { name: "generate_video", arguments: JSON.stringify({ prompt: "english clip" }) } }] } }] }));
     }
     if (url.includes("/v1/videos/generations")) {
-      starts += 1;
-      if (options.failFirstGeneration && starts === 1) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: "`reference_images` is not supported for this model." }));
-      }
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ request_id: "vid-xyz" }));
+      let raw = "";
+      req.on("data", (chunk) => { raw += chunk; });
+      req.on("end", () => {
+        starts += 1;
+        try {
+          options.captureStart?.(JSON.parse(raw || "{}"));
+        } catch {}
+        if (options.failFirstGeneration && starts === 1) {
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ error: "`reference_images` is not supported for this model." }));
+        }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ request_id: "vid-xyz" }));
+      });
+      return;
     }
     if (url.includes("/v1/videos/vid-xyz")) {
       polls += 1;
@@ -174,18 +182,18 @@ test("/api/video/generate exposes fallback model metadata for 1.5 Ref2V", async 
       }),
     });
     const events = parseSse(await res.text());
-    const fallback = { from: "grok-imagine-video-1.5-preview", to: "grok-imagine-video" };
+    const fallback = { from: "grok-imagine-video-1.5", to: "grok-imagine-video" };
     const submitted = events.find((e) => e.event === "submitted");
     const done = events.find((e) => e.event === "done");
     assert.ok(submitted, "has submitted");
     assert.ok(done, "has done");
-    assert.equal(submitted.data.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(submitted.data.requestedModel, "grok-imagine-video-1.5");
     assert.equal(submitted.data.effectiveModel, "grok-imagine-video");
     assert.deepEqual(submitted.data.modelFallback, fallback);
-    assert.equal(done.data.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(done.data.requestedModel, "grok-imagine-video-1.5");
     assert.equal(done.data.effectiveModel, "grok-imagine-video");
     assert.deepEqual(done.data.modelFallback, fallback);
-    assert.equal(done.data.video.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(done.data.video.requestedModel, "grok-imagine-video-1.5");
     assert.equal(done.data.video.effectiveModel, "grok-imagine-video");
     assert.deepEqual(done.data.video.modelFallback, fallback);
 
@@ -194,12 +202,82 @@ test("/api/video/generate exposes fallback model metadata for 1.5 Ref2V", async 
     assert.ok(mp4, "mp4 written");
     const sidecar = JSON.parse(await readFile(join(generatedDir, `${mp4}.json`), "utf8"));
     assert.equal(sidecar.model, "grok-imagine-video");
-    assert.equal(sidecar.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(sidecar.requestedModel, "grok-imagine-video-1.5");
     assert.equal(sidecar.effectiveModel, "grok-imagine-video");
     assert.deepEqual(sidecar.modelFallback, fallback);
-    assert.equal(sidecar.video.requestedModel, "grok-imagine-video-1.5-preview");
+    assert.equal(sidecar.video.requestedModel, "grok-imagine-video-1.5");
     assert.equal(sidecar.video.effectiveModel, "grok-imagine-video");
     assert.deepEqual(sidecar.video.modelFallback, fallback);
+  } finally {
+    await new Promise((r) => server.close(r));
+    await new Promise((r) => proxy.close(r));
+    await rm(generatedDir, { recursive: true, force: true });
+  }
+});
+
+test("/api/video/generate accepts Grok Video 1.5 image-to-video 1080p", async () => {
+  let startBody: any = null;
+  const proxy = makeProxy({ captureStart: (body) => { startBody = body; } });
+  const proxyUrl = await listen(proxy);
+  const proxyPort = Number(new URL(proxyUrl).port);
+  const generatedDir = await mkdtemp(join(tmpdir(), "ima2-video-route-1080-"));
+  const { server, url } = await videoApp(generatedDir, proxyPort);
+  try {
+    const res = await fetch(`${url}/api/video/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "animate the source image",
+        provider: "grok",
+        model: "grok-imagine-video-1.5-preview",
+        sourceImage: Buffer.from("img").toString("base64"),
+        duration: 5,
+        resolution: "1080p",
+        requestId: "req_video_1080p_i2v",
+      }),
+    });
+    const done = parseSse(await res.text()).find((e) => e.event === "done");
+    assert.ok(done, "has done");
+    assert.equal(startBody.model, "grok-imagine-video-1.5");
+    assert.equal(startBody.resolution, "1080p");
+    assert.ok(startBody.image?.url?.startsWith("data:image/"));
+    assert.equal(done.data.requestedModel, "grok-imagine-video-1.5");
+    assert.equal(done.data.video.resolution, "1080p");
+  } finally {
+    await new Promise((r) => server.close(r));
+    await new Promise((r) => proxy.close(r));
+    await rm(generatedDir, { recursive: true, force: true });
+  }
+});
+
+test("/api/video/generate accepts Grok Video 1.5 prompt-only 1080p via canvas shim", async () => {
+  let startBody: any = null;
+  const proxy = makeProxy({ captureStart: (body) => { startBody = body; } });
+  const proxyUrl = await listen(proxy);
+  const proxyPort = Number(new URL(proxyUrl).port);
+  const generatedDir = await mkdtemp(join(tmpdir(), "ima2-video-route-1080-t2v-"));
+  const { server, url } = await videoApp(generatedDir, proxyPort);
+  try {
+    const res = await fetch(`${url}/api/video/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: "make a freeform clip",
+        provider: "grok",
+        model: "grok-imagine-video-1.5-preview",
+        duration: 5,
+        resolution: "1080p",
+        requestId: "req_video_1080p_t2v",
+      }),
+    });
+    const done = parseSse(await res.text()).find((e) => e.event === "done");
+    assert.ok(done, "has done");
+    assert.equal(startBody.model, "grok-imagine-video-1.5");
+    assert.equal(startBody.resolution, "1080p");
+    assert.ok(startBody.image?.url?.startsWith("data:image/png;base64,"));
+    assert.match(startBody.prompt, /blank white canvas.*technical placeholder/);
+    assert.equal(done.data.video.resolution, "1080p");
+    assert.equal(done.data.video.requestedModel, "grok-imagine-video-1.5");
   } finally {
     await new Promise((r) => server.close(r));
     await new Promise((r) => proxy.close(r));
@@ -284,6 +362,12 @@ test("/api/video/generate rejects non-grok provider and bad params", async () =>
 
     const badRes = parseSse(await (await fetch(`${url}/api/video/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "x", provider: "grok", resolution: "8k" }) })).text());
     assert.equal(badRes.find((e) => e.event === "error")?.data.code, "INVALID_VIDEO_RESOLUTION");
+
+    const badBase1080 = parseSse(await (await fetch(`${url}/api/video/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "x", provider: "grok", model: "grok-imagine-video", sourceImage: Buffer.from("img").toString("base64"), resolution: "1080p" }) })).text());
+    assert.equal(badBase1080.find((e) => e.event === "error")?.data.code, "INVALID_VIDEO_RESOLUTION");
+
+    const badRef1080 = parseSse(await (await fetch(`${url}/api/video/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prompt: "x", provider: "grok", model: "grok-imagine-video-1.5", referenceImages: ["A", "B"], resolution: "1080p" }) })).text());
+    assert.equal(badRef1080.find((e) => e.event === "error")?.data.code, "INVALID_VIDEO_RESOLUTION");
   } finally {
     await new Promise((r) => server.close(r));
     await rm(generatedDir, { recursive: true, force: true });

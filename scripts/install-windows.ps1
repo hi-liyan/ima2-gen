@@ -90,7 +90,9 @@ $major = [int]((node --version) -replace 'v(\d+)\..*', '$1')
 if ($major -lt $MIN_NODE) {
     Fail "Node v$major is too old. ima2-gen requires Node >= $MIN_NODE. Run: nvm install lts"
 }
-Ok "Node $(node --version), npm $(npm --version)"
+$npmVersion = npm --version
+$npmMajor = [int]($npmVersion.Split('.')[0])
+Ok "Node $(node --version), npm $npmVersion"
 
 # ── 4. Install ima2-gen ─────────────────────────────────────────────
 
@@ -106,7 +108,11 @@ if ($npmGlobal) {
 }
 
 Print 'Installing ima2-gen globally…'
-$output = & npm install -g ima2-gen 2>&1
+$installArgs = @('install', '-g', 'ima2-gen')
+if ($npmMajor -ge 12) {
+    $installArgs += '--allow-scripts=ima2-gen,better-sqlite3,sharp'
+}
+$output = & npm @installArgs 2>&1
 if ($LASTEXITCODE -ne 0) {
     $outputStr = $output -join "`n"
     if ($outputStr -match 'EBUSY|EPERM|resource busy') {
@@ -114,7 +120,7 @@ if ($LASTEXITCODE -ne 0) {
         Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
         Start-Sleep -Seconds 3
         npm cache clean --force 2>$null
-        $output = & npm install -g ima2-gen 2>&1
+        $output = & npm @installArgs 2>&1
         if ($LASTEXITCODE -ne 0) {
             Write-Host ($output -join "`n")
             Fail 'Install still failed after cleanup. Reboot, then run this script again before starting ima2.'
@@ -126,6 +132,12 @@ if ($LASTEXITCODE -ne 0) {
     }
 }
 Ok 'ima2-gen installed'
+Print 'Verifying runtime dependencies…'
+& ima2 doctor *> $null
+if ($LASTEXITCODE -ne 0) {
+    Fail "Runtime verification failed. Re-run the installer and inspect 'ima2 doctor'."
+}
+Ok 'Runtime dependencies verified'
 
 # ── 5. Launch ────────────────────────────────────────────────────────
 

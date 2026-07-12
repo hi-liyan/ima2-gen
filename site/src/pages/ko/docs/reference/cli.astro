@@ -77,6 +77,15 @@ ima2 multimode "two cats playing" --max-images 2 --ref cat.png --mode direct</co
     <thead><tr><th>명령</th><th>설명</th></tr></thead>
     <tbody>
       <tr><td><code>ima2 skill [--json]</code></td><td>패키징된 Markdown skill 출력(또는 JSON 래퍼).</td></tr>
+      <tr><td><code>ima2 skill front</code></td><td>프론트엔드 구현 스킬 출력 (<code>skills/ima2-front/SKILL.md</code>).</td></tr>
+      <tr><td><code>ima2 skill uiux</code></td><td>디자인 방향 탐색 스킬 출력 (<code>skills/ima2-uiux/SKILL.md</code>).</td></tr>
+      <tr><td><code>ima2 skill ls</code></td><td>사용 가능한 패키징 스킬 목록.</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] path</code></td><td>스킬 파일 경로 출력.</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] refs</code></td><td>레퍼런스 모듈 목록 (이름 + 라인 수).</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] ref &lt;name&gt;</code></td><td>레퍼런스 모듈 하나 출력 (예: <code>motion</code>, <code>design-isms</code>).</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] --with-refs</code></td><td>SKILL.md + 전체 레퍼런스 모듈 번들 출력.</td></tr>
+      <tr><td><code>ima2 skill install --dir &lt;path&gt;</code></td><td>에이전트의 스킬 디렉토리에 설치.</td></tr>
+      <tr><td><code>ima2 skill install --tmp</code></td><td><code>$TMPDIR/ima2-skills/</code>에 설치 (임시 폴백).</td></tr>
       <tr><td><code>ima2 capabilities --json</code></td><td>지원 명령, 모델/품질/reasoning 값, 권고 한도.</td></tr>
       <tr><td><code>ima2 defaults --json</code></td><td>유효 모델/reasoning 기본값(서버 우선, 로컬 설정 폴백).</td></tr>
     </tbody>
@@ -84,6 +93,13 @@ ima2 multimode "two cats playing" --max-images 2 --ref cat.png --mode direct</co
   <div class="docs-callout docs-callout-info">
     생성/기본값 선택에는 <code>capabilities --json</code>의 <code>valid.imageModels.supported</code>만
     쓰세요. <code>limits.maxParallel</code>은 권고 큐 가이드이지 서버측 동시성 세마포어가 아닙니다.
+  </div>
+  <div class="docs-callout docs-callout-info">
+    <strong>3개 패키징 스킬.</strong> <code>ima2 skill</code> (코어)은 CLI와 프롬프팅을 다룹니다.
+    <code>ima2 skill front</code>는 프로덕션급 프론트엔드 엔지니어링(에셋 파이프라인, 모션/비디오,
+    반응형, 접근성, 안티슬롭, 28개 레퍼런스 파일)을 추가합니다.
+    <code>ima2 skill uiux</code>는 디자인 방향 탐색(이미지 우선 ism 워크플로, UX 상태, 프로덕트
+    퍼스널리티, 18개 레퍼런스 파일)을 추가합니다.
   </div>
 
   <h2>히스토리 &amp; 관측</h2>

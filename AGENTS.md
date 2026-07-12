@@ -1,7 +1,7 @@
 # ima2-gen — AI Context
 
 ## What This Project Does
-Local image generation studio (v2.0.1) — CLI + 웹 UI
+Local image generation studio (v2.x) — CLI + 웹 UI
 - GPT OAuth, API Key, Grok, Gemini API, Antigravity CLI 다중 provider 지원
 - 텍스트→이미지, 이미지→이미지(편집), 비디오 생성
 - SSE 멀티플렉싱: 단일 `GET /api/events` SSE 채널 + async POST (202) 아키텍처
@@ -43,9 +43,35 @@ ima2-gen/
 ├── integrations/comfyui/ # ComfyUI bridge/custom node
 ├── structure/            # Current architecture reference docs (00-07)
 ├── devlog/               # _plan (active), _fin (archived)
-├── tests/                # node:test contracts/regressions (968 cases)
+├── tests/                # node:test contracts/regressions (1094 cases)
 └── package.json
 ```
+
+## Agent Skills (packaged)
+
+Three Markdown skill files ship inside `skills/` for AI coding agents:
+
+| Skill | Path | CLI | What It Covers |
+|-------|------|-----|----------------|
+| Core | `skills/ima2/SKILL.md` | `ima2 skill` | CLI reference, prompting protocol, provider routing, video workflows |
+| Frontend | `skills/ima2-front/SKILL.md` | `ima2 skill front` | Asset pipeline, motion/video, responsive, a11y, anti-slop, 28 reference files |
+| UI/UX Design | `skills/ima2-uiux/SKILL.md` | `ima2 skill uiux` | Image-first ism discovery, UX states, design-isms, product personalities, 18 reference files |
+
+Use `ima2 skill ls` to list, `ima2 skill <name> path` for file paths,
+`ima2 skill <name> --json` for JSON-wrapped content. Reference modules
+inside `front` and `uiux` skills are loadable individually:
+
+```bash
+ima2 skill front refs              # list reference modules with line counts
+ima2 skill front ref anti-slop     # load one module by name
+ima2 skill uiux ref design-isms    # load a uiux module
+ima2 skill install --dir <path>     # install to agent's skill directory
+ima2 skill install --tmp            # install to temp dir (ephemeral fallback)
+```
+
+**Recommended approach:** The agent resolves its own skill directory path and runs
+`ima2 skill install --dir <path>`. Skills land on disk as directories (SKILL.md +
+references/) and the agent reads them natively. Avoid piping large bundled outputs.
 
 ## Devlog Phase Roadmap
 - Current active plans live under `devlog/_plan/`.
@@ -64,7 +90,7 @@ ima2-gen/
 ```bash
 npm run typecheck          # tsc --noEmit (server + lib)
 npm run typecheck:tests    # tsc --noEmit (test files)
-npm test                   # node:test (968 cases)
+npm test                   # node:test (1094 cases)
 npm run test:inventory     # verify test file registry
 cd ui && npm run build     # Vite production build
 ```

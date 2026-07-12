@@ -78,11 +78,27 @@ ima2 multimode "two cats playing" --max-images 2 --ref cat.png --mode direct</co
   <table>
     <thead><tr><th>Command</th><th>Description</th></tr></thead>
     <tbody>
-      <tr><td><code>ima2 skill [--json]</code></td><td>Print the packaged Markdown skill (or a JSON wrapper).</td></tr>
+      <tr><td><code>ima2 skill</code></td><td>Print the core CLI skill (<code>skills/ima2/SKILL.md</code>).</td></tr>
+      <tr><td><code>ima2 skill front</code></td><td>Print the frontend implementation skill (<code>skills/ima2-front/SKILL.md</code>).</td></tr>
+      <tr><td><code>ima2 skill uiux</code></td><td>Print the design direction skill (<code>skills/ima2-uiux/SKILL.md</code>).</td></tr>
+      <tr><td><code>ima2 skill ls</code></td><td>List all available packaged skills.</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] --json</code></td><td>JSON wrapper around a skill (for agent consumption).</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] path</code></td><td>Print the resolved skill file path.</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] refs</code></td><td>List reference modules with line counts.</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] ref &lt;name&gt;</code></td><td>Print one reference module (e.g. <code>motion</code>, <code>design-isms</code>).</td></tr>
+      <tr><td><code>ima2 skill [front|uiux] --with-refs</code></td><td>Bundle SKILL.md + all reference modules into one output.</td></tr>
+      <tr><td><code>ima2 skill install --dir &lt;path&gt;</code></td><td>Install all skills to the agent's skill directory.</td></tr>
+      <tr><td><code>ima2 skill install --tmp</code></td><td>Install to <code>$TMPDIR/ima2-skills/</code> (ephemeral fallback).</td></tr>
       <tr><td><code>ima2 capabilities --json</code></td><td>Supported commands, model/quality/reasoning values, advisory limits.</td></tr>
       <tr><td><code>ima2 defaults --json</code></td><td>Effective model/reasoning defaults (server, falling back to local config).</td></tr>
     </tbody>
   </table>
+  <div class="docs-callout docs-callout-info">
+    <strong>Three packaged skills.</strong> <code>ima2 skill</code> (core) covers CLI and prompting.
+    <code>ima2 skill front</code> adds production-grade frontend engineering: asset pipeline, motion/video,
+    responsive, a11y, anti-slop, with 28 reference files. <code>ima2 skill uiux</code> adds design
+    direction discovery: image-first ism workflow, UX states, product personalities, with 18 reference files.
+  </div>
   <div class="docs-callout docs-callout-info">
     Use only <code>valid.imageModels.supported</code> from <code>capabilities --json</code> for
     generation/default choices. <code>limits.maxParallel</code> is advisory queue guidance, not a

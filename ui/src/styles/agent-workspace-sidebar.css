@@ -8,14 +8,24 @@
   overflow: hidden;
 }
 
-.agent-right-sidebar > .agent-image,
-.agent-right-sidebar > .agent-sidebar-section {
+.agent-right-sidebar > .agent-sidebar-panel,
+.agent-sidebar-panel > .agent-image,
+.agent-sidebar-panel > .agent-sidebar-section {
   min-width: 0;
   min-height: 0;
 }
 
-.agent-right-sidebar > .agent-image {
+.agent-sidebar-panel {
   height: 100%;
+  overflow: hidden;
+}
+
+.agent-sidebar-panel > .agent-image,
+.agent-sidebar-panel > .agent-sidebar-section {
+  height: 100%;
+}
+
+.agent-sidebar-panel > .agent-image {
   border-right: 0;
 }
 
@@ -80,36 +90,40 @@
   gap: 8px;
 }
 
-.agent-model-chip {
-  min-width: 0;
-  max-width: min(230px, 34vw);
-  min-height: 38px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+.agent-model-select {
+  flex: 0 0 auto;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  border: 1px solid var(--accent, var(--border));
-  border-radius: 8px;
+  gap: 4px;
+}
+
+.agent-model-select .image-model-select__trigger--pill {
+  min-height: 36px;
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 9%, var(--control-bg));
+}
+
+.agent-model-select__open-tab {
+  width: 24px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
+  border-radius: 6px;
   background: var(--control-bg);
   color: var(--text-dim);
   cursor: pointer;
-  font: inherit;
-  font-size: 13px;
 }
 
-.agent-model-chip:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+.agent-sidebar-section > .agent-model-select {
+  align-self: start;
+  margin: 12px 14px;
 }
 
-.agent-model-chip strong {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text);
-  font-size: 13px;
+.agent-model-select__menu {
+  min-width: 340px;
+  max-width: min(360px, calc(100vw - 24px));
 }
 
 .agent-sidebar-section {
@@ -179,6 +193,61 @@
   font-size: 13px;
 }
 
+.agent-segment-control {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(46px, 1fr));
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+}
+
+.agent-segment-control button {
+  min-width: 0;
+  min-height: 30px;
+  padding: 3px 5px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.agent-segment-control button[aria-pressed="true"] {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: 0 1px 3px var(--shadow-soft);
+}
+
+.agent-stepper {
+  height: 34px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.agent-stepper button {
+  border: 0;
+  background: var(--control-bg);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.agent-stepper button:disabled { opacity: 0.35; cursor: default; }
+.agent-stepper output { align-self: center; text-align: center; color: var(--text); font-size: 13px; font-weight: 700; }
+
 .agent-sidebar-search {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
@@ -237,6 +306,43 @@
   color: var(--text-dim);
   font-size: 11px;
   line-height: 1.35;
+}
+
+.agent-queue-row__badge {
+  width: fit-content;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--control-bg);
+}
+
+.agent-queue-row__badge--canceled {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text-dim);
+}
+
+.agent-queue-row__details summary {
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.agent-queue-row__details small {
+  display: block;
+  margin-top: 5px;
+}
+
+.agent-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .agent-queue-row__actions {

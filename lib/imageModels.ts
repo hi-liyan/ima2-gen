@@ -1,10 +1,10 @@
 import type { RouteRuntimeContext } from "./runtimeContext.js";
 
 const FALLBACK_IMAGE_MODEL = "gpt-5.4-mini";
-const VALID_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-image-2"]);
+const VALID_IMAGE_MODELS = new Set(["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-image-2"]);
 const UNSUPPORTED_IMAGE_MODELS = new Set(["gpt-5.3-codex-spark"]);
 const FALLBACK_REASONING_EFFORT = "none";
-const VALID_REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh"]);
+const VALID_REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh", "max"]);
 
 const GROK_FALLBACK_IMAGE_MODEL = "grok-imagine-image";
 const VALID_GROK_IMAGE_MODELS = new Set(["grok-imagine-image", "grok-imagine-image-quality"]);
@@ -22,7 +22,7 @@ export function normalizeReasoningEffort(ctx: RouteRuntimeContext | null | undef
   }
   if (!valid.has(rawEffort)) {
     return {
-      error: "reasoningEffort must be one of: none, low, medium, high, xhigh",
+      error: "reasoningEffort must be one of: none, low, medium, high, xhigh, max",
       code: "INVALID_REASONING_EFFORT",
       status: 400,
     };
@@ -50,7 +50,7 @@ export function normalizeImageModel(ctx: RouteRuntimeContext | null | undefined,
 
   if (!valid.has(rawModel)) {
     return {
-      error: "model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-image-2",
+      error: "model must be one of: gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-image-2",
       code: "INVALID_IMAGE_MODEL",
       status: 400,
     };
@@ -94,9 +94,16 @@ export function normalizeGeminiApiModel(rawModel: unknown) {
 // ── Grok video (T2V/I2V) ─────────────────────────────────────────────────
 // Video is a separate generation kind, not an image model. Keep it out of the
 // image model unions/helpers above so `grok-` image classification is unaffected.
-const GROK_FALLBACK_VIDEO_MODEL = "grok-imagine-video";
-export const VALID_GROK_VIDEO_MODELS = new Set(["grok-imagine-video", "grok-imagine-video-1.5-preview"]);
-export const VALID_VIDEO_RESOLUTIONS = new Set(["480p", "720p"]);
+export const GROK_VIDEO_MODEL_BASE = "grok-imagine-video";
+export const GROK_VIDEO_MODEL_15 = "grok-imagine-video-1.5";
+export const GROK_VIDEO_MODEL_15_PREVIEW_ALIAS = "grok-imagine-video-1.5-preview";
+const GROK_FALLBACK_VIDEO_MODEL = GROK_VIDEO_MODEL_BASE;
+export const VALID_GROK_VIDEO_MODELS = new Set([
+  GROK_VIDEO_MODEL_BASE,
+  GROK_VIDEO_MODEL_15,
+  GROK_VIDEO_MODEL_15_PREVIEW_ALIAS,
+]);
+export const VALID_VIDEO_RESOLUTIONS = new Set(["480p", "720p", "1080p"]);
 export const VALID_VIDEO_ASPECT_RATIOS = new Set([
   "1:1",
   "16:9",
@@ -113,8 +120,8 @@ export const MAX_VIDEO_DURATION = 15;
 export const MAX_REF2V_REFERENCES = 7;
 export const MAX_REF2V_DURATION = 10;
 
-export type GrokVideoModel = "grok-imagine-video" | "grok-imagine-video-1.5-preview";
-export type VideoResolution = "480p" | "720p";
+export type GrokVideoModel = typeof GROK_VIDEO_MODEL_BASE | typeof GROK_VIDEO_MODEL_15 | typeof GROK_VIDEO_MODEL_15_PREVIEW_ALIAS;
+export type VideoResolution = "480p" | "720p" | "1080p";
 export type VideoAspectRatio = "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | "3:2" | "2:3" | "auto";
 export type VideoMode = "text-to-video" | "image-to-video" | "reference-to-video";
 
@@ -145,7 +152,7 @@ export function normalizeGrokVideoModel(rawModel: unknown) {
       status: 400 as const,
     };
   }
-  return { model: rawModel };
+  return { model: rawModel === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS ? GROK_VIDEO_MODEL_15 : rawModel };
 }
 
 export function normalizeVideoResolution(raw: unknown) {
@@ -158,6 +165,32 @@ export function normalizeVideoResolution(raw: unknown) {
     };
   }
   return { resolution: raw as VideoResolution };
+}
+
+export function usesGrokVideo15TextCanvasShim(model: string, mode: VideoMode): boolean {
+  const canonicalModel = model === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS ? GROK_VIDEO_MODEL_15 : model;
+  return canonicalModel === GROK_VIDEO_MODEL_15 && mode === "text-to-video";
+}
+
+export function validateVideoResolutionForRequest(
+  model: string,
+  resolution: VideoResolution,
+  mode: VideoMode,
+  options: { allowTextCanvasShim?: boolean } = {},
+) {
+  if (resolution !== "1080p") return { ok: true as const };
+  const canonicalModel = model === GROK_VIDEO_MODEL_15_PREVIEW_ALIAS ? GROK_VIDEO_MODEL_15 : model;
+  if (canonicalModel === GROK_VIDEO_MODEL_15 && mode === "image-to-video") {
+    return { ok: true as const };
+  }
+  if (options.allowTextCanvasShim && usesGrokVideo15TextCanvasShim(canonicalModel, mode)) {
+    return { ok: true as const };
+  }
+  return {
+    error: "1080p video resolution requires grok-imagine-video-1.5 text-to-video with the canvas shim or image-to-video",
+    code: "INVALID_VIDEO_RESOLUTION" as const,
+    status: 400 as const,
+  };
 }
 
 export function normalizeVideoAspectRatio(raw: unknown) {

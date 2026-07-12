@@ -5,7 +5,7 @@ const PROVIDERS = new Set(["oauth", "api", "grok", "grok-api", "agy", "gemini-ap
 const QUALITIES = new Set(["low", "medium", "high"]);
 const FORMATS = new Set(["png", "jpeg", "webp"]);
 const MODERATIONS = new Set(["auto", "low"]);
-const REASONING_EFFORTS = new Set(["low", "medium", "high", "xhigh"]);
+const REASONING_EFFORTS = new Set(["none", "low", "medium", "high", "xhigh", "max"]);
 const GENERATION_STRATEGIES = new Set(["auto", "manual"]);
 const MAX_AGENT_VARIANTS = Math.max(1, Math.trunc(config.limits.maxGeneratedImages));
 const MAX_AGENT_PARALLELISM = Math.max(1, Math.trunc(config.limits.maxParallel));
@@ -17,7 +17,7 @@ export const DEFAULT_AGENT_GENERATION_SETTINGS: AgentGenerationSettings = {
   size: "1024x1024",
   format: "png",
   moderation: "low",
-  reasoningEffort: "medium",
+  reasoningEffort: "none",
   webSearchEnabled: true,
   generationStrategy: "auto",
   variants: 1,

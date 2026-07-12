@@ -13,6 +13,32 @@ test("eventChannel uses exponential reconnect backoff", () => {
   assert.match(src, /RECONNECT_MAX_MS/);
   assert.match(src, /reconnectAttempt/);
   assert.match(src, /Math\.pow\(1\.5,\s*reconnectAttempt\)/);
+  assert.match(src, /Math\.random\(\)/);
+  assert.match(src, /Math\.min\(baseDelay[\s\S]*RECONNECT_MAX_MS\)/);
+});
+
+test("eventChannel disconnect clears both lifecycle callbacks", () => {
+  const src = read("ui/src/lib/eventChannel.ts");
+  const disconnectBlock = src.slice(src.indexOf("export function disconnect"));
+  assert.match(disconnectBlock, /resyncCallback\s*=\s*null/);
+  assert.match(disconnectBlock, /connectionStateCallback\s*=\s*null/);
+});
+
+test("events route normalizes duplicate Last-Event-ID values", () => {
+  const src = read("routes/events.ts");
+  assert.match(src, /Array\.isArray\(value\)\s*\?\s*value\[0\]/);
+  assert.match(src, /split\(\s*["']\s*,\s*["']\s*,\s*1\s*\)/);
+  assert.doesNotMatch(src, /req\.headers\["last-event-id"\]\s+as\s+string/);
+});
+
+test("shared writeSse safely rejects closed or failed responses", () => {
+  const src = read("lib/routeHelpers.ts");
+  const writeBlock = src.slice(src.indexOf("export function writeSse"), src.indexOf("export function dataUrlFromB64"));
+  assert.match(writeBlock, /res\.writableEnded\s*\|\|\s*res\.destroyed/);
+  assert.match(writeBlock, /try\s*\{/);
+  assert.match(writeBlock, /catch\s*\{/);
+  assert.match(writeBlock, /return false/);
+  assert.match(writeBlock, /return true/);
 });
 
 test("stream clients use parseSseErrorPayload for SSE error events", () => {

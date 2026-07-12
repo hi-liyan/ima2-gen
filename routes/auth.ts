@@ -3,24 +3,15 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { writeFileSync, renameSync, mkdirSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { codexFileLoginArgs, detectCodexAuth } from "../lib/codexDetect.js";
+import { packageCliCommand } from "../lib/packageCli.js";
 
 const GROK_CLIENT_ID = "b1a00492-073a-47ea-816f-4c329264a828";
 const GROK_SCOPE = "openid profile email offline_access grok-cli:access api:access";
 const GROK_TOKEN_URL = "https://auth.x.ai/oauth2/token";
 
 const CODEX_DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
-
-// Bundled @openai/codex binary (npm dependency), resolved relative to this
-// module so device-auth login works even when `codex` is not on the user's PATH.
-const CODEX_BIN = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "node_modules",
-  ".bin",
-  process.platform === "win32" ? "codex.cmd" : "codex",
-);
 
 interface AuthSession {
   provider: "grok" | "codex";
@@ -150,9 +141,16 @@ function startCodexDeviceCode(): Promise<{ sessionId: string; userCode: string; 
     for (const k of ["OPENAI_API_KEY", "XAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "VERTEX_SERVICE_ACCOUNT_JSON"]) {
       delete childEnv[k];
     }
-    const child = spawn(CODEX_BIN, ["login", "--device-auth"], {
+    const codex = packageCliCommand(
+      "@openai/codex",
+      "codex",
+      codexFileLoginArgs({ deviceAuth: true }),
+    );
+    const child = spawn(codex.command, codex.args, {
       stdio: ["ignore", "pipe", "pipe"],
       env: childEnv,
+      shell: false,
+      windowsHide: true,
     });
 
     let stdout = "";
@@ -208,8 +206,10 @@ function startCodexDeviceCode(): Promise<{ sessionId: string; userCode: string; 
         reject(new Error(`codex login exited with code ${code} before providing device code`));
         return;
       }
-      session.status = code === 0 ? "complete" : "error";
+      const proxyReady = code === 0 && detectCodexAuth().proxyReady;
+      session.status = proxyReady ? "complete" : "error";
       if (code !== 0) session.error = `codex exited with code ${code}`;
+      else if (!proxyReady) session.error = "Codex login did not create a file-backed GPT OAuth session";
       cleanup(id);
     });
 
