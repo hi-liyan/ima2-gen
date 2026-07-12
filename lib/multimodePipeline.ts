@@ -12,7 +12,7 @@ import { generateMultimodeViaResponses } from "./responsesImageAdapter.js";
 import { generateMultimodeViaGrok } from "./grokMultimodeAdapter.js";
 import { generateViaAgy } from "./agyImageAdapter.js";
 import { generateViaGeminiApi } from "./geminiApiImageAdapter.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "./inflight.js";
+import { startJob, finishJob, markGenerationLogSubmitted, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "./inflight.js";
 import { isGenerationCanceledError, makeGenerationCanceledError, throwIfJobCanceled, } from "./generationCancel.js";
 import { logEvent, logError } from "./logger.js";
 import { embedImageMetadataBestEffort } from "./imageMetadataStore.js";
@@ -166,9 +166,15 @@ export async function runMultimodePipeline(req: Request, res: Response, ctx: Run
         prompt,
         meta: {
           kind: "multimode",
+          provider: activeProvider,
           quality,
           model: imageModel,
           size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
           maxImages,
           refsCount: referencePayload.refsCount,
           referenceBytes: referencePayload.referenceBytes,
@@ -195,7 +201,10 @@ export async function runMultimodePipeline(req: Request, res: Response, ctx: Run
       }
       jobOwned = true;
       registerJobAbortController(requestId, cancelController);
-      if (asyncMode) res.status(202).json({ requestId });
+      if (asyncMode) {
+        res.status(202).json({ requestId });
+        markGenerationLogSubmitted(requestId, 202);
+      }
       logEvent("multimode", "request", { requestId, quality, model: imageModel, size: effectiveSize, moderation, maxImages, refs: refCheck.refs.length, referenceBytes: referencePayload.referenceBytes, promptChars: typeof prompt === "string" ? prompt.length : 0, webSearchEnabled, });
       const startTime = Date.now();
       const mimeMap: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
@@ -418,6 +427,7 @@ export async function runMultimodePipeline(req: Request, res: Response, ctx: Run
       if (isGenerationCanceledError(err.raw) || isJobCanceled(requestId)) {
         const canceled = makeGenerationCanceledError();
         finishCanceled = true;
+        finishMeta = { error: canceled.message };
         finishHttpStatus = canceled.status;
         finishErrorCode = canceled.code;
         dualEmitMultimode(res, requestId, "error", { error: canceled.message, code: canceled.code, status: canceled.status, requestId, });
@@ -470,6 +480,12 @@ export async function runMultimodePipeline(req: Request, res: Response, ctx: Run
       finishStatus = "error";
       finishHttpStatus = err.status || 500;
       finishErrorCode = fallbackCode || "MULTIMODE_GENERATE_FAILED";
+      finishMeta = {
+        error: err.message,
+        upstreamCode: ext.upstreamCode || null,
+        upstreamType: ext.upstreamType || null,
+        upstreamParam: ext.upstreamParam || null,
+      };
       logError("multimode", "error", err.raw, { requestId, code: finishErrorCode });
       dualEmitMultimode(res, requestId, "error", { error: err.message, code: finishErrorCode, status: finishHttpStatus, requestId, upstreamCode: ext.upstreamCode || null, upstreamType: ext.upstreamType || null, upstreamParam: ext.upstreamParam || null, });
     } finally {

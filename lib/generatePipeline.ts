@@ -14,7 +14,7 @@ import { generateViaGrok, planGrokImage } from "./grokImageAdapter.js";
 import { generateViaAgy } from "./agyImageAdapter.js";
 import { generateViaGeminiApi } from "./geminiApiImageAdapter.js";
 import { isNonRetryableGenerationError, normalizeGenerationFailure, type UpstreamErr } from "./generationErrors.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, setJobPhase, INFLIGHT_RETRY_AFTER_SECONDS, } from "./inflight.js";
+import { startJob, finishJob, markGenerationLogSubmitted, registerJobAbortController, isJobCanceled, isStartJobFailure, setJobPhase, INFLIGHT_RETRY_AFTER_SECONDS, } from "./inflight.js";
 import { isGenerationCanceledError, makeGenerationCanceledError, throwIfJobCanceled, } from "./generationCancel.js";
 import { logEvent, logError } from "./logger.js";
 import { embedImageMetadataBestEffort } from "./imageMetadataStore.js";
@@ -137,9 +137,15 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
           sessionId,
           parentNodeId: null,
           clientNodeId,
+          provider: activeProvider,
           quality,
           model: imageModel,
           size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
           n: count,
           refsCount: providerRefCount,
           referenceBytes: referencePayload.referenceBytes,
@@ -165,6 +171,7 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
       registerJobAbortController(requestId, cancelController);
       if (asyncMode) {
         res.status(202).json({ requestId, async: true });
+        markGenerationLogSubmitted(requestId, 202);
       }
       setJobPhase(requestId, "streaming");
       if (asyncMode) publish(requestId, "phase", { requestId, phase: "streaming" });
@@ -469,6 +476,7 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
       if (isGenerationCanceledError(err.raw) || isJobCanceled(requestId)) {
         const canceled = makeGenerationCanceledError();
         finishCanceled = true;
+        finishMeta = { error: canceled.message };
         return fail(canceled.status, {
           error: canceled.message,
           code: canceled.code,
@@ -476,6 +484,7 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
         });
       }
       finishErrorCode = fallbackCode || "GENERATE_FAILED";
+      finishMeta = { error: err.message, ...upstreamErrorFields(ext) };
       logError("generate", "error", err.raw, { requestId, code: finishErrorCode });
       fail(err.status || 500, {
         error: err.message,

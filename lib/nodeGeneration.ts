@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { mkdir } from "fs/promises";
 import { newNodeId, saveNode, loadAssetB64, } from "./nodeStore.js";
-import { startJob, finishJob, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "./inflight.js";
+import { startJob, finishJob, markGenerationLogSubmitted, registerJobAbortController, isJobCanceled, isStartJobFailure, INFLIGHT_RETRY_AFTER_SECONDS } from "./inflight.js";
 import { isGenerationCanceledError, makeGenerationCanceledError, throwIfJobCanceled, } from "./generationCancel.js";
 import { detectImageMimeFromB64, summarizeReferencePayload } from "./refs.js";
 import { classifyUpstreamError } from "./errorClassify.js";
@@ -144,6 +144,18 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
           sessionId,
           parentNodeId,
           clientNodeId,
+          provider: activeProvider,
+          model: effectiveImageModel,
+          quality,
+          size: effectiveSize,
+          format,
+          moderation,
+          reasoningEffort,
+          webSearchEnabled,
+          promptMode: normalizedPromptMode,
+          operation,
+          contextMode,
+          searchMode,
           refsCount: referencePayload.refsCount,
           referenceBytes: referencePayload.referenceBytes,
           referenceB64Chars: referencePayload.referenceB64Chars,
@@ -170,7 +182,10 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
       }
       jobOwned = true;
       registerJobAbortController(requestId, cancelController);
-      if (asyncMode) res.status(202).json({ requestId });
+      if (asyncMode) {
+        res.status(202).json({ requestId });
+        markGenerationLogSubmitted(requestId, 202);
+      }
       logEvent("node", "request", {
         requestId,
         operation,
@@ -445,6 +460,7 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
         finishCanceled = true;
         finishHttpStatus = canceled.status;
         finishErrorCode = canceled.code;
+        finishMeta = { error: canceled.message };
         return writeNodeError(
           res,
           canceled.status,
@@ -458,6 +474,12 @@ export async function runNodeGeneration(req: Request, res: Response, ctx: Runtim
       finishStatus = "error";
       finishHttpStatus = err.status || 500;
       finishErrorCode = code;
+      finishMeta = {
+        error: err.message,
+        upstreamCode: ext.upstreamCode || null,
+        upstreamType: ext.upstreamType || null,
+        upstreamParam: ext.upstreamParam || null,
+      };
       logError("node", "error", err.raw, { requestId, code, parentNodeId, sessionId, clientNodeId });
       writeNodeError(res, err.status || 500, code, err.message, parentNodeId, {
         upstreamCode: ext.upstreamCode || null,
