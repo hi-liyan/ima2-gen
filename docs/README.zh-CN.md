@@ -22,6 +22,25 @@ ima2 setup
 ima2 serve
 ```
 
+### 从本地仓库构建并安装
+
+在仓库根目录构建可分发的 npm 包并全局安装：
+
+```bash
+# 在仓库根目录
+npm ci
+npm pack
+
+# 当前版本会生成 ima2-gen-2.0.16.tgz
+npm install -g ./ima2-gen-2.0.16.tgz
+
+# 验证并启动
+ima2 --help
+ima2 doctor
+ima2 setup
+ima2 serve
+```
+
 然后打开 `http://localhost:3333`。
 
 CLI 生成视频:

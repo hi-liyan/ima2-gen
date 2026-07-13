@@ -24,6 +24,25 @@ ima2 setup
 ima2 serve
 ```
 
+### 로컬 리포지토리에서 빌드 및 설치
+
+리포지토리 루트에서 배포용 npm 패키지를 빌드한 뒤 전역으로 설치합니다.
+
+```bash
+# 리포지토리 루트에서 실행
+npm ci
+npm pack
+
+# 현재 버전에서는 ima2-gen-2.0.16.tgz가 생성됩니다
+npm install -g ./ima2-gen-2.0.16.tgz
+
+# 확인 및 시작
+ima2 --help
+ima2 doctor
+ima2 setup
+ima2 serve
+```
+
 npm 12에서는 의존성 설치 스크립트를 기본 차단하므로 다음 명령을 사용하세요.
 
 ```bash

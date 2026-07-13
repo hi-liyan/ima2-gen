@@ -28,6 +28,25 @@ ima2 setup
 ima2 serve
 ```
 
+### Build and install from a local checkout
+
+From the repository root, build a distributable package and install it globally:
+
+```bash
+# From the repository root
+npm ci
+npm pack
+
+# npm pack prints the package filename (currently ima2-gen-2.0.16.tgz)
+npm install -g ./ima2-gen-2.0.16.tgz
+
+# Verify and start
+ima2 --help
+ima2 doctor
+ima2 setup
+ima2 serve
+```
+
 Then open `http://localhost:3333`.
 
 To generate a video from the CLI:

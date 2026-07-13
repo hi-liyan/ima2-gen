@@ -22,6 +22,25 @@ ima2 setup
 ima2 serve
 ```
 
+### ローカルリポジトリからビルドしてインストール
+
+リポジトリのルートで配布用 npm パッケージをビルドし、グローバルにインストールします。
+
+```bash
+# リポジトリのルートで実行
+npm ci
+npm pack
+
+# 現在のバージョンでは ima2-gen-2.0.16.tgz が生成されます
+npm install -g ./ima2-gen-2.0.16.tgz
+
+# 確認して起動
+ima2 --help
+ima2 doctor
+ima2 setup
+ima2 serve
+```
+
 その後、`http://localhost:3333` を開きます。
 
 CLI で動画生成:
