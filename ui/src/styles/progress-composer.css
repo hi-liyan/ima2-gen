@@ -82,6 +82,7 @@
 }
 
 .history-thumb {
+  position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
   min-height: 52px;
@@ -93,6 +94,31 @@
   border: 2px solid transparent;
   opacity: 0.6;
   transition: all 0.15s;
+}
+.history-thumb > img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  object-fit: cover;
+}
+.history-thumb__new-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 1;
+  padding: 2px 4px;
+  border: 1px solid color-mix(in srgb, #fff 46%, transparent);
+  border-radius: 3px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  box-shadow: 0 1px 4px color-mix(in srgb, #000 35%, transparent);
 }
 .history-strip--horizontal .history-thumb {
   width: 52px;

@@ -227,6 +227,8 @@ export type AppState = {
   attachCanvasVersionReference: (item: GenerateItem, overrideSource?: string) => Promise<void>;
   activeGenerations: number;
   unseenGeneratedCount: number;
+  /** 已由用户主动预览过的历史图片键，用于隐藏 NEW 徽标。 */
+  seenHistoryItemKeys: Set<string>;
   inFlight: PersistedInFlight[];
   cancelInFlightJob: (requestId: string) => Promise<void>;
   startInFlightPolling: () => void;
@@ -404,6 +406,8 @@ export type AppState = {
   clearInsertedPrompts: () => void;
   selectHistory: (item: GenerateItem) => void;
   showHistorySequence: (sequenceId: string) => void;
+  /** 将用户主动预览的图片标记为已读并持久化。 */
+  markHistoryItemsSeen: (items: GenerateItem[]) => void;
   markGeneratedResultsSeen: () => void;
   selectHistoryShortcutTarget: (action: GalleryShortcutAction) => void;
   trashHistoryItem: (item: GenerateItem) => Promise<void>;

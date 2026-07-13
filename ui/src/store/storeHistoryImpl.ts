@@ -127,6 +127,8 @@ export function selectHistoryImpl(item: GenerateItem, set: StoreSet, get: StoreG
   const target = item.canvasVersion
     ? resolveVisibleShortcutCurrent(history, item) ?? getVisibleGalleryItems(history)[0] ?? null
     : resolveVisibleShortcutCurrent(history, item) ?? item;
+  // 只有用户主动选择才会清除该图片的 NEW 状态。
+  if (target) get().markHistoryItemsSeen([target]);
   saveSelectedFilename(target?.filename ?? null);
   const shouldRestoreComposer = resolveWorkspaceSettings(get().workspaceProfile).restoreComposerFromHistory;
   const currentPrompt = get().prompt;
@@ -157,6 +159,8 @@ export function showHistorySequenceImpl(sequenceId: string, set: StoreSet, get: 
     .filter((item) => item.sequenceId === sequenceId && !item.canvasVersion)
     .sort(compareSequenceItems);
   if (items.length === 0) return;
+  // 打开序列预览即表示用户已经查看了该序列内的所有结果。
+  get().markHistoryItemsSeen(items);
   const previewId = `history:${sequenceId}`;
   const requested = Math.max(
     items.length,

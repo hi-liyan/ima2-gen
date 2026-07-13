@@ -9,6 +9,7 @@ import {
   isGalleryVisibleItem,
   uniqueGalleryItems,
 } from "../lib/galleryNavigation";
+import { isHistoryItemUnseen } from "../lib/history/historyPreviewStatus";
 import { VideoThumbPlaceholder } from "./VideoThumbPlaceholder";
 
 function SkeletonThumb({ id }: { id: string }) {
@@ -39,9 +40,11 @@ function CollectionSkeleton({ id, count }: { id: string; count: number }) {
 function CollectionThumb({
   sequenceId,
   images,
+  hasUnseenImages,
 }: {
   sequenceId: string;
   images: Array<{ url?: string; image: string; thumb?: string }>;
+  hasUnseenImages: boolean;
 }) {
   const showHistorySequence = useAppStore((s) => s.showHistorySequence);
   const previewId = useAppStore((s) => s.multimodePreviewFlightId);
@@ -69,6 +72,7 @@ function CollectionThumb({
           />
         );
       })}
+      {hasUnseenImages ? <span className="history-thumb__new-badge">NEW</span> : null}
     </button>
   );
 }
@@ -78,6 +82,7 @@ export function HistoryStrip() {
   const currentImage = useAppStore((s) => s.currentImage);
   const historyStripLayout = useAppStore((s) => s.historyStripLayout);
   const selectHistory = useAppStore((s) => s.selectHistory);
+  const seenHistoryItemKeys = useAppStore((s) => s.seenHistoryItemKeys);
   const openGallery = useAppStore((s) => s.openGallery);
   const inFlight = useAppStore((s) => s.inFlight);
   const multimodeSequences = useAppStore((s) => s.multimodeSequences);
@@ -168,10 +173,12 @@ export function HistoryStrip() {
               key={`coll-${item.sequenceId}`}
               sequenceId={item.sequenceId}
               images={seqImages}
+              hasUnseenImages={seqImages.some((seqItem) => isHistoryItemUnseen(seqItem, seenHistoryItemKeys))}
             />,
             ...seqImages.map((seqItem) => {
               const seqKey = getGalleryItemKey(seqItem);
               const seqActive = activeKey === seqKey;
+              const seqUnseen = isHistoryItemUnseen(seqItem, seenHistoryItemKeys);
               if (isVideoItem(seqItem)) {
                 return (
                   <div
@@ -191,25 +198,25 @@ export function HistoryStrip() {
                       <VideoThumbPlaceholder />
                     )}
                     <span className="history-thumb__play-badge" aria-hidden="true">▶</span>
+                    {seqUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
                   </div>
                 );
               }
               return (
-                <img
+                <div
                   key={seqKey}
                   ref={(node) => { thumbRefs.current[seqKey] = node; }}
-                  src={seqItem.thumb || seqItem.url || seqItem.image}
-                  alt=""
                   className={`history-thumb history-thumb--fade-in${seqActive ? " active" : ""}`}
-                  loading="lazy"
-                  decoding="async"
                   onClick={() => selectHistory(seqItem)}
                   draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData("application/ima2-ref", JSON.stringify({ image: seqItem.url || seqItem.image, filename: seqItem.filename }));
                     e.dataTransfer.effectAllowed = "copy";
                   }}
-                />
+                >
+                  <img src={seqItem.thumb || seqItem.url || seqItem.image} alt="" loading="lazy" decoding="async" />
+                  {seqUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
+                </div>
               );
             }),
           ];
@@ -220,6 +227,7 @@ export function HistoryStrip() {
         }
 
         if (isVideoItem(item)) {
+          const isUnseen = isHistoryItemUnseen(item, seenHistoryItemKeys);
           return (
             <div
               key={key}
@@ -238,25 +246,25 @@ export function HistoryStrip() {
                 <VideoThumbPlaceholder />
               )}
               <span className="history-thumb__play-badge" aria-hidden="true">▶</span>
+              {isUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
             </div>
           );
         }
         return (
-          <img
+          <div
             key={key}
             ref={(node) => { thumbRefs.current[key] = node; }}
-            src={item.thumb || item.url || item.image}
-            alt=""
             className={`history-thumb${active ? " active" : ""}`}
-            loading="lazy"
-            decoding="async"
             onClick={() => selectHistory(item)}
             draggable
             onDragStart={(e) => {
               e.dataTransfer.setData("application/ima2-ref", JSON.stringify({ image: item.url || item.image, filename: item.filename }));
               e.dataTransfer.effectAllowed = "copy";
             }}
-          />
+          >
+            <img src={item.thumb || item.url || item.image} alt="" loading="lazy" decoding="async" />
+            {isHistoryItemUnseen(item, seenHistoryItemKeys) ? <span className="history-thumb__new-badge">NEW</span> : null}
+          </div>
         );
       })}
     </div>

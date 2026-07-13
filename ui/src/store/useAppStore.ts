@@ -12,6 +12,7 @@ import {
   GALLERY_DEFAULT_SCOPE_STORAGE_KEY,
   GALLERY_SCOPE_STORAGE_KEY,
 } from "./persistenceRegistry";
+import { loadSeenHistoryItemKeys, markHistoryItemsAsSeen } from "../lib/history/historyPreviewStatus";
 import { applySelectedNodeIds } from "../lib/nodeSelection";
 import { loadLocale, saveLocale } from "../i18n";
 import {
@@ -215,6 +216,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   useImageAsReference: (item) => useImageAsReferenceImpl(item, set, get),
   activeGenerations: 0,
   unseenGeneratedCount: 0,
+  // 已预览键只在用户主动选择图片时更新，自动展示不视为预览。
+  seenHistoryItemKeys: loadSeenHistoryItemKeys(),
   inFlight: [],
   cancelInFlightJob: (requestId) => cancelInFlightJobImpl(requestId, set, get),
   startInFlightPolling: () => {
@@ -422,7 +425,11 @@ addChildNodeAt: (parentClientId, position, sourceHandle) => addChildNodeAtImpl(p
   clearInsertedPrompts: () => clearInsertedPromptsImpl(set),
 
   selectHistory: (item) => selectHistoryImpl(item, set, get),
-showHistorySequence: (sequenceId) => showHistorySequenceImpl(sequenceId, set, get),
+  showHistorySequence: (sequenceId) => showHistorySequenceImpl(sequenceId, set, get),
+  markHistoryItemsSeen: (items) => {
+    const seenHistoryItemKeys = markHistoryItemsAsSeen(items, get().seenHistoryItemKeys);
+    set({ seenHistoryItemKeys });
+  },
 markGeneratedResultsSeen: () => set({ unseenGeneratedCount: 0 }),
 
   selectHistoryShortcutTarget: (action) => selectHistoryShortcutTargetImpl(action, set, get),
