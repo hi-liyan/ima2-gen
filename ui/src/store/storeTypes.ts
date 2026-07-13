@@ -216,6 +216,7 @@ export type AppState = {
   providerUrlReference: string | null;
   canvasReferenceImage: string | null;
   syncCapabilities: () => Promise<void>;
+  hydrateReferenceImages: () => Promise<void>;
   addReferences: (files: File[]) => Promise<void>;
   addReferenceDataUrl: (dataUrl: string) => void;
   removeReference: (index: number) => void;

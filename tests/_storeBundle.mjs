@@ -5,6 +5,7 @@ const STORE_SOURCES = [
   "ui/src/store/useAppStore.ts",
   "ui/src/store/storeTypes.ts",
   "ui/src/store/storePersistence.ts",
+  "ui/src/store/referenceImagePersistence.ts",
   "ui/src/store/storeHelpers.ts",
   "ui/src/store/storeGraphSave.ts",
   "ui/src/store/storeNodeGenImpl.ts",

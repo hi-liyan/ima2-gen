@@ -14,6 +14,10 @@ import {
   saveGenerationDefaultsPatch,
 } from "./storePersistence";
 import { compressReferenceSource } from "./storeHelpers";
+import {
+  clearPersistedReferenceImages,
+  savePersistedReferenceImages,
+} from "./referenceImagePersistence";
 import type { AppState, StoreSet, StoreGet } from "./storeTypes";
 import type { ClientNodeId } from "../lib/graph";
 
@@ -65,10 +69,13 @@ export async function addReferencesImpl(
   const valid = results.filter((x): x is string => !!x);
   const heicFailed = toAdd.some((file, index) => isHeic(file) && !results[index]);
   const otherFailed = toAdd.some((file, index) => !isHeic(file) && !results[index]);
-  set((s) => ({
-    referenceImages: [...s.referenceImages, ...valid].slice(0, s.referenceLimit),
-    providerUrlReference: valid.length > 0 ? null : s.providerUrlReference,
-  }));
+  const state = get();
+  const referenceImages = [...state.referenceImages, ...valid].slice(0, state.referenceLimit);
+  set({
+    referenceImages,
+    providerUrlReference: valid.length > 0 ? null : state.providerUrlReference,
+  });
+  void savePersistedReferenceImages(referenceImages);
   if (heicFailed) get().showToast(t("toast.refHeicConversionFailed"), true);
   if (otherFailed) get().showToast(t("toast.refTooLarge"), true);
   if (files.length > allowed) get().showToast(t("toast.refLimitExceeded"), true);
@@ -125,24 +132,24 @@ export function applyMetadataRestoreImpl(set: StoreSet, get: StoreGet): void {
   get().showToast(t("metadata.applied"));
 }
 
-export function removeReferenceImpl(index: number, set: StoreSet, _get: StoreGet): void {
-  set((s) => {
-    const referenceImages = s.referenceImages.filter((_, i) => i !== index);
-    const clearContinuity = referenceImages.length === 0;
-    const insertedPrompts = clearContinuity
-      ? s.insertedPrompts.filter((prompt) => !prompt.id.startsWith("video-continuity:"))
-      : s.insertedPrompts;
-    if (insertedPrompts.length !== s.insertedPrompts.length) {
-      saveGenerationDefaultsPatch({ insertedPrompts });
-    }
-    return {
-      referenceImages,
-      insertedPrompts,
-      videoContinuityLineage: clearContinuity ? null : s.videoContinuityLineage,
-      canvasReferenceImage:
-        s.referenceImages[index] === s.canvasReferenceImage ? null : s.canvasReferenceImage,
-    };
+export function removeReferenceImpl(index: number, set: StoreSet, get: StoreGet): void {
+  const state = get();
+  const referenceImages = state.referenceImages.filter((_, i) => i !== index);
+  const clearContinuity = referenceImages.length === 0;
+  const insertedPrompts = clearContinuity
+    ? state.insertedPrompts.filter((prompt) => !prompt.id.startsWith("video-continuity:"))
+    : state.insertedPrompts;
+  if (insertedPrompts.length !== state.insertedPrompts.length) {
+    saveGenerationDefaultsPatch({ insertedPrompts });
+  }
+  set({
+    referenceImages,
+    insertedPrompts,
+    videoContinuityLineage: clearContinuity ? null : state.videoContinuityLineage,
+    canvasReferenceImage:
+      state.referenceImages[index] === state.canvasReferenceImage ? null : state.canvasReferenceImage,
   });
+  void savePersistedReferenceImages(referenceImages);
 }
 
 export function clearReferencesImpl(set: StoreSet, get: StoreGet): void {
@@ -151,6 +158,7 @@ export function clearReferencesImpl(set: StoreSet, get: StoreGet): void {
     saveGenerationDefaultsPatch({ insertedPrompts });
   }
   set({ referenceImages: [], canvasReferenceImage: null, videoContinuityLineage: null, insertedPrompts, providerUrlReference: null });
+  void clearPersistedReferenceImages();
 }
 
 export async function attachCanvasVersionReferenceImpl(
@@ -169,17 +177,18 @@ export async function attachCanvasVersionReferenceImpl(
     get().showToast(t("toast.currentImageLoadFailed"), true);
     throw new Error("canvas_reference_attach_failed");
   }
-  set((s) => {
-    const withoutPrevious = s.canvasReferenceImage
-      ? s.referenceImages.filter((ref) => ref !== s.canvasReferenceImage)
-      : s.referenceImages;
-    const withoutDuplicate = withoutPrevious.filter((ref) => ref !== dataUrl);
-    return {
-      canvasReferenceImage: dataUrl,
-      referenceImages: [dataUrl, ...withoutDuplicate].slice(0, s.referenceLimit),
-      providerUrlReference: null,
-    };
+  const state = get();
+  const withoutPrevious = state.canvasReferenceImage
+    ? state.referenceImages.filter((ref) => ref !== state.canvasReferenceImage)
+    : state.referenceImages;
+  const withoutDuplicate = withoutPrevious.filter((ref) => ref !== dataUrl);
+  const referenceImages = [dataUrl, ...withoutDuplicate].slice(0, state.referenceLimit);
+  set({
+    canvasReferenceImage: dataUrl,
+    referenceImages,
+    providerUrlReference: null,
   });
+  void savePersistedReferenceImages(referenceImages);
   get().showToast(t("canvas.version.usingAsReference"));
 }
 
@@ -213,10 +222,9 @@ export async function useCurrentAsReferenceImpl(set: StoreSet, get: StoreGet): P
     get().showToast(t("toast.currentImageLoadFailed"), true);
     return;
   }
-  set((s) => ({
-    referenceImages: [...s.referenceImages, dataUrl].slice(0, s.referenceLimit),
-    providerUrlReference: null,
-  }));
+  const referenceImages = [...get().referenceImages, dataUrl].slice(0, get().referenceLimit);
+  set({ referenceImages, providerUrlReference: null });
+  void savePersistedReferenceImages(referenceImages);
   get().showToast(t("toast.addedCurrentAsRef"));
 }
 
@@ -239,9 +247,8 @@ export async function useImageAsReferenceImpl(
     get().showToast(t("toast.currentImageLoadFailed"), true);
     return;
   }
-  set((s) => ({
-    referenceImages: [...s.referenceImages, dataUrl].slice(0, s.referenceLimit),
-    providerUrlReference: null,
-  }));
+  const referenceImages = [...get().referenceImages, dataUrl].slice(0, get().referenceLimit);
+  set({ referenceImages, providerUrlReference: null });
+  void savePersistedReferenceImages(referenceImages);
   get().showToast(t("toast.addedCurrentAsRef"));
 }

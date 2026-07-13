@@ -31,6 +31,10 @@ import {
   persistCanvasExportBackground,
 } from "./storePersistence";
 import {
+  loadPersistedReferenceImages,
+  savePersistedReferenceImages,
+} from "./referenceImagePersistence";
+import {
   loadInFlight,
   retainHistoryItems,
   saveInFlight,
@@ -112,11 +116,22 @@ export function applyMergedCanvasImageImpl(item: GenerateItem, set: StoreSet): v
 }
 
 export function addReferenceDataUrlImpl(dataUrl: string, set: StoreSet, get: StoreGet): void {
-  set((s) =>
-    s.referenceImages.length >= get().referenceLimit
-      ? s
-      : { referenceImages: [...s.referenceImages, dataUrl], providerUrlReference: null },
-  );
+  const state = get();
+  if (state.referenceImages.length >= state.referenceLimit) return;
+  const referenceImages = [...state.referenceImages, dataUrl];
+  set({ referenceImages, providerUrlReference: null });
+  void savePersistedReferenceImages(referenceImages);
+}
+
+/** 在能力限制加载完成后，恢复主提示词编辑器的本地参考图片。 */
+export async function hydrateReferenceImagesImpl(set: StoreSet, get: StoreGet): Promise<void> {
+  const stored = await loadPersistedReferenceImages();
+  if (stored.length === 0) return;
+  set((state) => ({
+    referenceImages: [...stored, ...state.referenceImages]
+      .filter((image, index, all) => all.indexOf(image) === index)
+      .slice(0, get().referenceLimit),
+  }));
 }
 
 export function addMetadataRestoreAsReferenceImpl(set: StoreSet, get: StoreGet): void {

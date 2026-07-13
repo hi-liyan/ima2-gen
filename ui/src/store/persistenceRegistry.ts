@@ -14,6 +14,8 @@ export const PERSISTED_KEYS = [
   "ima2.webSearchEnabled",
   // generation defaults blob (provider/quality/size/format/moderation/count/...)
   "ima2.generationDefaults",
+  // main composer reference images (IndexedDB)
+  "ima2.composerReferenceImages",
   // runtime
   "ima2.inFlight",
   "ima2.selectedFilename",
@@ -47,18 +49,19 @@ export const IMAGE_MODEL_STORAGE_KEY = PERSISTED_KEYS[6];
 export const REASONING_EFFORT_STORAGE_KEY = PERSISTED_KEYS[7];
 export const WEB_SEARCH_STORAGE_KEY = PERSISTED_KEYS[8];
 export const GENERATION_DEFAULTS_STORAGE_KEY = PERSISTED_KEYS[9];
-export const IN_FLIGHT_STORAGE_KEY = PERSISTED_KEYS[10];
-export const SELECTED_FILENAME_STORAGE_KEY = PERSISTED_KEYS[11];
-export const ACTIVE_SESSION_ID_STORAGE_KEY = PERSISTED_KEYS[12];
-export const GRAPH_TAB_ID_KEY = PERSISTED_KEYS[13];
-export const GALLERY_SCOPE_STORAGE_KEY = PERSISTED_KEYS[14];
-export const GALLERY_DEFAULT_SCOPE_STORAGE_KEY = PERSISTED_KEYS[15];
-export const LOCALE_STORAGE_KEY = PERSISTED_KEYS[16];
-export const WORKSPACE_PROFILE_STORAGE_KEY = PERSISTED_KEYS[17];
-export const WORKSPACE_OVERRIDES_STORAGE_KEY = PERSISTED_KEYS[18];
-export const VIDEO_DEFAULTS_STORAGE_KEY = PERSISTED_KEYS[19];
-export const AGENT_PANE_PREFERENCE_STORAGE_KEY = PERSISTED_KEYS[20];
-export const PRIVACY_MODE_STORAGE_KEY = PERSISTED_KEYS[21];
+export const COMPOSER_REFERENCE_IMAGES_STORAGE_KEY = PERSISTED_KEYS[10];
+export const IN_FLIGHT_STORAGE_KEY = PERSISTED_KEYS[11];
+export const SELECTED_FILENAME_STORAGE_KEY = PERSISTED_KEYS[12];
+export const ACTIVE_SESSION_ID_STORAGE_KEY = PERSISTED_KEYS[13];
+export const GRAPH_TAB_ID_KEY = PERSISTED_KEYS[14];
+export const GALLERY_SCOPE_STORAGE_KEY = PERSISTED_KEYS[15];
+export const GALLERY_DEFAULT_SCOPE_STORAGE_KEY = PERSISTED_KEYS[16];
+export const LOCALE_STORAGE_KEY = PERSISTED_KEYS[17];
+export const WORKSPACE_PROFILE_STORAGE_KEY = PERSISTED_KEYS[18];
+export const WORKSPACE_OVERRIDES_STORAGE_KEY = PERSISTED_KEYS[19];
+export const VIDEO_DEFAULTS_STORAGE_KEY = PERSISTED_KEYS[20];
+export const AGENT_PANE_PREFERENCE_STORAGE_KEY = PERSISTED_KEYS[21];
+export const PRIVACY_MODE_STORAGE_KEY = PERSISTED_KEYS[22];
 
 export const PERSISTED_REGISTRY: Record<
   PersistedKey,
@@ -80,6 +83,7 @@ export const PERSISTED_REGISTRY: Record<
   "ima2.reasoningEffort": { domain: "generation", shape: "string", resetSafe: true },
   "ima2.webSearchEnabled": { domain: "generation", shape: "string:boolean", resetSafe: true },
   "ima2.generationDefaults": { domain: "generation", shape: "json:GenerationDefaults", resetSafe: true },
+  "ima2.composerReferenceImages": { domain: "generation", shape: "indexeddb:string[]", resetSafe: true },
   "ima2.inFlight": { domain: "runtime", shape: "json:array", resetSafe: true },
   "ima2.selectedFilename": { domain: "runtime", shape: "string", resetSafe: true },
   "ima2.activeSessionId": { domain: "runtime", shape: "string", resetSafe: true },

@@ -130,7 +130,7 @@ import {
   runGenerateNodeImpl,
 } from "./storeGenerateEntryImpl";
 import {
-  cancelInFlightJobImpl, syncFromStorageImpl, applyMergedCanvasImageImpl,
+  cancelInFlightJobImpl, syncFromStorageImpl, applyMergedCanvasImageImpl, hydrateReferenceImagesImpl,
   addReferenceDataUrlImpl, addMetadataRestoreAsReferenceImpl,
   toggleRightPanelImpl, setGalleryScopeImpl, setGalleryDefaultScopeImpl,
   setUIModeImpl, setThemeImpl, setThemeFamilyImpl, setHistoryStripLayoutImpl, setPrivacyModeImpl,
@@ -199,6 +199,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   canvasExportMatteColor: loadCanvasExportBackground().matteColor,
 
   syncCapabilities: () => syncCapabilitiesImpl(set),
+  hydrateReferenceImages: () => hydrateReferenceImagesImpl(set, get),
   addReferences: (files) => addReferencesImpl(files, set, get),
   addReferenceDataUrl: (dataUrl) => addReferenceDataUrlImpl(dataUrl, set, get),
   metadataRestore: null,
