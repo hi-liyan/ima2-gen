@@ -14,6 +14,8 @@ import { ResultActions } from "./ResultActions";
 import { ResultPromptSummary } from "./ResultPromptSummary";
 import { MultimodeSequencePreview } from "./MultimodeSequencePreview";
 import { ViewerControls } from "./viewer/ViewerControls";
+import { PrivacyPreviewShield } from "./PrivacyPreviewShield";
+import { usePrivacyPreviewHold } from "../hooks/usePrivacyPreviewHold";
 import { useI18n } from "../i18n";
 import { isEditableTarget } from "../lib/domEvents";
 import { getImageModelShortLabel } from "../lib/imageModels";
@@ -69,6 +71,8 @@ export function Canvas() {
   const markGeneratedResultsSeen = useAppStore((s) => s.markGeneratedResultsSeen);
   const activeGenerations = useAppStore((s) => s.activeGenerations);
   const canvasOpen = useAppStore((s) => s.canvasOpen);
+  const privacyMode = useAppStore((s) => s.privacyMode);
+  const privacyHold = usePrivacyPreviewHold(privacyMode);
   const openCanvas = useAppStore((s) => s.openCanvas);
   const showToast = useAppStore((s) => s.showToast);
   const { t } = useI18n();
@@ -269,6 +273,7 @@ export function Canvas() {
                 reset: t("viewer.reset"),
               }}
             />
+                <PrivacyPreviewShield enabled={privacyMode} hold={privacyHold} showControl={false} />
           </div>
           <div className="result-meta">
             {(isVideoItem(currentImage)
@@ -294,7 +299,7 @@ export function Canvas() {
               .filter((value): value is string => Boolean(value))
               .join(" · ")}
           </div>
-          <ResultActions onAfterDeleteFocus={restoreResultFocus} />
+          <ResultActions onAfterDeleteFocus={restoreResultFocus} privacyHold={privacyMode ? privacyHold : undefined} />
           {currentImage.prompt ? (
             <ResultPromptSummary prompt={currentImage.prompt} onCopy={copyPrompt} />
           ) : null}

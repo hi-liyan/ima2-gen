@@ -20,6 +20,7 @@ import {
   loadThemePreference,
   loadThemeFamily,
   loadHistoryStripLayout,
+  loadPrivacyMode,
   loadGalleryScope,
   loadCanvasExportBackground,
   loadImageModel,
@@ -132,7 +133,7 @@ import {
   cancelInFlightJobImpl, syncFromStorageImpl, applyMergedCanvasImageImpl,
   addReferenceDataUrlImpl, addMetadataRestoreAsReferenceImpl,
   toggleRightPanelImpl, setGalleryScopeImpl, setGalleryDefaultScopeImpl,
-  setUIModeImpl, setThemeImpl, setThemeFamilyImpl, setHistoryStripLayoutImpl,
+  setUIModeImpl, setThemeImpl, setThemeFamilyImpl, setHistoryStripLayoutImpl, setPrivacyModeImpl,
   showToastImpl, dismissToastImpl, showErrorCardImpl, dismissErrorCardImpl,
   setGraphNodesImpl, setGraphEdgesImpl, toggleNodeSelectionModeImpl,
   selectNodeGraphImpl, cancelNodeBatchImpl, setCanvasPanImpl,
@@ -281,9 +282,11 @@ trashPending: null,
   resolvedTheme: resolveThemePreference(loadThemePreference()),
   themeFamily: loadThemeFamily(),
   historyStripLayout: loadHistoryStripLayout(),
+  privacyMode: loadPrivacyMode(),
   setTheme: (theme) => setThemeImpl(theme, set),
   setThemeFamily: (family) => setThemeFamilyImpl(family, set),
   setHistoryStripLayout: (layout) => setHistoryStripLayoutImpl(layout, set),
+  setPrivacyMode: (enabled) => setPrivacyModeImpl(enabled, set),
   syncThemeFromStorage: () => {
     const theme = loadThemePreference();
     set({ theme, resolvedTheme: resolveThemePreference(theme) });

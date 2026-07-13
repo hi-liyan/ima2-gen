@@ -63,6 +63,8 @@ export function SettingsWorkspace() {
   const openReadinessPopup = useAppStore((s) => s.openReadinessPopup);
   const galleryDefaultScope = useAppStore((s) => s.galleryDefaultScope);
   const setGalleryDefaultScope = useAppStore((s) => s.setGalleryDefaultScope);
+  const privacyMode = useAppStore((s) => s.privacyMode);
+  const setPrivacyMode = useAppStore((s) => s.setPrivacyMode);
   const provider = useAppStore((s) => s.provider);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const unlockTimerRef = useRef<number | null>(null);
@@ -298,6 +300,24 @@ export function SettingsWorkspace() {
                 </div>
                 <div className="settings-row__control">
                   <HistoryStripLayoutToggle />
+                </div>
+              </article>
+              <article className="settings-row">
+                <div className="settings-row__copy">
+                  <h4>{t("settings.appearance.privacyMode.title")}</h4>
+                  <p>{t("settings.appearance.privacyMode.body")}</p>
+                </div>
+                <div className="settings-row__control">
+                  <button
+                    type="button"
+                    className={`web-search-toggle web-search-toggle--label${privacyMode ? " is-active" : ""}`}
+                    onClick={() => setPrivacyMode(!privacyMode)}
+                    aria-pressed={privacyMode}
+                  >
+                    {privacyMode
+                      ? t("settings.appearance.privacyMode.on")
+                      : t("settings.appearance.privacyMode.off")}
+                  </button>
                 </div>
               </article>
             </SettingsSectionBlock>

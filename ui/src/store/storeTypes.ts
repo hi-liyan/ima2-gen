@@ -286,9 +286,11 @@ export type AppState = {
   resolvedTheme: ResolvedTheme;
   themeFamily: ThemeFamily;
   historyStripLayout: HistoryStripLayout;
+  privacyMode: boolean;
   setTheme: (theme: ThemePreference) => void;
   setThemeFamily: (family: ThemeFamily) => void;
   setHistoryStripLayout: (layout: HistoryStripLayout) => void;
+  setPrivacyMode: (enabled: boolean) => void;
   syncThemeFromStorage: () => void;
   syncThemeFamilyFromStorage: () => void;
   refreshResolvedTheme: () => void;

@@ -1067,6 +1067,12 @@
         "rail": "侧边栏",
         "horizontal": "顶部行",
         "sidebar": "边栏"
+      },
+      "privacyMode": {
+        "title": "防窥模式",
+        "body": "遮挡主预览，同时保留生成操作。",
+        "on": "已开启",
+        "off": "已关闭"
       }
     },
     "language": {
@@ -1374,5 +1380,9 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "reset": "Reset zoom"
+  },
+  "privacyPreview": {
+    "hold": "按住查看",
+    "holdAria": "按住以显示预览"
   }
 }

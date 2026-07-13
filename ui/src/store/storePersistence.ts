@@ -35,6 +35,7 @@ import {
   GENERATION_DEFAULTS_STORAGE_KEY,
   HISTORY_STRIP_LAYOUT_STORAGE_KEY,
   IMAGE_MODEL_STORAGE_KEY,
+  PRIVACY_MODE_STORAGE_KEY,
   REASONING_EFFORT_STORAGE_KEY,
   RIGHT_PANEL_OPEN_STORAGE_KEY,
   SELECTED_FILENAME_STORAGE_KEY,
@@ -152,6 +153,13 @@ export function loadHistoryStripLayout(): HistoryStripLayout {
     if (raw === "rail" || raw === "horizontal" || raw === "sidebar") return raw;
   } catch {}
   return "rail";
+}
+
+export function loadPrivacyMode(): boolean {
+  try {
+    return localStorage.getItem(PRIVACY_MODE_STORAGE_KEY) === "true";
+  } catch {}
+  return false;
 }
 
 export function loadGalleryScope(key: string): GalleryScope {

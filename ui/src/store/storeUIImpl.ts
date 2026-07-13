@@ -17,6 +17,7 @@ import {
   GALLERY_DEFAULT_SCOPE_STORAGE_KEY,
   GALLERY_SCOPE_STORAGE_KEY,
   HISTORY_STRIP_LAYOUT_STORAGE_KEY,
+  PRIVACY_MODE_STORAGE_KEY,
   RIGHT_PANEL_OPEN_STORAGE_KEY,
   THEME_FAMILY_STORAGE_KEY,
   THEME_STORAGE_KEY,
@@ -175,6 +176,11 @@ export function setThemeFamilyImpl(family: ThemeFamily, set: StoreSet): void {
 export function setHistoryStripLayoutImpl(layout: HistoryStripLayout, set: StoreSet): void {
   try { localStorage.setItem(HISTORY_STRIP_LAYOUT_STORAGE_KEY, layout); } catch {}
   set({ historyStripLayout: layout });
+}
+
+export function setPrivacyModeImpl(privacyMode: boolean, set: StoreSet): void {
+  try { localStorage.setItem(PRIVACY_MODE_STORAGE_KEY, String(privacyMode)); } catch {}
+  set({ privacyMode });
 }
 
 export function showToastImpl(message: string, error: boolean, set: StoreSet): void {

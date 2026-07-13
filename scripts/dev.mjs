@@ -25,11 +25,12 @@ const build = run("npm", ["run", "ui:build"], {
 });
 if (build.status !== 0) process.exit(build.status ?? 1);
 
-console.log("[dev] starting server with --watch …");
-console.log("[dev] port fallback is handled by server.js; check ~/.ima2/server.json for actual URLs.");
-const server = spawn(process.execPath, ["--watch", "server.js"], {
+console.log("[dev] starting TypeScript server with --watch …");
+console.log("[dev] port fallback is handled by server.ts; check ~/.ima2/server.json for actual URLs.");
+const server = spawn(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "dev:server"], {
   cwd: ROOT,
   stdio: "inherit",
+  shell: process.platform === "win32",
   env: {
     ...process.env,
     IMA2_DEV: "1",

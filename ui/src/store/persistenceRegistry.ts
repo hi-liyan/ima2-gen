@@ -31,6 +31,8 @@ export const PERSISTED_KEYS = [
   "ima2.videoDefaults",
   // agent
   "ima2.agentPanePreference",
+  // privacy
+  "ima2.privacyMode",
 ] as const;
 
 export type PersistedKey = (typeof PERSISTED_KEYS)[number];
@@ -56,6 +58,7 @@ export const WORKSPACE_PROFILE_STORAGE_KEY = PERSISTED_KEYS[17];
 export const WORKSPACE_OVERRIDES_STORAGE_KEY = PERSISTED_KEYS[18];
 export const VIDEO_DEFAULTS_STORAGE_KEY = PERSISTED_KEYS[19];
 export const AGENT_PANE_PREFERENCE_STORAGE_KEY = PERSISTED_KEYS[20];
+export const PRIVACY_MODE_STORAGE_KEY = PERSISTED_KEYS[21];
 
 export const PERSISTED_REGISTRY: Record<
   PersistedKey,
@@ -69,6 +72,7 @@ export const PERSISTED_REGISTRY: Record<
   "ima2.uiMode": { domain: "layout", shape: "string", resetSafe: true },
   "ima2.historyStripLayout": { domain: "layout", shape: "string", resetSafe: true },
   "ima2.agentPanePreference": { domain: "layout", shape: "string:expanded|rail", resetSafe: true },
+  "ima2.privacyMode": { domain: "layout", shape: "string:boolean", resetSafe: true },
   "ima2:theme": { domain: "theme", shape: "string", resetSafe: true },
   "ima2:themeFamily": { domain: "theme", shape: "string", resetSafe: true },
   "ima2.canvas.exportBackground.v1": { domain: "canvas", shape: "json:{mode,matteColor}", resetSafe: true },

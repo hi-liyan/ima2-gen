@@ -5,11 +5,14 @@ import { exportImageToComfy } from "../lib/api";
 import { isVideoItem, extractFirstFrame, extractMidFrame, extractLastFrame } from "../lib/videoMedia";
 import { continueFromItem, continueFromItemAsUrl } from "../lib/continueFromItem";
 import { ResultMetadataModal } from "./ResultMetadataModal";
+import { PrivacyPreviewRevealButton } from "./PrivacyPreviewShield";
+import type { PrivacyPreviewHoldState } from "./PrivacyPreviewShield";
 import type { GenerateItem } from "../types";
 
 interface ResultActionsProps {
   imageOverride?: GenerateItem | null;
   onAfterDeleteFocus?: () => void;
+  privacyHold?: PrivacyPreviewHoldState;
 }
 
 const CANVAS_MODE_PROMPT_ID = "canvas-mode-context";
@@ -26,6 +29,7 @@ const CANVAS_MODE_PROMPT_TEXT = [
 export function ResultActions({
   imageOverride = null,
   onAfterDeleteFocus,
+  privacyHold,
 }: ResultActionsProps) {
   const { t } = useI18n();
   const currentImage = useAppStore((s) => s.currentImage);
@@ -358,6 +362,7 @@ export function ResultActions({
           </details>
         </>
       )}
+      {privacyHold ? <PrivacyPreviewRevealButton hold={privacyHold} /> : null}
       {metadataOpen && (
         <ResultMetadataModal
           item={actionImage}

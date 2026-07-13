@@ -1206,6 +1206,12 @@
         "rail": "Rail",
         "horizontal": "Top row",
         "sidebar": "Sidebar"
+      },
+      "privacyMode": {
+        "title": "Privacy mode",
+        "body": "Cover the main preview while keeping generation controls available.",
+        "on": "On",
+        "off": "Off"
       }
     },
     "language": {
@@ -1513,6 +1519,10 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "reset": "Reset zoom"
+  },
+  "privacyPreview": {
+    "hold": "Press and hold to view",
+    "holdAria": "Press and hold to reveal preview"
   },
   "generationLog": {
     "title": "Log",

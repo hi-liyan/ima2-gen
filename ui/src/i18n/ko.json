@@ -1187,6 +1187,12 @@
         "rail": "세로",
         "horizontal": "상단 가로",
         "sidebar": "사이드바"
+      },
+      "privacyMode": {
+        "title": "프라이버시 모드",
+        "body": "생성 컨트롤은 유지한 채 기본 미리보기를 가립니다.",
+        "on": "켜짐",
+        "off": "꺼짐"
       }
     },
     "language": {
@@ -1494,6 +1500,10 @@
     "zoomIn": "확대",
     "zoomOut": "축소",
     "reset": "확대 초기화"
+  },
+  "privacyPreview": {
+    "hold": "누르고 있는 동안 보기",
+    "holdAria": "미리보기를 표시하려면 길게 누르세요"
   },
   "generationLog": {
     "title": "로그",

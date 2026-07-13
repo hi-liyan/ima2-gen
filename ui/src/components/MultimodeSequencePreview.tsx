@@ -1,6 +1,7 @@
 import { useAppStore } from "../store/useAppStore";
 import { useI18n } from "../i18n";
 import type { GenerateItem } from "../types";
+import { PrivacyPreviewShield } from "./PrivacyPreviewShield";
 
 export function MultimodeSequencePreview() {
   const sequence = useAppStore((s) => {
@@ -15,6 +16,7 @@ export function MultimodeSequencePreview() {
   const selectHistory = useAppStore((s) => s.selectHistory);
   const currentImage = useAppStore((s) => s.currentImage);
   const openCanvas = useAppStore((s) => s.openCanvas);
+  const privacyMode = useAppStore((s) => s.privacyMode);
   const { t } = useI18n();
 
   const handleSlotClick = (image: GenerateItem) => {
@@ -105,6 +107,7 @@ export function MultimodeSequencePreview() {
             </article>
           );
         })}
+        <PrivacyPreviewShield enabled={privacyMode} />
       </div>
     </section>
   );
