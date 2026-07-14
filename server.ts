@@ -431,22 +431,26 @@ export async function startServer(overrides: StartServerOverrides = {}) {
       })
     : null;
 
-  let server: import("node:net").Server;
-  let reapTimer: NodeJS.Timeout;
+  let server: import("node:net").Server | undefined;
+  let reapTimer: NodeJS.Timeout | undefined;
 
-  onShutdown(async () => {
+  let closed = false;
+  const close = async () => {
+    if (closed) return;
+    closed = true;
     unadvertise(ctx);
     try { oauthChild?.stop?.(); } catch {}
     try { oauthChild?.kill?.(); } catch {}
     try { grokChild?.stop?.(); } catch {}
     try { grokChild?.kill?.(); } catch {}
     stopAgentQueueWorker();
-    clearInterval(reapTimer);
+    if (reapTimer) clearInterval(reapTimer);
     await new Promise<void>((resolve) => {
       if (server) server.close(() => resolve()); else resolve();
     });
     closeDb();
-  });
+  };
+  onShutdown(close);
   process.on("exit", () => unadvertise(ctx));
 
   server = await listenWithPortFallback(app, ctx.config.server.port, {
@@ -504,7 +508,7 @@ export async function startServer(overrides: StartServerOverrides = {}) {
     console.error("[fatal] unhandledRejection:", reason);
   });
 
-  return { app, server, oauthChild, ctx };
+  return { app, server, oauthChild, ctx, close };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

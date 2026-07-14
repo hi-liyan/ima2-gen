@@ -4,6 +4,7 @@
   "packageManager": "npm@11.18.0",
   "description": "Local OAuth image generation studio with classic and node workflows",
   "type": "module",
+  "main": "desktop/main.js",
   "bin": {
     "ima2": "bin/ima2.js"
   },
@@ -37,6 +38,9 @@
     "typecheck:tests": "tsc --noEmit -p tsconfig.tests.json",
     "build:server": "tsc -p tsconfig.build.json",
     "build:cli": "tsc -p tsconfig.bin.json && node scripts/fix-shebangs.mjs",
+    "desktop:build": "npm run ui:build && npm run build:server && npm run build:cli && tsc -p desktop/tsconfig.json",
+    "desktop:dev": "npm run desktop:build && electron .",
+    "desktop:dist": "npm run desktop:build && electron-builder",
     "postinstall": "echo '\\n  [ima2] Gallery thumbnails will be auto-generated on next server start.\\n  Or run: ima2 backfill-thumbs\\n'"
   },
   "keywords": [
@@ -102,7 +106,54 @@
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.17",
+    "electron": "42.6.1",
+    "electron-builder": "26.6.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.iyucode.ima2gen",
+    "productName": "ima2-gen",
+    "asar": false,
+    "files": [
+      "!tests/**",
+      "!site/**",
+      "!docs/**",
+      "!devlog/**",
+      "!structure/**",
+      "!scripts/**",
+      "!ui/src/**",
+      "!ui/node_modules/**",
+      "!**/*.ts",
+      "!tsconfig*.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
+    }
   }
 }

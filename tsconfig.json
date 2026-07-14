@@ -28,6 +28,7 @@
     "lib/**/*.ts",
     "routes/**/*.ts",
     "bin/**/*.ts",
+    "desktop/**/*.ts",
     "types/**/*.ts",
     "types/**/*.d.ts"
   ],

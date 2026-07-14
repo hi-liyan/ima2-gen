@@ -1,0 +1,42 @@
+name: Desktop Artifacts
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            command: npm run desktop:dist -- --win --x64
+            name: ima2-gen-windows-x64
+          - os: macos-latest
+            command: npm run desktop:dist -- --mac --x64 --arm64
+            name: ima2-gen-macos-universal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22.23.0
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            ui/package-lock.json
+      - run: npm ci
+      - run: npm --prefix ui ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run typecheck:tests
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error

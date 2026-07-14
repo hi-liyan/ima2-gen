@@ -75,6 +75,14 @@ curl -fsSL https://lidge-jun.github.io/ima2-gen/install-linux.sh | bash
 
 各脚本会检查 nvm/fnm/brew/winget，用最佳方式安装 Node LTS，并自动清理残留进程。
 
+### 桌面应用
+
+使用 Node 22.12 或更新版本运行 `npm run desktop:dist` 构建本地桌面安装包。Windows
+x64 构建会生成 NSIS 安装程序；请在 macOS 上构建 macOS x64 与 Apple Silicon 的
+DMG/ZIP 产物。首版产物未签名，macOS 用户首次打开前需要在“系统设置”中明确允许该
+应用。桌面应用启动的仍是与 `ima2 serve` 相同的本地服务，CLI 和浏览器访问方式会
+继续保留。
+
 ### 设置
 
 `ima2 setup` 提供四种认证方式:

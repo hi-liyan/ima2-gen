@@ -81,6 +81,15 @@ curl -fsSL https://lidge-jun.github.io/ima2-gen/install-linux.sh | bash
 
 Each script checks for nvm/fnm/brew/winget, installs Node LTS through the best available method, and handles stale process cleanup automatically.
 
+### Desktop Application
+
+Build a local desktop package with `npm run desktop:dist` using Node 22.12 or
+newer. The Windows x64 build produces an NSIS installer. Run the macOS build on
+macOS to produce x64 and Apple Silicon DMG/ZIP artifacts. These first-release
+artifacts are unsigned, so macOS users must explicitly allow the application in
+System Settings before opening it. The desktop app starts the same local server
+as `ima2 serve`; the CLI and browser workflow remain available.
+
 ### Setup
 
 `ima2 setup` offers four authentication choices:
