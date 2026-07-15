@@ -39,19 +39,23 @@
 }
 
 .logo-title {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 650;
+  font-family: var(--font-display, 'Clash Display', system-ui, sans-serif);
+  font-size: 16px;
+  font-weight: 700;
   letter-spacing: -0.04em;
   line-height: 1.0;
+  color: transparent;
+  background: linear-gradient(180deg, #ffffff 0%, #c8ccd8 35%, #6f7484 60%, #e8eaf1 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .logo-title--gen {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: linear-gradient(135deg, var(--blue), var(--green));
+  background: linear-gradient(180deg, #c8ccd8 0%, #6f7484 50%, #e8eaf1 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
