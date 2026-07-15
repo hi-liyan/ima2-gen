@@ -1,9 +1,10 @@
-import Database from "better-sqlite3";
+import Database from "./database-binding.js";
+import type BetterSqlite3 from "better-sqlite3";
 import { mkdirSync, existsSync } from "fs";
 import { dirname } from "path";
 import { config } from "../config.js";
 
-let db: Database.Database | null = null;
+let db: BetterSqlite3.Database | null = null;
 
 export function getDbPath() {
   return config.storage.dbPath;
@@ -22,7 +23,7 @@ export function getDb() {
   return db;
 }
 
-function migrate(database: Database.Database) {
+function migrate(database: BetterSqlite3.Database) {
   database.exec(`
     CREATE TABLE IF NOT EXISTS _meta (
       key   TEXT PRIMARY KEY,
@@ -360,7 +361,7 @@ function migrate(database: Database.Database) {
 }
 
 function addColumnIfMissing(
-  database: Database.Database,
+  database: BetterSqlite3.Database,
   columns: readonly string[],
   table: string,
   name: string,

@@ -1,0 +1,11 @@
+{
+  "name": "ima2-gen-desktop-native-deps",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "better-sqlite3": "12.11.1"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true
+  }
+}

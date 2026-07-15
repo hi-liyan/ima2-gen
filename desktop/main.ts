@@ -34,6 +34,8 @@ async function createMainWindow() {
       sandbox: true,
     },
   });
+  // 页面首次完成绘制时显示窗口，必须在导航前注册以避免错过事件。
+  window.once("ready-to-show", () => window.show());
   window.webContents.setWindowOpenHandler(({ url }) => {
     void shell.openExternal(url);
     return { action: "deny" };
@@ -41,8 +43,16 @@ async function createMainWindow() {
   window.webContents.on("will-navigate", (event, url) => {
     if (!isServerNavigation(url)) event.preventDefault();
   });
+  // 仅记录主框架失败，子资源失败不应掩盖窗口加载状态。
+  window.webContents.on("did-fail-load", (_event, errorCode, errorDescription, url, isMainFrame) => {
+    if (!isMainFrame) return;
+    console.error("[desktop] main frame failed to load", { errorCode, errorDescription, url });
+  });
+  // 渲染进程异常退出时保留 Electron 提供的原因和退出码。
+  window.webContents.on("render-process-gone", (_event, details) => {
+    console.error("[desktop] renderer process gone", details);
+  });
   await window.loadURL(serverOrigin);
-  window.once("ready-to-show", () => window.show());
 }
 
 /**

@@ -17,7 +17,7 @@
     "ui:build": "cd ui && npm run build",
     "build": "npm run ui:build",
     "test": "node scripts/run-tests.mjs",
-    "test:native-deps": "node -e \"require('better-sqlite3'); require('sharp')\"",
+    "test:native-deps": "node -e \"const Database = require('better-sqlite3'); const database = new Database(':memory:'); database.prepare('SELECT 1').get(); database.close(); require('sharp')\"",
     "test:install-policy": "node scripts/check-install-policy.mjs",
     "test:install-policy:npm12": "node scripts/check-install-policy.mjs --npm-pending",
     "test:package-install": "node --test tests/package-install-smoke.mjs",
@@ -39,8 +39,11 @@
     "build:server": "tsc -p tsconfig.build.json",
     "build:cli": "tsc -p tsconfig.bin.json && node scripts/fix-shebangs.mjs",
     "desktop:build": "npm run ui:build && npm run build:server && npm run build:cli && tsc -p desktop/tsconfig.json",
-    "desktop:dev": "npm run desktop:build && electron .",
-    "desktop:dist": "npm run desktop:build && electron-builder",
+    "desktop:install-native-deps": "npm --prefix desktop ci --ignore-scripts",
+    "desktop:rebuild-native": "npm run desktop:install-native-deps && node scripts/rebuild-desktop-native.mjs",
+    "desktop:test-native-deps": "electron tests/desktop-native-deps.mjs",
+    "desktop:dev": "npm run desktop:build && npm run desktop:rebuild-native && npm run desktop:test-native-deps && electron .",
+    "desktop:dist": "npm run desktop:build && npm run desktop:rebuild-native && npm run desktop:test-native-deps && electron-builder",
     "postinstall": "echo '\\n  [ima2] Gallery thumbnails will be auto-generated on next server start.\\n  Or run: ima2 backfill-thumbs\\n'"
   },
   "keywords": [
@@ -80,7 +83,7 @@
   },
   "dependencies": {
     "@openai/codex": "0.144.1",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "google-auth-library": "^10.6.2",
@@ -97,12 +100,13 @@
     "openai-oauth"
   ],
   "allowScripts": {
-    "better-sqlite3@12.9.0": true,
+    "better-sqlite3@12.11.1": true,
     "esbuild@0.27.7": true,
     "fsevents@2.3.3": true,
     "sharp@0.34.5": true
   },
   "devDependencies": {
+    "@electron/rebuild": "4.2.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^22.19.17",
@@ -115,6 +119,7 @@
     "appId": "com.iyucode.ima2gen",
     "productName": "ima2-gen",
     "asar": false,
+    "beforeBuild": "./scripts/skip-root-native-rebuild.mjs",
     "files": [
       "!tests/**",
       "!site/**",
@@ -124,6 +129,7 @@
       "!scripts/**",
       "!ui/src/**",
       "!ui/node_modules/**",
+      "desktop/node_modules/**/*",
       "!**/*.ts",
       "!tsconfig*.json"
     ],
