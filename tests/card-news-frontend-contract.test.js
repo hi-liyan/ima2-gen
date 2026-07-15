@@ -14,7 +14,9 @@ describe("Card News frontend dev MVP contract", () => {
   it("exposes Card News mode only through the dev feature gate", () => {
     const devMode = readSource("ui/src/lib/devMode.ts");
     const modes = readSource("ui/src/types.ts");
-    const switcher = readSource("ui/src/components/UIModeSwitch.tsx");
+    const navRail = readSource("ui/src/components/NavRail.tsx");
+    const store = readSource("ui/src/store/useAppStore.ts");
+    const storeUI = readSource("ui/src/store/storeUIImpl.ts");
 
     assert.match(devMode, /export const ENABLE_CARD_NEWS_MODE/);
     assert.match(devMode, /IS_DEV_UI && import\.meta\.env\.VITE_IMA2_CARD_NEWS !== "0"/);
@@ -22,8 +24,9 @@ describe("Card News frontend dev MVP contract", () => {
     assert.match(devMode, /VITE_IMA2_DEV/);
     assert.doesNotMatch(devMode, /VITE_IMA2_CARD_NEWS === "1"/);
     assert.match(modes, /"classic" \| "node" \| "card-news"/);
-    assert.match(switcher, /ENABLE_CARD_NEWS_MODE/);
-    assert.match(switcher, /uiMode\.cardNews/);
+    assert.match(navRail, /setUIMode\(item\.mode\)/);
+    assert.match(store, /setUIMode: \(m\) => setUIModeImpl\(m, set\)/);
+    assert.match(storeUI, /m === "card-news" && !ENABLE_CARD_NEWS_MODE/);
   });
 
   it("renders the Card News workspace and composer without Node fallthrough", () => {
@@ -32,7 +35,7 @@ describe("Card News frontend dev MVP contract", () => {
 
     assert.match(app, /CardNewsWorkspace/);
     assert.match(app, /uiMode === "card-news"/);
-    assert.match(app, /uiMode === "card-news" \? null : <RightPanel \/>/);
+    assert.match(app, /uiMode === "card-news" \? null : uiMode === "assets" \? null : uiMode === "home" \? null : <RightPanel \/>/);
     assert.match(sidebar, /CardNewsComposer/);
     assert.match(sidebar, /uiMode === "card-news"/);
     assert.match(sidebar, /<CardNewsComposer \/>/);

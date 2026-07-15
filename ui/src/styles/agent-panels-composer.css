@@ -241,10 +241,6 @@
     grid-template-columns: 42px minmax(0, 1fr) auto auto;
   }
 
-  .agent-topbar .ui-mode-switch {
-    display: none;
-  }
-
   .agent-chat {
     border-right: 0;
   }

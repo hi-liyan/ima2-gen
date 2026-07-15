@@ -174,7 +174,7 @@ describe("package install policy contract", () => {
       }
     }
     const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
-    assert.doesNotMatch(workflow, /workflow_dispatch|release:\s*\n/);
+    assert.doesNotMatch(workflow, /workflow_dispatch|(?:^|\n)\s*release:\s*(?:\n|$)/);
     assert.match(workflow, /branches:\s*\[preview\]/);
     assert.match(workflow, /tags:\s*\['v\*'\]/);
     assert.equal((workflow.match(/id-token:\s*write/g) || []).length, 1, "only publish job may mint OIDC tokens");
@@ -189,6 +189,16 @@ describe("package install policy contract", () => {
     assert.match(workflow, /id: registry[\s\S]*guard-publish/);
     assert.match(workflow, /if: steps\.registry\.outputs\.should_publish == 'true'[\s\S]*npm publish/);
     assert.match(workflow, /IMA2_EXPECT_CURRENT_PROVENANCE: \$\{\{ steps\.registry\.outputs\.should_publish \}\}/);
+    assert.match(workflow, /create-github-release:/);
+    assert.match(workflow, /needs:\s*\[prepare, publish\]/);
+    assert.match(workflow, /ensure-github-release/);
+    assert.match(workflow, /channel == 'latest'/);
+    assert.match(workflow, /permissions:[\s\S]*contents:\s*write[\s\S]*id-token:\s*write/);
+
+    const contract = readFileSync(new URL("../scripts/release-contract.mjs", import.meta.url), "utf8");
+    assert.match(contract, /export async function ensureGithubRelease/);
+    assert.match(contract, /command === "ensure-github-release"/);
+    assert.match(contract, /gh.*release create|release", "create"/);
 
     const manifest = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
     assert.match(manifest.scripts.prepublishOnly, /assert-publish-context/);
@@ -201,7 +211,8 @@ describe("package install policy contract", () => {
     assert.ok(previewIndex < tagIndex, "preview proof must finish before stable tag creation");
     assert.match(release, /release\.sh finalize X\.Y\.Z/);
     assert.match(release, /assert-toolchain/);
-    assert.match(release, /--verify-tag/);
+    assert.match(release, /ensure-github-release/);
+    assert.doesNotMatch(release, /gh release create/);
     assert.doesNotMatch(release, /gh run list --workflow=publish\.yml --limit=30/);
 
     for (const path of ["scripts/install-mac.sh", "scripts/install-linux.sh", "scripts/install-windows.ps1"]) {

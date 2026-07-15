@@ -46,6 +46,22 @@ Generation section below for the full endpoint specification.
 
 The Switch Account flow opens a browser verification URL. Once the user completes the device-code step, the server saves the new credentials (Grok: `~/.progrok/auth.json`; Codex: via `codex login --device-auth`) and the session transitions to `complete`. This endpoint is surfaced as a **Switch Account** button in the Settings QuotaCard for Grok and Codex providers.
 
+## OpenAI API Provider Configuration
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/providers/openai/config` | Read the effective OpenAI base URL, source, and API-key availability. |
+| `PUT` | `/api/providers/openai/config` | Set `{ "baseUrl": "https://.../v1" }`; validates the URL and persists it when it is not environment-owned. |
+| `DELETE` | `/api/providers/openai/config/base-url` | Remove the configured Base URL and restore the official OpenAI default. Environment-owned URLs cannot be removed. |
+
+## Generation Logs
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/generation-logs?limit=50` | List the most recent generation operations; `limit` is clamped to 1 through 200. |
+| `GET` | `/api/generation-logs/:requestId` | Fetch one operation, or return `404 GENERATION_LOG_NOT_FOUND`. |
+| `DELETE` | `/api/generation-logs` | Clear locally retained generation operation logs. |
+
 ## Storage
 
 | Method | Path | Notes |
@@ -534,6 +550,30 @@ Remote URLs and `data:` inputs are intentionally rejected to avoid server-side U
 | `POST` | `/api/history/:filename/restore` | Restore a recently deleted asset |
 
 History rows can include node metadata such as `sessionId`, `nodeId`, `clientNodeId`, `requestId`, and `refsCount`.
+
+## Assets Library
+
+Persistent library catalog over generated files (phase 050). Records reference
+files inside `generated/`; deleting an asset never deletes the file.
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/api/assets` | List/search assets (`kind`, `folderId`, `tag`, `q`, `cursor`, `limit`) |
+| `POST` | `/api/assets` | Promote/create an asset (`filePath`, `kind`, `name?`, `folderId?`, `tags?`, `metadata?`) |
+| `PATCH` | `/api/assets/:id` | Update name/folder/notes/tags/metadata |
+| `DELETE` | `/api/assets/:id` | Delete the catalog row only (file untouched) |
+| `DELETE` | `/api/assets/all` | Delete all asset records (files untouched) |
+| `GET` | `/api/assets/folders` | List folders (flat; tree assembled client-side) |
+| `POST` | `/api/assets/folders` | Create folder (`name`, `parentId?`) |
+| `PATCH` | `/api/assets/folders/:id` | Rename/move folder (cycle-safe) |
+| `DELETE` | `/api/assets/folders/:id` | Delete an empty folder |
+| `GET` | `/api/assets/tags` | Distinct tags |
+
+`kind` is one of `image | video | element | preset | template`. `filePath` is
+required for `image`/`video`, must stay inside `generated/`, and is stored
+relative to it. Cursor pagination orders by `created_at DESC, id DESC`; errors
+use the standard envelope with codes such as `INVALID_ASSET_KIND`,
+`INVALID_FILENAME`, `INVALID_PARENT`, `FOLDER_CYCLE`, `FOLDER_NOT_EMPTY`.
 
 ## Sessions And Graphs
 

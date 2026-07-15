@@ -2,6 +2,7 @@ import { registerCapabilitiesRoutes } from "./capabilities.js";
 import { registerEventsRoute } from "./events.js";
 import { registerHealthRoutes } from "./health.js";
 import { registerHistoryRoutes } from "./history.js";
+import { registerAssetsRoutes } from "./assets.js";
 import { registerSessionRoutes } from "./sessions.js";
 import { registerEditRoutes } from "./edit.js";
 import { registerNodeRoutes } from "./nodes.js";
@@ -36,6 +37,7 @@ export function configureRoutes(app, ctxRaw) {
     registerStorageRoutes(app, ctx);
     registerMetadataRoutes(app, ctx);
     registerHistoryRoutes(app, ctx);
+    registerAssetsRoutes(app, ctx);
     registerAnnotationRoutes(app, ctx);
     registerCanvasVersionRoutes(app, ctx);
     registerImageImportRoutes(app, ctx);

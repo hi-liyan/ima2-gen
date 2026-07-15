@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { readSourceTree } from "./_readTree.mjs";
 
@@ -83,15 +83,20 @@ describe("node UI compact metadata contract", () => {
     assert.match(en, /"generateTitle":\s*"Generate node image"/);
   });
 
-  it("keeps light-mode canvas overlays readable on dark scrims", () => {
-    const css = readSource("ui/src/index.css");
-    const rootRule = /:root,\s*:root\[data-theme="dark"\]\s*\{[^}]*\}/s.exec(css)?.[0] ?? "";
-    const lightRule = /:root\[data-theme="light"\]\s*\{[^}]*\}/s.exec(css)?.[0] ?? "";
+  it("keeps dark-theme canvas overlays readable without a light palette", () => {
+    const cssPaths = [
+      "ui/src/index.css",
+      ...readdirSync(join(root, "ui/src/styles"))
+        .filter((f) => f.endsWith(".css"))
+        .map((f) => `ui/src/styles/${f}`),
+    ];
+    const css = cssPaths.map((p) => readFileSync(join(root, p), "utf8")).join("\n");
+    const rootRule = /:root\s*\{[^}]*--on-scrim:\s*#f6f7fb[^}]*\}/s.exec(css)?.[0] ?? "";
     const hintRule = /\.node-canvas__hint\s*\{[^}]*\}/s.exec(css)?.[0] ?? "";
     const loadingRule = /\.node-canvas__loading\s*\{[^}]*\}/s.exec(css)?.[0] ?? "";
 
     assert.match(rootRule, /--on-scrim:\s*#f6f7fb/);
-    assert.match(lightRule, /--on-scrim:\s*#f8fafc/);
+    assert.doesNotMatch(css, /:root\[data-theme="light"\]/);
     assert.match(hintRule, /color:\s*var\(--on-scrim\)/);
     assert.match(hintRule, /background:\s*var\(--chip-scrim\)/);
     assert.match(loadingRule, /color:\s*var\(--on-scrim\)/);
@@ -229,4 +234,3 @@ describe("node UI compact metadata contract", () => {
     assert.match(store, /targetHandle,/);
   });
 });
-

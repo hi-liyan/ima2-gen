@@ -14,6 +14,77 @@
   z-index: 5;
 }
 
+/* Phase 040 — chaining overlay on gallery tiles.
+   Always in DOM for keyboard access; CSS controls visibility. */
+.gallery__chain-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 0 0 6px 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 5;
+}
+
+/* Hide caption when overlay is visible to avoid stacking */
+.gallery__tile-wrap:hover .gallery__caption,
+.gallery__tile-wrap:focus-within .gallery__caption {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gallery__tile-wrap:hover .gallery__chain-overlay,
+.gallery__tile-wrap:focus-within .gallery__chain-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.gallery__chain-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.gallery__chain-btn:hover {
+  color: var(--text);
+  background: var(--control-hover);
+}
+
+.gallery__chain-btn:focus-visible {
+  color: var(--text);
+  background: var(--control-hover);
+}
+
+/* Mobile: always show overlay (no hover) */
+@media (max-width: 800px) {
+  .gallery__chain-overlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .gallery__chain-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .gallery__caption {
+    display: none;
+  }
+}
+
 /* ── Gallery modal ── */
 .gallery-backdrop {
   position: fixed;
@@ -445,4 +516,3 @@
   opacity: 0.6;
   cursor: progress;
 }
-

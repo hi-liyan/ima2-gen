@@ -1,6 +1,7 @@
 import { useAppStore } from "../../store/useAppStore";
 import { useI18n } from "../../i18n";
 import type { WorkspaceProfile } from "../../lib/workspaceProfile";
+import { Select } from "../controls/Select";
 
 const PROFILES: { value: WorkspaceProfile; labelKey: string; descKey: string }[] = [
   { value: "default", labelKey: "workspace.defaultLabel", descKey: "workspace.defaultDesc" },
@@ -14,19 +15,13 @@ export function WorkspaceProfileSettings() {
 
   return (
     <div className="settings-field">
-      <select
+      <Select
         id="workspace-profile-select"
-        className="settings-field__select"
         value={profile}
-        onChange={(event) => setProfile(event.target.value as WorkspaceProfile)}
-        aria-label={t("workspace.profileLabel")}
-      >
-        {PROFILES.map((item) => (
-          <option key={item.value} value={item.value}>
-            {t(item.labelKey)}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => setProfile(v as WorkspaceProfile)}
+        ariaLabel={t("workspace.profileLabel")}
+        items={PROFILES.map((item) => ({ value: item.value, label: t(item.labelKey) }))}
+      />
     </div>
   );
 }

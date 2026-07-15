@@ -1,5 +1,55 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Clash Display";
+  src: url("/fonts/ClashDisplay-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Clash Display";
+  src: url("/fonts/ClashDisplay-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/IBMPlexMono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("/fonts/IBMPlexMono-500.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+
 *,
 *::before,
 *::after {
@@ -8,25 +58,24 @@
   padding: 0;
 }
 
-:root,
-:root[data-theme="dark"] {
-  --bg: #0a0a0a;
-  --surface: #141414;
-  --surface-2: #1c1c1c;
-  --surface-3: #2a2a2a;
-  --border: #2a2a2a;
-  --border-strong: #444;
-  --text: #e8e8e8;
-  --text-dim: #888;
-  --text-muted: #888;
-  --text-faint: #555;
-  --canvas-muted: #333;
-  --accent: #f0f0f0;
+:root {
+  --bg: #0b0b0f;
+  --surface: #14141a;
+  --surface-2: #1c1c23;
+  --surface-3: #26262f;
+  --border: #26262f;
+  --border-strong: #3d3d49;
+  --text: #f4f4f6;
+  --text-dim: #b6b6c2;
+  --text-muted: #90909d;
+  --text-faint: #55555f;
+  --canvas-muted: #33333c;
+  --accent: #f0f0f4;
   --accent-bright: #fff;
-  --accent-soft: rgba(255, 255, 255, 0.1);
-  --accent-ink: #0a0a0a;
+  --accent-soft: rgba(207, 210, 221, 0.1);
+  --accent-ink: #0b0b0f;
   --accent-shadow: rgba(255, 255, 255, 0.1);
-  --focus-ring: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(122, 215, 255, 0.35);
   --hairline: rgba(255, 255, 255, 0.16);
   --hairline-soft: rgba(255, 255, 255, 0.04);
   --control-bg: rgba(255, 255, 255, 0.03);
@@ -43,48 +92,53 @@
   --red: #ef4444;
   --blue: #4a9eff;
   --radius: 10px;
-  --font: "Outfit", sans-serif;
-  --mono: "Geist Mono", monospace;
+  --font: "Satoshi", "Pretendard Variable", system-ui, sans-serif;
+  --font-display: "Clash Display", "Pretendard Variable", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", "SF Mono", Menlo, monospace;
+  --prism: linear-gradient(100deg, #ff5adf 0%, #7ad7ff 28%, #ffd166 55%, #b28dff 78%, #7ad7ff 100%);
+  --chrome: linear-gradient(180deg, #ffffff 0%, #c8ccd8 35%, #6f7484 60%, #e8eaf1 100%);
+  --glass: rgba(255, 255, 255, 0.04);
+  --glass-line: rgba(255, 255, 255, 0.1);
   color-scheme: dark;
 }
 
-:root[data-theme="light"] {
-  --bg: #f6f7fb;
-  --surface: #ffffff;
-  --surface-2: #eef1f7;
-  --surface-3: #e1e7f0;
-  --border: #d9dee6;
-  --border-strong: #b8c1cf;
-  --text: #15181f;
-  --text-dim: #5b6573;
-  --text-muted: #5b6573;
-  --text-faint: #8a94a3;
-  --canvas-muted: #9ba4b1;
-  --accent: #1f2430;
-  --accent-bright: #0f131a;
-  --accent-soft: rgba(15, 19, 26, 0.08);
-  --accent-ink: #ffffff;
-  --accent-shadow: rgba(15, 19, 26, 0.16);
-  --focus-ring: rgba(15, 19, 26, 0.12);
-  --hairline: rgba(15, 19, 26, 0.16);
-  --hairline-soft: rgba(15, 19, 26, 0.07);
-  --control-bg: rgba(15, 19, 26, 0.035);
-  --control-hover: rgba(15, 19, 26, 0.08);
-  --scrim: rgba(15, 19, 26, 0.34);
-  --scrim-strong: rgba(15, 19, 26, 0.42);
-  --caption-scrim: rgba(15, 19, 26, 0.78);
-  --chip-scrim: rgba(15, 19, 26, 0.72);
-  --on-scrim: #f8fafc;
-  --shadow-soft: rgba(31, 36, 48, 0.14);
-  --shadow-strong: rgba(31, 36, 48, 0.22);
-  --green: #1a9a6c;
-  --amber: #b65f00;
-  --red: #d23333;
-  --blue: #2563eb;
-  color-scheme: light;
+/* Site-texture layers: corner glow + film-grain noise (behind all content).
+   Opaque surfaces (panels, viewers, canvas) naturally cover them, so media
+   review areas stay clean. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 90% 0%, rgba(122, 215, 255, 0.055), transparent 34%),
+    radial-gradient(circle at 4% 84%, rgba(255, 90, 223, 0.035), transparent 30%);
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.026;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+}
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Phase 020: unified keyboard focus ring (site :focus-visible grammar). */
+:focus-visible {
+  outline: 2px solid rgba(122, 215, 255, 0.65);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 @import "./styles/themes.css";
+@import "./styles/controls.css";
+@import "./styles/nav-rail.css";
 @import "./styles/sidebar.css";
 @import "./styles/form-controls.css";
 @import "./styles/canvas-viewer.css";

@@ -32,6 +32,22 @@ import type { Locale } from "../i18n";
 
 export type GalleryScope = "current-session" | "all";
 
+export type AssetItem = {
+  id: string;
+  kind: "image" | "video" | "element" | "preset" | "template";
+  name: string;
+  filePath: string | null;
+  folderId: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown> | null;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type AssetFolder = { id: string; name: string; parentId: string | null; createdAt: number; updatedAt: number };
+export type AssetsFilters = { kind: string | null; folderId: string | null; tag: string | null; q: string };
+
 export type VideoDefaults = {
   model: string | false;
   duration: number;
@@ -188,9 +204,35 @@ export type GenerationDefaults = Partial<{
   promptMode: "auto" | "direct";
   prompt: string;
   insertedPrompts: InsertedPrompt[];
+  presetIds: string[];
 }>;
 
-export type AppState = {
+export type PresetState = {
+  selectedPresetIds: string[];
+  addPreset: (id: string) => void;
+  removePreset: (id: string) => void;
+  togglePreset: (id: string) => void;
+  clearPresets: () => void;
+  restorePresetIds: (ids: string[]) => void;
+};
+
+export type AppState = PresetState & {
+  assets: AssetItem[];
+  assetsFolders: AssetFolder[];
+  assetsTags: string[];
+  assetsLoading: boolean;
+  assetsCursor: string | null;
+  assetsFilters: AssetsFilters;
+  loadAssets: (reset?: boolean) => Promise<void>;
+  loadMoreAssets: () => Promise<void>;
+  setAssetsFilters: (patch: Partial<AssetsFilters>) => void;
+  saveToAssets: (item: GenerateItem) => Promise<boolean>;
+  updateAssetItem: (id: string, patch: { name?: string; folderId?: string | null; notes?: string; tags?: string[] }) => Promise<boolean>;
+  deleteAssetItem: (id: string) => Promise<boolean>;
+  createAssetFolder: (name: string, parentId?: string | null) => Promise<boolean>;
+  renameAssetFolder: (id: string, name: string) => Promise<boolean>;
+  moveAssetFolder: (id: string, parentId: string | null) => Promise<boolean>;
+  deleteAssetFolder: (id: string) => Promise<boolean>;
   provider: Provider;
   quality: Quality;
   sizePreset: SizePreset;
@@ -285,10 +327,10 @@ export type AppState = {
   uiMode: UIMode;
   setUIMode: (m: UIMode) => void;
 
+  historyStripLayout: HistoryStripLayout;
   theme: ThemePreference;
   resolvedTheme: ResolvedTheme;
   themeFamily: ThemeFamily;
-  historyStripLayout: HistoryStripLayout;
   privacyMode: boolean;
   setTheme: (theme: ThemePreference) => void;
   setThemeFamily: (family: ThemeFamily) => void;

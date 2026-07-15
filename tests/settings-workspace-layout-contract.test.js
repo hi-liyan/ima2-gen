@@ -9,6 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const settings = readFileSync(join(root, "ui/src/components/SettingsWorkspace.tsx"), "utf8");
 const mobileToggle = readFileSync(join(root, "ui/src/components/MobileSettingsToggle.tsx"), "utf8");
+const reasoningSelect = readFileSync(join(root, "ui/src/components/ReasoningEffortSelect.tsx"), "utf8");
 const css = readSourceTree("ui/src/index.css");
 const settingsControlsCss = readFileSync(join(root, "ui/src/styles/settings-controls.css"), "utf8");
 
@@ -50,18 +51,19 @@ test("desktop settings rows use a compact title-control-description stack", () =
   assert.doesNotMatch(settingsControlsCss, /minmax\(260px,\s*min\(360px,\s*46%\)\)/);
   assert.match(css, /\.settings-row__control > \*\s*\{[\s\S]*?width:\s*100%;/);
   assert.match(css, /\.settings-row__control > \.lang-toggle,[\s\S]*?\.settings-row__control > \.history-layout-toggle,[\s\S]*?\.settings-row__control > \.web-search-toggle\s*\{[\s\S]*?width:\s*fit-content;/);
-  assert.match(css, /\.image-model-select--settings select\s*\{[\s\S]*?width:\s*100%;/);
+  assert.match(reasoningSelect, /className="ctl-select-wrap settings-reasoning-effort"/);
+  assert.match(css, /\.ctl-select__trigger\s*\{[\s\S]*?width:\s*100%;/);
 });
 
 test("workspace profile settings use a dropdown followed by selected-profile help", () => {
   const workspaceSettings = readFileSync(join(root, "ui/src/components/settings/WorkspaceProfileSettings.tsx"), "utf8");
 
-  assert.match(workspaceSettings, /<select[\s\S]*id="workspace-profile-select"/);
-  assert.match(workspaceSettings, /onChange=\{\(event\) => setProfile\(event\.target\.value as WorkspaceProfile\)\}/);
-  assert.match(workspaceSettings, /aria-label=\{t\("workspace\.profileLabel"\)\}/);
+  assert.match(workspaceSettings, /<Select[\s\S]*id="workspace-profile-select"/);
+  assert.match(workspaceSettings, /onChange=\{\(v\) => setProfile\(v as WorkspaceProfile\)\}/);
+  assert.match(workspaceSettings, /ariaLabel=\{t\("workspace\.profileLabel"\)\}/);
   assert.doesNotMatch(workspaceSettings, /type="radio"/);
   assert.doesNotMatch(workspaceSettings, /settings-radio-option/);
   assert.doesNotMatch(workspaceSettings, /settings-field__label/);
   assert.doesNotMatch(workspaceSettings, /settings-field__description/);
-  assert.match(css, /\.settings-field__select\s*\{[\s\S]*?min-height:\s*34px;/);
+  assert.match(settingsControlsCss, /\.settings-row__control \.ctl-select\s*\{[\s\S]*?min-width:/);
 });

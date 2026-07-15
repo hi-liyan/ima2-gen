@@ -26,9 +26,17 @@ import {
 import { addHistory } from "./storeGraphSave";
 import type { AppState } from "./storeTypes";
 import { clearFlightAbort, registerFlightAbort } from "./flightAbortRegistry";
+import { compilePresets, type PresetProvider } from "../../../lib/presetCompiler.js";
+import { getAllPresets } from "../lib/presets";
 
 type StoreSet = (p: Partial<AppState> | ((s: AppState) => Partial<AppState>)) => void;
 type StoreGet = () => AppState;
+
+function toPresetProvider(provider: AppState["provider"]): PresetProvider {
+  if (provider === "grok" || provider === "grok-api") return "grok";
+  if (provider === "gemini-api") return "gemini";
+  return "gpt";
+}
 
 export async function generateMultimodeImpl(
   sizeOverride: string | undefined,
@@ -37,8 +45,17 @@ export async function generateMultimodeImpl(
 ): Promise<void> {
   const s = get();
   if (s.uiMode !== "classic") return;
-  const prompt = composePrompt(s.prompt, s.insertedPrompts);
-  if (!prompt) return;
+  const userPrompt = composePrompt(s.prompt, s.insertedPrompts);
+  if (!userPrompt) return;
+  const compiled = compilePresets({
+    catalog: getAllPresets(),
+    presetIds: s.selectedPresetIds,
+    provider: toPresetProvider(s.provider),
+    mode: "image",
+  });
+  const prompt = compiled.promptFragment
+    ? `${compiled.promptFragment} ${userPrompt}`
+    : userPrompt;
   const composerPrompt = s.prompt;
   const composerInsertedPrompts = cloneInsertedPrompts(s.insertedPrompts);
   const size = sizeOverride ?? s.getResolvedSize();
@@ -79,28 +96,30 @@ export async function generateMultimodeImpl(
   get().startInFlightPolling();
 
   try {
+    const payload = {
+      prompt,
+      quality: s.quality,
+      size,
+      format: s.format,
+      moderation: s.moderation,
+      provider: s.provider,
+      maxImages: requested,
+      model: s.imageModel,
+      reasoningEffort: s.reasoningEffort,
+      webSearchEnabled: s.webSearchEnabled,
+      requestId: flightId,
+      mode: s.promptMode,
+      composerPrompt,
+      composerInsertedPrompts,
+      presetIds: compiled.appliedPresetIds,
+      ...(s.providerUrlReference
+        ? { providerUrl: s.providerUrlReference }
+        : s.referenceImages.length
+          ? { references: s.referenceImages.map(stripDataUrlPrefix) }
+          : {}),
+    };
     const res: MultimodeGenerateResponse = await postMultimodeGenerateStream(
-      {
-        prompt,
-        quality: s.quality,
-        size,
-        format: s.format,
-        moderation: s.moderation,
-        provider: s.provider,
-        maxImages: requested,
-        model: s.imageModel,
-        reasoningEffort: s.reasoningEffort,
-        webSearchEnabled: s.webSearchEnabled,
-        requestId: flightId,
-        mode: s.promptMode,
-        composerPrompt,
-        composerInsertedPrompts,
-        ...(s.providerUrlReference
-          ? { providerUrl: s.providerUrlReference }
-          : s.referenceImages.length
-            ? { references: s.referenceImages.map(stripDataUrlPrefix) }
-            : {}),
-      },
+      payload,
       {
         onPartial: (partial) => {
           set((state) => {
@@ -246,8 +265,17 @@ export async function runGenerateImpl(
   get: StoreGet,
 ): Promise<void> {
   const s = get();
-  const prompt = composePrompt(s.prompt, s.insertedPrompts);
-  if (!prompt) return;
+  const userPrompt = composePrompt(s.prompt, s.insertedPrompts);
+  if (!userPrompt) return;
+  const compiled = compilePresets({
+    catalog: getAllPresets(),
+    presetIds: s.selectedPresetIds,
+    provider: toPresetProvider(s.provider),
+    mode: "image",
+  });
+  const prompt = compiled.promptFragment
+    ? `${compiled.promptFragment} ${userPrompt}`
+    : userPrompt;
   const composerPrompt = s.prompt;
   const composerInsertedPrompts = cloneInsertedPrompts(s.insertedPrompts);
 
@@ -286,6 +314,7 @@ export async function runGenerateImpl(
       mode: s.promptMode,
       composerPrompt,
       composerInsertedPrompts,
+      presetIds: compiled.appliedPresetIds,
       ...(s.providerUrlReference
         ? { providerUrl: s.providerUrlReference }
         : s.referenceImages.length

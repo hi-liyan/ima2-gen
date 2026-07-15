@@ -96,6 +96,11 @@ export {
 } from "./api-library";
 export { getGenerationRequestLog, type GenerationRequestLogEntry } from "./api-log";
 export {
+  getAssets, createAsset, updateAsset, deleteAsset,
+  getAssetFolders, createAssetFolder, updateAssetFolder, deleteAssetFolder, getAssetTags,
+  type AssetsPage, type AssetUpdatePatch,
+} from "./api-assets";
+export {
   postNodeGenerate,
   postNodeGenerateStream,
   type NodeErrorResponse,

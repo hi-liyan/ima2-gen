@@ -301,6 +301,14 @@
     "button": "생성",
     "buttonLoading": "생성 중 ({n})"
   },
+  "home": {
+    "recentTitle": "최근 작업",
+    "presetsTitle": "프리셋",
+    "selectedCount": "{count}개 선택",
+    "selectedPresets": "선택한 프리셋",
+    "viewAll": "전체 보기",
+    "presetSearch": "프리셋 검색…"
+  },
   "billing": {
     "label": "API 상태",
     "checking": "확인 중...",
@@ -1018,29 +1026,19 @@
     "navAria": "설정 섹션",
     "contentAria": "설정 내용",
     "jumpTo": "{section} 섹션으로 이동",
-    "eyebrow": "작업공간 설정",
     "title": "설정",
-    "subtitle": "계정, 화면, 앞으로 늘어날 작업공간 옵션을 이곳에 모아 생성 흐름은 가볍게 유지합니다.",
     "sections": {
-      "account": {
-        "title": "계정",
-        "hint": "GPT OAuth 상태"
-      },
-      "generation": {
-        "title": "생성",
-        "hint": "모델 기본값"
-      },
-      "appearance": {
-        "title": "화면",
-        "hint": "라이트/다크"
+      "providers": {
+        "title": "프로바이더",
+        "hint": "계정 · 키 · 모델"
       },
       "workspace": {
         "title": "작업공간",
-        "hint": "프로필"
+        "hint": "프로필 · 배치 · 갤러리"
       },
-      "language": {
-        "title": "언어",
-        "hint": "UI 문구"
+      "general": {
+        "title": "일반",
+        "hint": "언어"
       },
       "logs": {
         "title": "생성 로그",
@@ -1053,18 +1051,18 @@
     },
     "account": {
       "primaryEyebrow": "현재 공급자",
-      "oauthTitle": "GPT OAuth 사용 중",
+      "oauthTitle": "GPT OAuth",
       "oauthBody": "GPT OAuth 생성은 Codex OAuth 세션으로 실행됩니다. 유효한 키가 설정되어 있으면 API-Key 모드로 전환할 수 있습니다.",
       "apiSourceEnv": "OPENAI_API_KEY 감지됨",
       "apiSourceConfig": "config.json API 키 감지됨",
-      "apiTitle": "API 키 공급자 사용 가능",
+      "apiTitle": "OpenAI API 키",
       "apiBody": "ima2-gen은 이 API 키로 Responses API 기반 생성, 편집, 멀티모드, 노드 요청을 처리할 수 있습니다.",
       "apiDisabled": "사용 불가",
       "apiReady": "준비됨",
       "apiUnavailable": "사용 불가",
       "apiUnknown": "상태 불명",
       "grokEyebrow": "로컬 xAI 프록시",
-      "grokTitle": "Grok 이미지 공급자",
+      "grokTitle": "Grok",
       "grokBody": "설정된 로컬 포트의 progrok을 통해 xAI Images API 생성을 사용합니다.",
       "agyEyebrow": "Antigravity CLI",
       "agyTitle": "Gemini (agy)",
@@ -1085,8 +1083,6 @@
       }
     },
     "quota": {
-      "eyebrow": "사용량 쿼타",
-      "title": "속도 제한",
       "codexNotLoggedIn": "로그인 필요",
       "fetchError": "쿼타를 불러올 수 없음",
       "noData": "사용량 데이터 없음",
@@ -1179,8 +1175,6 @@
       "defaultScopeBody": "갤러리를 열 때 처음 보여줄 범위를 선택합니다."
     },
     "appearance": {
-      "themeTitle": "테마",
-      "themeBody": "이 기기에서 사용할 테마 스타일과 밝기를 선택합니다.",
       "historyStripLayoutTitle": "히스토리 썸네일",
       "historyStripLayoutBody": "작업공간 옆 작은 히스토리 배열 방식을 고릅니다.",
       "historyStripLayout": {
@@ -1241,21 +1235,6 @@
     "ko": "한국어",
     "en": "English",
     "zh-CN": "简体中文"
-  },
-  "theme": {
-    "label": "테마",
-    "modeLabel": "밝기",
-    "styleLabel": "테마 스타일",
-    "system": "시스템",
-    "dark": "다크",
-    "light": "라이트",
-    "family": {
-      "default": "기본",
-      "gpt": "GPT",
-      "claude": "Claude",
-      "gemini": "Gemini",
-      "grok": "Grok"
-    }
   },
   "errorCard": {
     "close": "닫기",
@@ -1522,5 +1501,53 @@
     "sessionInitialLoadFailed": "세션을 불러오지 못했습니다.",
     "sessionInitialLoadRetry": "세션을 불러오지 못했습니다. 지금 다시 시도할까요?",
     "attachmentReadFailed": "하나 이상의 첨부 파일을 읽지 못했습니다."
-  }
+  },
+  "nav": {
+    "ariaLabel": "기본 내비게이션",
+    "create": "생성",
+    "node": "노드 그래프",
+    "agent": "에이전트",
+    "assets": "보관함",
+    "settings": "설정"
+  },
+  "chain": {
+    "ariaLabel": "빠른 작업",
+    "animate": "영상으로",
+    "edit": "캔버스에서 편집",
+    "useAsRef": "참조로 사용",
+    "rebake": "다시 굽기",
+    "refAdded": "참조 이미지로 추가됨",
+    "refFailed": "참조 추가 실패",
+    "saveToAssets": "보관",
+    "savedToAssets": "보관함에 저장됨",
+    "saveToAssetsFailed": "보관함 저장 실패"
+  },
+  "assets": {
+    "title": "보관함",
+    "searchPlaceholder": "보관함 검색…",
+    "allAssets": "전체 보기",
+    "newFolder": "새 폴더",
+    "kindAll": "모든 유형",
+    "kindImage": "이미지",
+    "kindVideo": "비디오",
+    "kindElement": "요소",
+    "kindPreset": "프리셋",
+    "kindTemplate": "템플릿",
+    "emptyTitle": "아직 보관된 자산이 없어요",
+    "emptyBody": "갤러리에서 “보관”으로 결과물을 저장하면 여기에 쌓입니다.",
+    "emptySearchTitle": "일치하는 항목 없음",
+    "emptySearchBody": "다른 검색어나 태그, 유형 필터를 써보세요.",
+    "emptyFolderTitle": "빈 폴더예요",
+    "emptyFolderBody": "자산을 이 폴더로 옮기거나 새 결과물을 저장해보세요.",
+    "deleteAsset": "보관함에서 제거",
+    "confirmDelete": "삭제할까요?",
+    "loadMore": "더 불러오기",
+    "rootFolder": "최상위",
+    "renameFolder": "폴더 이름 변경",
+    "deleteFolder": "폴더 삭제",
+    "actionFailed": "작업 실패",
+    "itemCount": "{count}개"
+  },
+  "assets.clearAll": "전체 삭제",
+  "assets.clearConfirm": "저장된 자산을 모두 삭제할까요? 되돌릴 수 없습니다."
 }

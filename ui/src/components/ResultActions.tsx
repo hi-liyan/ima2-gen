@@ -37,6 +37,7 @@ export function ResultActions({
   const insertPromptToComposer = useAppStore((s) => s.insertPromptToComposer);
   const createRootNodeFromHistoryItem = useAppStore((s) => s.createRootNodeFromHistoryItem);
   const trashHistoryItem = useAppStore((s) => s.trashHistoryItem);
+  const saveToAssetsAction = useAppStore((s) => s.saveToAssets);
   const permanentlyDeleteHistoryItemByClick = useAppStore(
     (s) => s.permanentlyDeleteHistoryItemByClick,
   );
@@ -268,6 +269,19 @@ export function ResultActions({
       )}
       <button type="button" className="action-btn" onClick={() => void copyPrompt()}>
         {t("result.copyPrompt")}
+      </button>
+      <button
+        type="button"
+        className="action-btn"
+        onClick={() => {
+          void (async () => {
+            const ok = await saveToAssetsAction(actionImage);
+            showToast(t(ok ? "chain.savedToAssets" : "chain.saveToAssetsFailed"), !ok);
+          })();
+        }}
+        title={t("chain.saveToAssets")}
+      >
+        {t("chain.saveToAssets")}
       </button>
       <button
         type="button"

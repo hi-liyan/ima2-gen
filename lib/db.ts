@@ -312,6 +312,43 @@ function migrate(database: Database.Database) {
       ('__trash__', '__root__', '__trash__');
   `);
 
+  // ── Assets Library (phase 050, schema v6) ──
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS asset_folders (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      parent_id  TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (parent_id) REFERENCES asset_folders(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS assets (
+      id         TEXT PRIMARY KEY,
+      kind       TEXT NOT NULL CHECK (kind IN ('image','video','element','preset','template')),
+      name       TEXT NOT NULL,
+      file_path  TEXT,
+      folder_id  TEXT,
+      notes      TEXT,
+      metadata   TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (folder_id) REFERENCES asset_folders(id) ON DELETE SET NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS asset_tags (
+      asset_id TEXT NOT NULL,
+      tag      TEXT NOT NULL,
+      PRIMARY KEY (asset_id, tag),
+      FOREIGN KEY (asset_id) REFERENCES assets(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_assets_kind ON assets(kind, created_at);
+    CREATE INDEX IF NOT EXISTS idx_assets_folder ON assets(folder_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_assets_created ON assets(created_at DESC, id DESC);
+    CREATE INDEX IF NOT EXISTS idx_asset_tags_tag ON asset_tags(tag);
+  `);
+
   const row = database.prepare("SELECT value FROM _meta WHERE key = 'schema_version'").get() as { value?: string } | undefined;
   if (!row) {
     database.prepare("INSERT INTO _meta (key, value) VALUES ('schema_version', '6')").run();

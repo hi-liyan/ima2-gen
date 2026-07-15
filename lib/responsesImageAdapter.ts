@@ -401,7 +401,7 @@ export async function generateViaResponses(provider: string | undefined, prompt:
         requestId,
         signal: options.signal,
         initial: result,
-        referencesDroppedOnRetry: referenceInputs.length > 0,
+        referenceInputs,
         webSearchDroppedOnRetry: webSearchEnabled,
         reasoningEffort: options.reasoningEffort,
       });

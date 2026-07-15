@@ -97,7 +97,7 @@ test("Responses no-image outcomes classify into specific diagnostic codes", asyn
   ], "IMAGE_TOOL_COMPLETED_WITHOUT_RESULT");
 });
 
-test("OAuth no-image stream retries once with prompt-only non-stream image tool", async () => {
+test("OAuth no-image stream retry keeps reference images with developer prompt", async () => {
   const originalFetch = globalThis.fetch;
   const calls: Array<{ body: any }> = [];
   globalThis.fetch = (async (_url, init) => {
@@ -128,13 +128,15 @@ test("OAuth no-image stream retries once with prompt-only non-stream image tool"
     const retryResult = result as typeof result & {
       retryKind?: string;
       initialEventCount?: number;
+      hadReferences?: boolean;
       referencesDroppedOnRetry?: boolean;
       developerPromptDroppedOnRetry?: boolean;
       webSearchDroppedOnRetry?: boolean;
     };
-    assert.equal(retryResult.retryKind, "prompt_only_with_developer");
+    assert.equal(retryResult.retryKind, "references_with_developer");
     assert.equal(retryResult.initialEventCount, 1);
-    assert.equal(retryResult.referencesDroppedOnRetry, true);
+    assert.equal(retryResult.hadReferences, true);
+    assert.equal(retryResult.referencesDroppedOnRetry, false);
     assert.equal(retryResult.developerPromptDroppedOnRetry, false);
     assert.equal(retryResult.webSearchDroppedOnRetry, true);
     assert.equal(calls.length, 2);
@@ -146,6 +148,105 @@ test("OAuth no-image stream retries once with prompt-only non-stream image tool"
     assert.equal(calls[1].body.input.length, 2);
     assert.equal(calls[1].body.input[0].role, "developer");
     assert.equal(calls[1].body.input[1].role, "user");
+    const retryUserContent = calls[1].body.input[1].content;
+    assert.ok(Array.isArray(retryUserContent), "retry user content keeps reference parts");
+    assert.equal(retryUserContent[0].type, "input_image");
+    assert.equal(retryUserContent[0].image_url, "data:image/png;base64,ZmFrZS1yZWY=");
+    assert.equal(retryUserContent[retryUserContent.length - 1].type, "input_text");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("OAuth fallback drops references only on the final instruction-free attempt", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ body: any }> = [];
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body || "{}"));
+    calls.push({ body });
+    if (calls.length < 4) {
+      return sseResponse([{ type: "response.completed", response: { output: [] } }]);
+    }
+    return new Response(JSON.stringify({
+      output: [{ type: "image_generation_call", result: FINAL_B64 }],
+      usage: { total_tokens: 5 },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const result = await generateViaResponses(
+      "oauth",
+      "cat",
+      "low",
+      "1024x1024",
+      "low",
+      ["ZmFrZS1yZWY="],
+      "req_retry_final",
+      "auto",
+      testContext(),
+      { webSearchEnabled: true, allowPromptOnlyOAuthFallback: true },
+    );
+    assert.equal(result.b64, FINAL_B64);
+    const retryResult = result as typeof result & {
+      retryKind?: string;
+      hadReferences?: boolean;
+      referencesDroppedOnRetry?: boolean;
+      developerPromptDroppedOnRetry?: boolean;
+    };
+    assert.equal(retryResult.retryKind, "prompt_only_json_image_tool");
+    assert.equal(retryResult.hadReferences, true);
+    assert.equal(retryResult.referencesDroppedOnRetry, true);
+    assert.equal(retryResult.developerPromptDroppedOnRetry, true);
+    assert.equal(calls.length, 4);
+    for (const attempt of [1, 2]) {
+      const content = calls[attempt].body.input[1].content;
+      assert.ok(Array.isArray(content), `attempt ${attempt} keeps references`);
+      assert.equal(content[0].type, "input_image");
+    }
+    assert.equal(calls[3].body.input.length, 1);
+    assert.equal(calls[3].body.input[0].role, "user");
+    assert.equal(typeof calls[3].body.input[0].content, "string");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("OAuth fallback without references stays prompt-only with developer prompt", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ body: any }> = [];
+  globalThis.fetch = (async (_url, init) => {
+    const body = JSON.parse(String(init?.body || "{}"));
+    calls.push({ body });
+    if (calls.length === 1) {
+      return sseResponse([{ type: "response.completed", response: { output: [] } }]);
+    }
+    return new Response(JSON.stringify({
+      output: [{ type: "image_generation_call", result: FINAL_B64 }],
+      usage: { total_tokens: 5 },
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    const result = await generateViaResponses(
+      "oauth",
+      "cat",
+      "low",
+      "1024x1024",
+      "low",
+      [],
+      "req_retry_norefs",
+      "auto",
+      testContext(),
+      { webSearchEnabled: true, allowPromptOnlyOAuthFallback: true },
+    );
+    assert.equal(result.b64, FINAL_B64);
+    const retryResult = result as typeof result & {
+      retryKind?: string;
+      hadReferences?: boolean;
+      referencesDroppedOnRetry?: boolean;
+    };
+    assert.equal(retryResult.retryKind, "prompt_only_with_developer");
+    assert.equal(retryResult.hadReferences, false);
+    assert.equal(retryResult.referencesDroppedOnRetry, false);
+    assert.equal(typeof calls[1].body.input[1].content, "string");
   } finally {
     globalThis.fetch = originalFetch;
   }

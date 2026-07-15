@@ -13,7 +13,7 @@ export function GenerateButton() {
     <div className="generate-row">
       <button
         type="button"
-        className={`generate-btn${loading ? " generate-btn--active" : ""}`}
+        className={`generate-btn foil-hover${loading ? " generate-btn--active" : ""}`}
         onClick={() => void generate()}
       >
         {t("generate.button")}

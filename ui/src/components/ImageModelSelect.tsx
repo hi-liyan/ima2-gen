@@ -1,5 +1,5 @@
 import type { ImageModel } from "../types";
-import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AGENT_LLM_MODEL_OPTIONS, getAgentLlmModelOption } from "../lib/agentModelOptions";
@@ -8,6 +8,7 @@ import { REASONING_EFFORT_OPTIONS, type ReasoningEffort } from "../lib/reasoning
 import { useAppStore } from "../store/useAppStore";
 import { useI18n } from "../i18n";
 import type { AgentGenerationSettings } from "./agent/agentTypes";
+import { Select } from "./controls/Select";
 
 type ImageModelSelectProps = {
   variant: "settings" | "sidebar";
@@ -47,14 +48,10 @@ export function ImageModelSelect({ variant, agentSettings, onAgentSettingsChange
     ?? REASONING_EFFORT_OPTIONS[0];
   const currentAgentReasoning = REASONING_EFFORT_OPTIONS.find((option) => option.value === agentSettings?.reasoningEffort)
     ?? REASONING_EFFORT_OPTIONS[0];
-
-
-  const onChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const model = event.target.value as ImageModel;
+  const selectImageModel = (model: ImageModel) => {
     if (isApiOnlyImageModel(model)) setProvider("api");
     setImageModel(model);
   };
-
   const getMenuItems = () => menuItemRefs.current.filter(
     (item): item is HTMLButtonElement => item !== null,
   );
@@ -424,18 +421,22 @@ export function ImageModelSelect({ variant, agentSettings, onAgentSettingsChange
 
   return (
     <div className="image-model-select image-model-select--settings">
-      <select id={id} value={imageModel} onChange={onChange}>
-        {modelOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {t(option.fullLabelKey)}
-          </option>
-        ))}
-        {UNSUPPORTED_IMAGE_MODELS.map((option) => (
-          <option key={option.value} value={option.value} disabled>
-            {t(option.fullLabelKey)}
-          </option>
-        ))}
-      </select>
+      <Select
+        id={id}
+        value={imageModel}
+        onChange={(value) => selectImageModel(value as ImageModel)}
+        items={[
+          ...modelOptions.map((option) => ({
+            value: option.value,
+            label: t(option.fullLabelKey),
+          })),
+          ...UNSUPPORTED_IMAGE_MODELS.map((option) => ({
+            value: option.value,
+            label: t(option.fullLabelKey),
+            disabled: true,
+          })),
+        ]}
+      />
     </div>
   );
 }

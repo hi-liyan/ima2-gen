@@ -90,7 +90,7 @@ jobs:
     if: needs.prepare.outputs.should_verify == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -110,6 +110,12 @@ jobs:
           "${{ needs.prepare.outputs.version }}"
           "${{ needs.prepare.outputs.npm_tag }}"
           "${{ needs.prepare.outputs.source_ref }}"
+          "$GITHUB_SHA"
+      - name: Create or refresh GitHub Release for already-published latest
+        if: needs.prepare.outputs.channel == 'latest'
+        run: >-
+          node scripts/release-contract.mjs ensure-github-release
+          "${{ needs.prepare.outputs.version }}"
           "$GITHUB_SHA"
 
   windows-consumer:
@@ -155,7 +161,7 @@ jobs:
     if: needs.prepare.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -214,5 +220,43 @@ jobs:
             echo "- version: $VERSION"
             echo "- source: $GITHUB_REF@$GITHUB_SHA"
             echo "- integrity: $INTEGRITY"
+            echo "- workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  create-github-release:
+    needs: [prepare, publish]
+    if: needs.prepare.outputs.channel == 'latest' && needs.prepare.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: '.node-version'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Pin release npm
+        run: |
+          NPM_VERSION=$(node -p "require('./package.json').packageManager.split('@').pop()")
+          npm install -g "npm@$NPM_VERSION"
+          test "$(npm -v)" = "$NPM_VERSION"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-release-artifact
+          path: release-artifact
+      - name: Create or refresh GitHub Release with publish evidence
+        run: >-
+          node scripts/release-contract.mjs ensure-github-release
+          "${{ needs.prepare.outputs.version }}"
+          "$GITHUB_SHA"
+          release-artifact
+      - name: Write GitHub Release proof summary
+        run: |
+          {
+            echo "### GitHub Release proof"
+            echo "- tag: v${{ needs.prepare.outputs.version }}"
+            echo "- source: $GITHUB_REF@$GITHUB_SHA"
             echo "- workflow: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } >> "$GITHUB_STEP_SUMMARY"

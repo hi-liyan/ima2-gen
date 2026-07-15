@@ -301,6 +301,14 @@
     "button": "Generate",
     "buttonLoading": "Generating ({n})"
   },
+  "home": {
+    "recentTitle": "Recent work",
+    "presetsTitle": "Presets",
+    "selectedCount": "{count} selected",
+    "selectedPresets": "Selected presets",
+    "viewAll": "View all",
+    "presetSearch": "Search presets…"
+  },
   "billing": {
     "label": "API Status",
     "checking": "Checking...",
@@ -1018,29 +1026,19 @@
     "navAria": "Settings sections",
     "contentAria": "Settings content",
     "jumpTo": "Jump to {section}",
-    "eyebrow": "Workspace settings",
     "title": "Settings",
-    "subtitle": "Account, display, and future workspace controls live here so the generator stays focused.",
     "sections": {
-      "account": {
-        "title": "Account",
-        "hint": "GPT OAuth status"
-      },
-      "generation": {
-        "title": "Generation",
-        "hint": "Model defaults"
-      },
-      "appearance": {
-        "title": "Appearance",
-        "hint": "Light and dark"
+      "providers": {
+        "title": "Providers",
+        "hint": "Accounts, keys, models"
       },
       "workspace": {
         "title": "Workspace",
-        "hint": "Profile"
+        "hint": "Profile, layout, gallery"
       },
-      "language": {
-        "title": "Language",
-        "hint": "Interface copy"
+      "general": {
+        "title": "General",
+        "hint": "Language"
       },
       "logs": {
         "title": "Generation logs",
@@ -1053,18 +1051,18 @@
     },
     "account": {
       "primaryEyebrow": "Active provider",
-      "oauthTitle": "GPT OAuth is active",
+      "oauthTitle": "GPT OAuth",
       "oauthBody": "GPT OAuth generation runs through your Codex OAuth session. You can switch to API-key mode when a valid key is configured.",
       "apiSourceEnv": "OPENAI_API_KEY detected",
       "apiSourceConfig": "config.json API key detected",
-      "apiTitle": "API key provider available",
+      "apiTitle": "OpenAI API key",
       "apiBody": "ima2-gen can use this API key for generation, edit, multimode, and node requests through the Responses API.",
       "apiDisabled": "Unavailable",
       "apiReady": "Ready",
       "apiUnavailable": "Unavailable",
       "apiUnknown": "Status unknown",
       "grokEyebrow": "Local xAI proxy",
-      "grokTitle": "Grok image provider",
+      "grokTitle": "Grok",
       "grokBody": "Uses progrok at the configured local port for xAI Images API generation.",
       "agyEyebrow": "Antigravity CLI",
       "agyTitle": "Gemini (agy)",
@@ -1085,8 +1083,6 @@
       }
     },
     "quota": {
-      "eyebrow": "Usage quota",
-      "title": "Rate limits",
       "codexNotLoggedIn": "Not logged in",
       "fetchError": "Could not load quota",
       "noData": "No usage data",
@@ -1198,8 +1194,6 @@
       "defaultScopeBody": "Choose what the gallery shows when you open it."
     },
     "appearance": {
-      "themeTitle": "Theme",
-      "themeBody": "Pick a theme style and brightness for this device.",
       "historyStripLayoutTitle": "History thumbnails",
       "historyStripLayoutBody": "Choose how the compact history strip sits beside the workspace.",
       "historyStripLayout": {
@@ -1260,21 +1254,6 @@
     "ko": "한국어",
     "en": "English",
     "zh-CN": "Simplified Chinese"
-  },
-  "theme": {
-    "label": "Theme",
-    "modeLabel": "Brightness",
-    "styleLabel": "Theme style",
-    "system": "System",
-    "dark": "Dark",
-    "light": "Light",
-    "family": {
-      "default": "Default",
-      "gpt": "GPT",
-      "claude": "Claude",
-      "gemini": "Gemini",
-      "grok": "Grok"
-    }
   },
   "errorCard": {
     "close": "Close",
@@ -1541,5 +1520,53 @@
     "sessionInitialLoadFailed": "Sessions could not be loaded.",
     "sessionInitialLoadRetry": "Sessions could not be loaded. Retry now?",
     "attachmentReadFailed": "Could not read one or more attachments."
-  }
+  },
+  "nav": {
+    "ariaLabel": "Main navigation",
+    "create": "Create",
+    "node": "Node graph",
+    "agent": "Agent",
+    "assets": "Assets",
+    "settings": "Settings"
+  },
+  "chain": {
+    "ariaLabel": "Quick actions",
+    "animate": "Animate",
+    "edit": "Edit in canvas",
+    "useAsRef": "Use as reference",
+    "rebake": "Re-generate",
+    "refAdded": "Added as reference image",
+    "refFailed": "Could not add reference",
+    "saveToAssets": "Save to assets",
+    "savedToAssets": "Saved to assets",
+    "saveToAssetsFailed": "Could not save to assets"
+  },
+  "assets": {
+    "title": "Assets",
+    "searchPlaceholder": "Search assets…",
+    "allAssets": "All assets",
+    "newFolder": "New folder",
+    "kindAll": "All types",
+    "kindImage": "Images",
+    "kindVideo": "Videos",
+    "kindElement": "Elements",
+    "kindPreset": "Presets",
+    "kindTemplate": "Templates",
+    "emptyTitle": "No assets yet",
+    "emptyBody": "Save results from the gallery with “Save to assets” to build your library.",
+    "emptySearchTitle": "No matches",
+    "emptySearchBody": "Try a different search, tag, or type filter.",
+    "emptyFolderTitle": "This folder is empty",
+    "emptyFolderBody": "Move assets here or save new results into this folder.",
+    "deleteAsset": "Remove from assets",
+    "confirmDelete": "Confirm?",
+    "loadMore": "Load more",
+    "rootFolder": "Top level",
+    "renameFolder": "Rename folder",
+    "deleteFolder": "Delete folder",
+    "actionFailed": "Action failed",
+    "itemCount": "{count} items"
+  },
+  "assets.clearAll": "Clear all",
+  "assets.clearConfirm": "Delete all saved assets? This cannot be undone."
 }

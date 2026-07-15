@@ -136,10 +136,16 @@ export async function generateViaOAuth(
     });
 
     if (!imageB64) {
+      // Keep reference images on the retry: a transient empty stream is not
+      // evidence the references caused it, and dropping them silently degrades
+      // a reference-guided generation (e.g. card news template) into prompt-only.
+      const hadReferences = referenceInputs.length > 0;
+      const retryKind = hadReferences ? "references_json_image_tool" : "prompt_only";
       logEvent("oauth", "retry_json", {
         requestId,
-        retryKind: "prompt_only",
-        referencesDroppedOnRetry: referenceInputs.length > 0,
+        retryKind,
+        hadReferences,
+        referencesDroppedOnRetry: false,
         developerPromptDroppedOnRetry: true,
       });
       const retryRes = await fetchOAuth(`${oauthUrl}/v1/responses`, {
@@ -148,7 +154,7 @@ export async function generateViaOAuth(
         signal: timeout.signal,
         body: JSON.stringify({
           model,
-          input: [{ role: "user", content: buildUserTextPrompt(prompt, mode, { webSearchEnabled, size }) }],
+          input: [{ role: "user", content: userContent }],
           tools: [{ type: "image_generation", quality, size, moderation }],
           tool_choice: "required",
           reasoning: { effort: reasoningEffort },
@@ -163,8 +169,9 @@ export async function generateViaOAuth(
             logEvent("oauth", "retry_image", {
               requestId,
               imageChars: item.result.length,
-              retryKind: "prompt_only",
-              referencesDroppedOnRetry: referenceInputs.length > 0,
+              retryKind,
+              hadReferences,
+              referencesDroppedOnRetry: false,
             });
             const retryRevised = typeof item.revised_prompt === "string" ? item.revised_prompt : null;
             return {
@@ -172,8 +179,9 @@ export async function generateViaOAuth(
               usage: json.usage,
               webSearchCalls,
               revisedPrompt: retryRevised,
-              retryKind: "prompt_only",
-              referencesDroppedOnRetry: referenceInputs.length > 0,
+              retryKind,
+              hadReferences,
+              referencesDroppedOnRetry: false,
               developerPromptDroppedOnRetry: true,
               initialEventCount: eventCount,
             };
@@ -199,8 +207,9 @@ export async function generateViaOAuth(
       emptyErr.inputImageCount = referenceInputs.length;
       emptyErr.referenceDiagnostics = referenceDiagnostics;
       emptyErr.referenceMismatchCount = referenceMismatchCount;
-      emptyErr.retryKind = "prompt_only";
-      emptyErr.referencesDroppedOnRetry = referenceInputs.length > 0;
+      emptyErr.retryKind = retryKind;
+      emptyErr.hadReferences = hadReferences;
+      emptyErr.referencesDroppedOnRetry = false;
       emptyErr.developerPromptDroppedOnRetry = true;
       throw emptyErr;
     }

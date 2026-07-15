@@ -1,22 +1,22 @@
 .app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]),
 .app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]).app--history-horizontal,
 .app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]).app--history-sidebar {
-  grid-template-columns: 260px minmax(0, 1fr) auto;
+  grid-template-columns: var(--nav-rail-w) 260px minmax(0, 1fr) auto;
   grid-template-rows: minmax(0, 1fr);
 }
 
 .app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]) .sidebar {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]) .classic-workspace {
   grid-column: 2;
   grid-row: 1;
 }
 
-.app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]) .right-panel {
+.app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]) .classic-workspace {
   grid-column: 3;
+  grid-row: 1;
+}
+
+.app--prompt-studio[data-ui-mode="classic"]:not([data-mobile="1"]) .right-panel {
+  grid-column: 4;
   grid-row: 1;
 }
 

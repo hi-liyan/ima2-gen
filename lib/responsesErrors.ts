@@ -27,6 +27,7 @@ export interface EmptyResponseMeta {
   retryKind?: string;
   initialEventCount?: number;
   initialEventTypes?: Record<string, number>;
+  hadReferences?: boolean;
   referencesDroppedOnRetry?: boolean;
   developerPromptDroppedOnRetry?: boolean;
   webSearchDroppedOnRetry?: boolean;

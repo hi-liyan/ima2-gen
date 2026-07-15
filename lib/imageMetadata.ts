@@ -16,6 +16,11 @@ function numberOrNull(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function stringArray(value: unknown) {
+  if (!Array.isArray(value)) return undefined;
+  return [...new Set(value.filter((item): item is string => typeof item === "string"))];
+}
+
 function xmlEscape(value: unknown) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -66,6 +71,7 @@ export function buildIma2MetadataPayload(meta: any = {}, context: any = {}) {
     refsCount: Number.isFinite(meta.refsCount) ? meta.refsCount : 0,
     webSearchCalls: Number.isFinite(meta.webSearchCalls) ? meta.webSearchCalls : 0,
     styleSheetApplied: Boolean(meta.styleSheetApplied),
+    presetIds: stringArray(meta.presetIds),
   };
   return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined));
 }

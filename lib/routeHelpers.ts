@@ -37,6 +37,7 @@ export function upstreamErrorFields(src: Record<string, unknown>) {
     retryKind: src.retryKind || null,
     initialEventCount: src.initialEventCount ?? null,
     initialEventTypes: src.initialEventTypes || null,
+    hadReferences: src.hadReferences ?? null,
     referencesDroppedOnRetry: src.referencesDroppedOnRetry ?? null,
     developerPromptDroppedOnRetry: src.developerPromptDroppedOnRetry ?? null,
     webSearchDroppedOnRetry: src.webSearchDroppedOnRetry ?? null,

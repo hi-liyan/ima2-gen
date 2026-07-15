@@ -1,32 +1,6 @@
 /* ── Node mode (0.04) ── */
-.ui-mode-switch {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--surface-2);
-  border-radius: 8px;
-  margin: 8px 0;
-}
-.ui-mode-switch__tab {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-}
-.ui-mode-switch__tab.active {
-  background: var(--accent-bright);
-  color: var(--accent-ink);
-  font-weight: 600;
-}
-
 .sidebar__node-hint {
-  padding: 12px;
-  background: var(--surface-2);
-  border-radius: 8px;
+  padding: 4px 2px;
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.5;
@@ -351,7 +325,7 @@
 }
 .image-node__drop-hint,
 .image-node__ref-count {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 10px;
 }

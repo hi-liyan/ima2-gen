@@ -74,7 +74,9 @@ The CLI surface was expanded to near-feature-parity with the server API in #45 (
 | `ima2 config <get\|set>` | local | Read/write `~/.ima2/config.json` |
 | `ima2 defaults <subcommand>` | local or `/api/capabilities` | Inspect/change persistent model and reasoning defaults |
 | `ima2 capabilities` | `/api/capabilities` or local fallback | Print agent-facing capability metadata |
-| `ima2 skill` | local package | Print the packaged Markdown agent skill |
+| `ima2 skill [ima2\|front\|uiux]` | local package | List or print the three packaged Markdown agent skills and their reference modules |
+| `ima2 skill install [<name>] --dir <path>` | local package | Install all packaged skills, or one selected skill, into an agent-readable directory |
+| `ima2 skill install [<name>] --tmp` | local package | Install packaged skills under the temporary directory for ephemeral agent use |
 | `ima2 inflight <subcommand>` | `/api/inflight*` | List/cancel running jobs (alias surface for `ps`/`cancel`; implemented in `bin/commands/observability.ts`) |
 | `ima2 storage <subcommand>` | `/api/storage*` | Storage status and open generated dir (via `observability.ts`) |
 | `ima2 backfill-thumbs` | `POST /api/history/backfill-thumbnails` | Recursive local thumbnail backfill for gallery/history |
@@ -175,9 +177,14 @@ Issue #62 adds an explicit agent discovery layer so agents no longer have to inf
 
 | Command | Role |
 |---|---|
-| `ima2 skill` | Prints `skills/ima2/SKILL.md`; this package skill should be preferred for ima2 work over generic OpenAI image-generation skills |
-| `ima2 skill --json` | Wraps the Markdown skill in `{ name, format, formatVersion, packageVersion, path, source, content }` |
-| `ima2 skill path` | Prints the resolved installed skill file path |
+| `ima2 skill ls` | Lists the packaged `ima2`, `front`, and `uiux` skills |
+| `ima2 skill [front\|uiux]` | Prints the core, frontend, or UI/UX `SKILL.md`; these package skills should be preferred for ima2 work over generic skills |
+| `ima2 skill [front\|uiux] --json` | Wraps the selected Markdown skill in `{ name, format, formatVersion, packageVersion, path, source, content }` |
+| `ima2 skill [front\|uiux] path` | Prints the selected installed skill file path |
+| `ima2 skill [front\|uiux] refs` | Lists reference modules for the selected skill |
+| `ima2 skill [front\|uiux] ref <name>` | Prints one reference module without installing the skill |
+| `ima2 skill install [front\|uiux] --dir <path>` | Copies all skills, or one selected skill, to an agent-readable directory |
+| `ima2 skill install [front\|uiux] --tmp` | Copies skills under `$TMPDIR/ima2-skills/` for ephemeral use |
 | `ima2 capabilities --json` | Reports commands, supported/unsupported models, reasoning efforts, quality values, and limits |
 | `ima2 defaults --json` | Reads running server defaults when reachable; falls back to local effective config |
 | `ima2 defaults set model <model>` | Writes both `imageModels.default` and `apiProvider.defaultImageModel` |

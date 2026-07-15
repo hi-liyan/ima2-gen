@@ -3,12 +3,6 @@
   --canvas-empty-dot-alpha-scale: 1;
 }
 
-:root[data-theme-mode="light"],
-:root[data-theme="light"] {
-  --canvas-empty-dot-rgb: 15, 19, 26;
-  --canvas-empty-dot-alpha-scale: 0.74;
-}
-
 .canvas__blank-sheet {
   background:
     radial-gradient(

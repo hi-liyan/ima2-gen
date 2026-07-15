@@ -59,7 +59,7 @@ wiring, visual verification, and frontend platform rules.
 | ----------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
 | `references/crud-ui.md`              | C2 list/detail/form product screens  | State coverage (loading/empty/error/permission), forms, objective UX gates         |
 | `references/anti-slop.md`            | New components or UI redesign        | 2026 AI slop patterns, Korean slop, oversized text, fake assets, default UI smells |
-| `references/aesthetics.md`           | Visual design decisions              | Domain-correct visual direction, typography, color, composition, serif three-role system, expressive/functional layers, AI-brand grammar                    |
+| `references/aesthetics.md`           | Implementing an established visual direction | Domain-correct typography, color, composition, serif three-role system, expressive/functional layers, AI-brand grammar                    |
 | `references/product-density.md`      | Apps, tools, dashboards              | Density profiles for landing, consumer app, SaaS, ops, finance, devtools          |
 | `references/asset-requirements.md`   | Any public/product/visual surface    | Required screenshots, images, diagrams, charts, generated bitmaps, or 3D assets, mockup production pipeline   |
 | `references/visual-verification.md`  | Changes affecting rendered layout    | Screenshot, viewport, text fit, state, asset, and motion verification              |
@@ -157,12 +157,12 @@ Two different kinds of rules live in this skill (see the work classifier):
 - **Objective UX gates (STRICT/DEFAULT)** — accessibility baseline (§7, §11), state coverage
   (loading/empty/error/permission), keyboard operability, visible focus, contrast. Missing
   these are review findings.
-- **Style direction (STYLE_SAMPLE)** — design thinking (§2), aesthetics, density profiles,
+- **Style direction (STYLE_SAMPLE)** — design direction intake (§2), aesthetics, density profiles,
   product personalities, preset tokens, and the concrete values in §4-§5 (palettes, font
   choices, pixel max-widths). These illustrate acceptable choices; they are NOT
   requirements, must not override an existing design system (Design System Detection stays
   MANDATORY), and must never be enforced as universal taste (UX-STYLE-01).
-## 2. Design Thinking
+## 2. Design Direction Intake
 
 > When the user cannot articulate a clear design direction, load `ima2-uiux` to
 > discover intent and choose a direction before implementing here.
@@ -490,7 +490,7 @@ If YES to any: use the official package. Do not recreate CSS by hand.
 | GOV.UK | govuk-frontend | `import 'govuk-frontend/dist/govuk/all.scss'` |
 | USWDS | @uswds/uswds | `import '@uswds/uswds/css/uswds.css'` |
 
-If NO: proceed with `dev-uiux-design/references/design-system-bootstrap.md`.
+If NO: proceed with `ima2-uiux/references/design-system-bootstrap.md`.
 
 ### shadcn/ui and AI-Assisted UI
 
@@ -552,7 +552,7 @@ Before delivering:
 - [ ] Focus management on modals and popovers (§11)
 - [ ] Desktop/mobile/narrow screenshots checked for overlap, clipping, and asset rendering
 - [ ] Interactive components isolated as Client Components (if RSC)
-- [ ] Design Read declared before code generation (see dev-uiux-design §2)
+- [ ] Design Read declared before code generation (see ima2-uiux §2)
 - [ ] Eyebrow count ≤ ceil(sectionCount / 3) (see layout-discipline.md)
 - [ ] Section layout diversity: ≥4 different families per 8 sections
 - [ ] Color/shape/theme locks consistent across all sections (see consistency-locks.md)

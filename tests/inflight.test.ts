@@ -111,12 +111,11 @@ test("cancel after stale purge suppresses a late done event", () => {
 });
 
 test("reapTerminalJobs aborts an old controller with no inflight row", () => {
-  const registeredAt = Date.now();
   const controller = new AbortController();
   registerJobAbortController("req_orphan_controller", controller);
 
   const orphanTtlMs = Math.max(config.inflight.ttlMs * 6, 60 * 60 * 1000);
-  reapTerminalJobs(registeredAt + orphanTtlMs + 1);
+  reapTerminalJobs(Date.now() + orphanTtlMs + 1);
 
   assert.equal(controller.signal.aborted, true);
   assert.equal(abortJob("req_orphan_controller").aborted, false);

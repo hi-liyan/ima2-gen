@@ -13,6 +13,11 @@
   opacity: 0.58;
 }
 
+.app--settings-open .settings-workspace {
+  grid-column: 2 / -1;
+  grid-row: 1;
+}
+
 .settings-workspace {
   height: 100dvh;
   overflow: hidden;
@@ -37,18 +42,20 @@
 .settings-header {
   flex: 0 0 auto;
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 22px 24px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border);
 }
 
 .settings-header h2 {
   color: var(--text);
-  font-size: clamp(30px, 4vw, 48px);
-  font-weight: 760;
-  letter-spacing: -0.06em;
-  line-height: 0.98;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .settings-header p {
@@ -60,7 +67,7 @@
 
 .settings-eyebrow {
   margin-bottom: 8px;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 11px;
   letter-spacing: 0.12em;
@@ -137,7 +144,7 @@
 }
 
 .settings-mobile-nav__item small {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 10px;
   line-height: 1.2;
@@ -181,7 +188,7 @@
 }
 
 .settings-nav__item small {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 10px;
 }
@@ -214,15 +221,17 @@
 }
 
 .settings-section__header h3 {
-  color: var(--text);
-  font-size: 15px;
-  font-weight: 720;
-  letter-spacing: 0;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 
 .settings-section__header p {
   margin-top: 4px;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-family: var(--mono);
   font-size: 10px;
 }
@@ -237,10 +246,13 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  padding: 14px 2px;
+}
+
+.settings-row + .settings-row,
+.settings-row + .settings-note,
+.settings-note + .settings-row {
+  border-top: 1px solid var(--hairline-soft);
 }
 
 .settings-row__copy {
@@ -342,4 +354,3 @@
   color: var(--red);
   border-color: var(--red);
 }
-

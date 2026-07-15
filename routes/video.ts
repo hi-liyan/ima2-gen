@@ -41,6 +41,7 @@ import { requireRuntimeContext, type RouteRuntimeContext, type RuntimeContext } 
 import { generateVideoThumbnail } from "../lib/videoThumb.js";
 import { publish } from "../lib/eventBus.js";
 import { publishJobEvent } from "../lib/ssePublish.js";
+import { normalizePresetIds } from "../lib/presetCompiler.js";
 
 function sendSse(res: Response, event: string, data: unknown) {
   if (res.writableEnded || res.destroyed) return;
@@ -167,6 +168,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
 
     try {
       const { prompt, provider = "grok", model: rawModel } = req.body || {};
+      const presetIds = normalizePresetIds(req.body?.presetIds);
       const sessionId = typeof req.body?.sessionId === "string" ? req.body.sessionId : null;
       const clientNodeId = typeof req.body?.clientNodeId === "string" ? req.body.clientNodeId : null;
       const topic = typeof req.body?.topic === "string" ? req.body.topic.trim() : "";
@@ -270,7 +272,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         requestId,
         kind: "video",
         prompt: activePrompt,
-        meta: { kind: "video", sessionId, clientNodeId, model: modelCheck.model, mode, duration, resolution: resolutionCheck.resolution },
+        meta: { kind: "video", sessionId, clientNodeId, model: modelCheck.model, mode, duration, resolution: resolutionCheck.resolution, presetIds },
       });
       if (started && isStartJobFailure(started)) {
         if (started.code === "TOO_MANY_JOBS") {
@@ -356,6 +358,7 @@ export function registerVideoRoutes(app: Express, ctxRaw: RouteRuntimeContext) {
         prompt: activePrompt,
         userPrompt: activePrompt,
         revisedPrompt: result.revisedPrompt,
+        presetIds,
         provider,
         model: result.effectiveModel,
         requestedModel: result.requestedModel,

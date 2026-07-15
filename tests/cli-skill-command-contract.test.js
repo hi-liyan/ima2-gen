@@ -14,6 +14,12 @@ function runSkillCli(args) {
   });
 }
 
+function runCli(args) {
+  return spawnSync(process.execPath, ["bin/ima2.js", ...args], {
+    encoding: "utf8",
+  });
+}
+
 describe("CLI packaged skill contract", () => {
   it("ships a Markdown ima2 skill with agent usage guidance", () => {
     const skill = readSource("skills/ima2/SKILL.md");
@@ -90,6 +96,16 @@ describe("CLI packaged skill contract", () => {
     assert.match(src, /Agent skills/);
     assert.match(src, /"skill"/);
     assert.match(src, /case "skill":/);
+  });
+
+  it("top-level help exposes frontend, uiux, and install commands directly", () => {
+    const res = runCli(["--help"]);
+
+    assert.equal(res.status, 0, res.stderr);
+    assert.match(res.stdout, /ima2 skill front\s+Print frontend implementation skill/);
+    assert.match(res.stdout, /ima2 skill uiux\s+Print design direction skill/);
+    assert.match(res.stdout, /ima2 skill install --dir <path>\s+Install all skills/);
+    assert.match(res.stdout, /ima2 skill install --tmp\s+Install to temp dir/);
   });
 });
 

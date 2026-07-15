@@ -30,6 +30,7 @@ graph TD
     API --> COMFY["comfy bridge<br/>local upload"]
     API --> MULTI["multimode<br/>sequence generation"]
     API --> PROMPTS["prompt library<br/>crud folders import export"]
+    API --> ASSETS["assets library<br/>catalog folders tags"]
     API --> AGENT["agent mode<br/>sessions turns queue"]
     API --> BUILDER["prompt builder<br/>chat assist"]
     API --> GENLOG["generation request log<br/>GET /api/generation-requests"]
@@ -39,6 +40,8 @@ graph TD
     EVENTS --> JOBS
     SESS --> DB["SQLite"]
     PROMPTS --> DB
+    ASSETS --> DB
+    ASSETS --> FILES
     CARD --> FILES
 ```
 
@@ -143,6 +146,24 @@ History is reconstructed from image files and sidecar JSON under the configured 
 `/api/history/import-local` accepts a single raw image body and writes it into `generated/` as `imported-<yyyymmddhhmmss>-<rand6>.<ext>` with embedded XMP metadata (`kind: "imported"`). Frontend uses this to drop external images directly onto the Canvas viewer area; the response item is appended to the in-memory history list and selected as the current image.
 
 When `groupBy=session` is used, session groups include `title` and `label` when the session still exists in SQLite. The gallery should prefer the title and only fall back to the short server session id.
+
+## Assets Library API
+
+| Method | Path | Body / Query | Response |
+|---|---|---|---|
+| `GET` | `/api/assets` | `kind`, `folderId`, `tag`, `q`, `cursor`, `limit` | `{ assets, nextCursor }` |
+| `POST` | `/api/assets` | `{ kind, name?, filePath?, folderId?, notes?, metadata?, tags? }` | `201 { asset }` |
+| `PATCH` | `/api/assets/:id` | `{ name?, folderId?, notes?, metadata?, tags? }` | `{ asset }` |
+| `DELETE` | `/api/assets/:id` | none | `{ ok: true }` |
+| `GET` | `/api/assets/folders` | none | `{ folders }` |
+| `POST` | `/api/assets/folders` | `{ name, parentId? }` | `201 { folder }` |
+| `PATCH` | `/api/assets/folders/:id` | `{ name?, parentId? }` | `{ folder }` |
+| `DELETE` | `/api/assets/folders/:id` | none | `{ ok: true }` |
+| `GET` | `/api/assets/tags` | none | `{ tags }` |
+
+`routes/assets.ts` and `lib/assetsStore.ts` implement a SQLite catalog over files already stored in the configured generated directory; the catalog does not duplicate image or video bytes. Asset kinds are the closed enum `image | video | element | preset | template`. Image and video creation requires a validated regular file under generated storage, while the other kinds may be metadata-only. Listing supports kind, folder, tag, and name/notes search filters with opaque `(createdAt, id)` cursor pagination (default 50, maximum 500).
+
+Folder writes preserve tree integrity with stable errors: `INVALID_PARENT` rejects a missing parent, `FOLDER_CYCLE` rejects moving a folder beneath itself or a descendant, and `FOLDER_NOT_EMPTY` rejects deletion while assets or child folders remain. `INVALID_FOLDER` covers asset assignment to a missing folder. Deleting an asset removes only its SQLite catalog row (and cascading tag rows); the generated file is deliberately preserved. File deletion remains owned by the history/asset lifecycle endpoints above.
 
 ## Canvas, Metadata, And Local Integrations
 
@@ -425,6 +446,7 @@ Node retry diagnostics include safe context such as `operation`, `clientNodeId`,
 - 2026-06-01: Updated the API map for Grok video runtime: generation/edit/extension/frame/analyze, active prompt guidance, `continueFromVideo`, and `videoContinuity` sidecar/SSE contracts.
 - 2026-06-27: Documented keys/quota/auth-switch/agy/generation-request-log endpoints and provider matrix at ima2-gen 2.0.4; added `POST /api/history/backfill-thumbnails`.
 - 2026-06-28: WP6 — expanded `docs/API.md` with Prompt Library, Prompt Import, and Card News route tables; `tests/api-docs-contract.test.js` enforces full `routes/*.ts` `/api/*` coverage.
+- 2026-07-13: Phase 050 — documented the SQLite-backed Assets Library catalog, nine `/api/assets*` endpoints, kind enum, cursor pagination, folder integrity errors, and file-preserving catalog deletion.
 
 Previous document: `[[02-command-reference]]`
 

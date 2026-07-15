@@ -21,6 +21,8 @@ type PostResponses = (args: {
 
 const MAX_RETRIES = 2;
 
+type ReferenceInput = { type: string; image_url: string };
+
 export async function retryPromptOnlyJsonImage({
   postResponses,
   ctx,
@@ -34,7 +36,7 @@ export async function retryPromptOnlyJsonImage({
   requestId,
   signal,
   initial,
-  referencesDroppedOnRetry,
+  referenceInputs = [],
   webSearchDroppedOnRetry,
   reasoningEffort,
 }: {
@@ -50,7 +52,7 @@ export async function retryPromptOnlyJsonImage({
   requestId: string | null;
   signal?: AbortSignal | null;
   initial: ParsedResponsesResult;
-  referencesDroppedOnRetry: boolean;
+  referenceInputs?: ReferenceInput[];
   webSearchDroppedOnRetry: boolean;
   reasoningEffort?: string;
 }) {
@@ -58,25 +60,32 @@ export async function retryPromptOnlyJsonImage({
   const developerPrompt = webSearchDroppedOnRetry
     ? GENERATE_NO_SEARCH_DEVELOPER_PROMPT
     : GENERATE_DEVELOPER_PROMPT;
+  const hadReferences = referenceInputs.length > 0;
 
-  // Retry chain: keep the developer prompt for the first MAX_RETRIES attempts
-  // (censorship relief), then make one final attempt with the user prompt only
-  // so a clean, instruction-free generation gets the last word.
+  // Retry chain: the first MAX_RETRIES attempts stay faithful to the original
+  // request — developer prompt kept AND reference images kept (a transient empty
+  // stream is not evidence the references caused it; dropping them silently
+  // degrades a reference-guided generation into a prompt-only one). Only the
+  // final attempt goes truly prompt-only (developer prompt and references both
+  // dropped) so a clean, instruction-free generation gets the last word as a
+  // clearly-labeled degraded last resort.
   const attemptPlans = [
     ...Array.from({ length: MAX_RETRIES }, () => ({
-      retryKind: "prompt_only_with_developer",
+      retryKind: hadReferences ? "references_with_developer" : "prompt_only_with_developer",
       developerPromptDroppedOnRetry: false,
+      referencesDroppedOnRetry: false,
     })),
     {
       retryKind: "prompt_only_json_image_tool",
       developerPromptDroppedOnRetry: true,
+      referencesDroppedOnRetry: hadReferences,
     },
   ];
 
   const baseMeta = {
     initialEventCount: initial.eventCount,
     initialEventTypes: initial.eventTypes,
-    referencesDroppedOnRetry,
+    hadReferences,
     webSearchDroppedOnRetry,
   };
   let retryMeta = { ...baseMeta, ...attemptPlans[attemptPlans.length - 1] };
@@ -87,6 +96,11 @@ export async function retryPromptOnlyJsonImage({
     const plan = attemptPlans[attempt - 1];
     retryMeta = { ...baseMeta, ...plan };
     logEvent("oauth", "retry_attempt", { requestId, attempt, maxRetries: attemptPlans.length, ...retryMeta });
+    const userText = buildUserTextPrompt(prompt, mode, { webSearchEnabled: false, size });
+    const keepReferences = hadReferences && !plan.referencesDroppedOnRetry;
+    const userContent = keepReferences
+      ? [...referenceInputs, { type: "input_text", text: userText }]
+      : userText;
     try {
       lastRetry = await postResponses({
         ctx,
@@ -99,7 +113,7 @@ export async function retryPromptOnlyJsonImage({
           model,
           input: [
             ...(plan.developerPromptDroppedOnRetry ? [] : [{ role: "developer", content: developerPrompt }]),
-            { role: "user", content: buildUserTextPrompt(prompt, mode, { webSearchEnabled: false, size }) },
+            { role: "user", content: userContent },
           ],
           tools: tools(false, { quality, size, moderation }),
           tool_choice: imageToolChoice(true),

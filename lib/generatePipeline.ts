@@ -315,6 +315,7 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
             retryKind?: string;
             initialEventCount?: number;
             initialEventTypes?: unknown;
+            hadReferences?: boolean;
             referencesDroppedOnRetry?: boolean;
             developerPromptDroppedOnRetry?: boolean;
             webSearchDroppedOnRetry?: boolean;
@@ -324,6 +325,7 @@ export async function runGeneratePipeline(req: Request, res: Response, ctx: Runt
               retryKind: retryValue.retryKind,
               initialEventCount: retryValue.initialEventCount ?? null,
               initialEventTypes: retryValue.initialEventTypes || null,
+              hadReferences: retryValue.hadReferences ?? null,
               referencesDroppedOnRetry: retryValue.referencesDroppedOnRetry ?? null,
               developerPromptDroppedOnRetry: retryValue.developerPromptDroppedOnRetry ?? null,
               webSearchDroppedOnRetry: retryValue.webSearchDroppedOnRetry ?? null,

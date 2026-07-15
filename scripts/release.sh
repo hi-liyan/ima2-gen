@@ -24,16 +24,6 @@ require_main_clean() {
     fail "stable release requires a clean tracked and untracked worktree"
 }
 
-attach_release_evidence() {
-  local version="$1" sha="$2" run_id="$3" evidence_dir
-  [ -n "$run_id" ] || fail "provenance did not identify the publishing workflow run"
-  evidence_dir=$(mktemp -d "${TMPDIR:-/tmp}/ima2-release-evidence.XXXXXX")
-  gh run download "$run_id" --name npm-release-artifact --dir "$evidence_dir"
-  gh release upload "v$version" \
-    "$evidence_dir/release-manifest.json" "$evidence_dir/sbom.cdx.json" --clobber
-  rm -r -- "$evidence_dir"
-}
-
 sync_release_branches() {
   local sha="$1" branch remote
   local -a updates=()
@@ -57,7 +47,7 @@ sync_release_branches() {
 }
 
 finalize_release() {
-  local version="$1" sha release_notes previous_tag remote_tag remote_tag_sha proof_json run_id
+  local version="$1" sha remote_tag remote_tag_sha
   require_main_clean
   git fetch origin main dev preview --tags
   sha=$(git rev-list -n1 "v$version" 2>/dev/null || true)
@@ -65,26 +55,11 @@ finalize_release() {
   [ "$(git rev-parse HEAD)" = "$sha" ] || fail "main HEAD must equal v$version SHA before finalize"
   remote_tag=$(git ls-remote --tags origin "refs/tags/v$version")
   [ -n "$remote_tag" ] || fail "remote tag v$version does not exist"
-  remote_tag_sha="${remote_tag%%$'\t'*}"
+  remote_tag_sha="${remote_tag%%$'	'*}"
   [ "$remote_tag_sha" = "$sha" ] || fail "remote tag v$version points to $remote_tag_sha, expected $sha"
   git merge-base --is-ancestor "$sha" origin/main || fail "origin/main does not contain v$version"
-  proof_json=$(node scripts/release-contract.mjs finalize-check "$version" "$sha")
-  run_id=$(RELEASE_PROOF_JSON="$proof_json" node -p 'JSON.parse(process.env.RELEASE_PROOF_JSON).runId')
-
-  if ! gh release view "v$version" >/dev/null 2>&1; then
-    previous_tag=""
-    while IFS= read -r candidate; do
-      if [[ "$candidate" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$candidate" != "v$version" ]; then
-        previous_tag="$candidate"
-        break
-      fi
-    done < <(git tag --sort=-v:refname)
-    release_notes=$(node scripts/generate-release-notes.mjs "${previous_tag:+$previous_tag..}v$version" 2>/dev/null || git log "${previous_tag:+$previous_tag..}v$version" --pretty=format:"- %s" --no-merges --max-count=50)
-    gh release create "v$version" --verify-tag --title "v$version" --notes "${release_notes:-Release v$version}" --latest
-  else
-    gh release edit "v$version" --latest
-  fi
-  attach_release_evidence "$version" "$sha" "$run_id"
+  # OIDC publish already creates/refreshes the GitHub Release; this remains a recovery path.
+  node scripts/release-contract.mjs ensure-github-release "$version" "$sha"
   sync_release_branches "$sha"
   echo "✅ finalized $PKG_NAME@$version at $sha (release + evidence + branch reconciliation)"
 }

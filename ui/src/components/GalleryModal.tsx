@@ -20,6 +20,47 @@ import { GalleryStorageBar } from "./gallery/GalleryStorageBar";
 
 const STORAGE_NOTICE_DISMISSED_KEY = "ima2.storageNoticeDismissed.0.09.23";
 
+function useLazyGalleryTiles(root: HTMLDivElement | null) {
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const nodesRef = useRef(new Map<string, HTMLElement>());
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    if (!root || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      const entered = entries.filter((entry) => entry.isIntersecting);
+      if (entered.length === 0) return;
+      setVisibleKeys((current) => {
+        const next = new Set(current);
+        for (const entry of entered) {
+          const key = (entry.target as HTMLElement).dataset.galleryLazyKey;
+          if (key) next.add(key);
+        }
+        return next;
+      });
+    }, { root, rootMargin: "200% 0px" });
+    observerRef.current = observer;
+    for (const node of nodesRef.current.values()) observer.observe(node);
+    return () => {
+      observer.disconnect();
+      observerRef.current = null;
+    };
+  }, [root]);
+
+  const register = useCallback((key: string, node: HTMLElement | null) => {
+    const previous = nodesRef.current.get(key);
+    if (previous && previous !== node) observerRef.current?.unobserve(previous);
+    if (node) {
+      nodesRef.current.set(key, node);
+      observerRef.current?.observe(node);
+    } else {
+      nodesRef.current.delete(key);
+    }
+  }, []);
+
+  return { visibleKeys, register, supported: typeof IntersectionObserver !== "undefined" };
+}
+
 export function GalleryModal() {
   const { locale, t } = useI18n();
   const open = useAppStore((s) => s.galleryOpen);
@@ -70,6 +111,7 @@ export function GalleryModal() {
     scrollRef.current = node;
     setScrollElement(node);
   }, []);
+  const lazyTiles = useLazyGalleryTiles(scrollElement);
 
   useEffect(() => {
     if (!open) return;
@@ -307,7 +349,21 @@ export function GalleryModal() {
     const itemKey = getGalleryItemKey(item);
     const setItemRef = (node: HTMLElement | null) => {
       itemRefs.current[itemKey] = node;
+      lazyTiles.register(itemKey, node);
     };
+    const shouldRender = lazyTiles.supported ? lazyTiles.visibleKeys.has(itemKey) : true;
+    if (!shouldRender) {
+      return (
+        <div
+          ref={setItemRef}
+          key={`${keyPrefix}-${itemKey}`}
+          className="gallery__tile-wrap"
+          data-gallery-lazy-key={itemKey}
+          style={{ aspectRatio: "1 / 1" }}
+          aria-hidden="true"
+        />
+      );
+    }
     if (item.kind === "card-news-set") {
       return (
         <div

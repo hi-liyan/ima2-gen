@@ -19,7 +19,7 @@
 }
 
 .prompt-builder__message-role {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 10px;
   font-weight: 760;
 }
@@ -161,7 +161,7 @@
   place-items: center;
   border-radius: 999px;
   background: var(--surface-2);
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 8px;
   font-weight: 800;
 }

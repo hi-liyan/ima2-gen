@@ -11,7 +11,7 @@
 }
 
 .provider-grid__header {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.03em;
@@ -79,7 +79,7 @@
 
 .provider-helper {
   margin: -4px 0 0;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 11px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -146,7 +146,7 @@
 }
 
 .gemini-resolution-grid small {
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-size: 10px;
   line-height: 1.2;
 }

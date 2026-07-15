@@ -428,6 +428,105 @@ function packCommand(outputDir) {
   console.log(JSON.stringify(releaseManifest));
 }
 
+function previousStableTag(version) {
+  const current = `v${version}`;
+  return run("git", ["tag", "--sort=-v:refname"]).stdout
+    .trim()
+    .split("\n")
+    .map((tag) => tag.trim())
+    .filter((tag) => /^v\d+\.\d+\.\d+$/.test(tag) && tag !== current)[0] || "";
+}
+
+export function buildStableReleaseNotes(version, previousTag = previousStableTag(version)) {
+  const tag = `v${version}`;
+  const range = previousTag ? `${previousTag}..${tag}` : tag;
+  const generated = run("node", [resolve("scripts/generate-release-notes.mjs"), range], { allowFailure: true });
+  const notes = String(generated.stdout || "").trim();
+  if (generated.status === 0 && notes) return notes;
+  const fallback = [
+    "## What's Changed",
+    "",
+    `Published to npm as \`${PACKAGE_NAME}@${version}\`.`,
+    "",
+    `**Full Changelog**: ${REPOSITORY}/compare/${previousTag || tag}...${tag}`,
+  ];
+  return fallback.join("\n");
+}
+
+function releaseExists(tag) {
+  const result = run(commandName("gh"), ["release", "view", tag], { allowFailure: true });
+  return result.status === 0;
+}
+
+function downloadReleaseEvidence(runId, outputDir) {
+  mkdirSync(outputDir, { recursive: true });
+  run(commandName("gh"), ["run", "download", String(runId), "--name", "npm-release-artifact", "--dir", outputDir]);
+  const manifestPath = resolve(outputDir, "release-manifest.json");
+  const sbomPath = resolve(outputDir, "sbom.cdx.json");
+  if (!readFileSync(manifestPath, "utf8") || !readFileSync(sbomPath, "utf8")) {
+    throw new Error(`release evidence missing for run ${runId}`);
+  }
+  return { manifestPath, sbomPath };
+}
+
+function attachReleaseEvidence(tag, artifactDir) {
+  const manifestPath = resolve(artifactDir, "release-manifest.json");
+  const sbomPath = resolve(artifactDir, "sbom.cdx.json");
+  readJson(manifestPath);
+  readFileSync(sbomPath, "utf8");
+  run(commandName("gh"), ["release", "upload", tag, manifestPath, sbomPath, "--clobber"]);
+}
+
+export async function ensureGithubRelease({ version, sha, artifactDir, makeLatest = true }) {
+  parseStableVersion(version, "stable package version");
+  if (!/^[0-9a-f]{40}$/i.test(String(sha || ""))) throw new Error("ensure-github-release requires a full 40-char commit SHA");
+  const tag = `v${version}`;
+  const tagSha = run("git", ["rev-list", "-n1", tag]).stdout.trim();
+  if (tagSha !== sha) throw new Error(`${tag} points to ${tagSha}, expected ${sha}`);
+  const proof = await verifyRegistryEventually({
+    version,
+    npmTag: "latest",
+    ref: `refs/tags/${tag}`,
+    sha,
+  });
+  const notes = buildStableReleaseNotes(version);
+  if (!releaseExists(tag)) {
+    const args = ["release", "create", tag, "--verify-tag", "--title", tag, "--notes", notes];
+    if (makeLatest) args.push("--latest");
+    run(commandName("gh"), args);
+  } else if (makeLatest) {
+    run(commandName("gh"), ["release", "edit", tag, "--latest"]);
+  }
+  let evidenceDir = artifactDir ? resolve(artifactDir) : "";
+  let temporaryEvidence = false;
+  if (!evidenceDir) {
+    evidenceDir = resolve(process.env.RUNNER_TEMP || process.env.TMPDIR || "/tmp", `ima2-release-evidence-${proof.runId || "local"}`);
+    temporaryEvidence = true;
+    downloadReleaseEvidence(proof.runId, evidenceDir);
+  }
+  try {
+    attachReleaseEvidence(tag, evidenceDir);
+  } finally {
+    if (temporaryEvidence) {
+      run("rm", ["-rf", evidenceDir], { allowFailure: true });
+    }
+  }
+  return {
+    version,
+    sha,
+    tag,
+    runId: proof.runId,
+    runUrl: proof.runUrl,
+    integrity: proof.integrity,
+    createdOrUpdated: true,
+  };
+}
+
+async function ensureGithubReleaseCommand(version, sha, artifactDir) {
+  const result = await ensureGithubRelease({ version, sha, artifactDir });
+  console.log(JSON.stringify(result));
+}
+
 async function main() {
   const [command, ...args] = process.argv.slice(2);
   if (command === "assert-toolchain") return assertReleaseToolchain();
@@ -468,6 +567,11 @@ async function main() {
       sha,
     })));
   }
+  if (command === "ensure-github-release") {
+    const [version, sha, artifactDir] = args;
+    if (!version || !sha) throw new Error("usage: release-contract.mjs ensure-github-release X.Y.Z <sha> [artifactDir]");
+    return ensureGithubReleaseCommand(version, sha, artifactDir);
+  }
   if (command === "verify-channel") {
     const [version, npmTag, ref, sha] = args;
     return console.log(JSON.stringify(await verifyRegistryEventually({
@@ -477,7 +581,7 @@ async function main() {
       sha,
     })));
   }
-  throw new Error("usage: release-contract.mjs assert-toolchain|assert-publish-context|assert-remote-ref|prepare|pack|verify-artifact|guard-publish|verify-registry|wait|finalize-check|verify-channel");
+  throw new Error("usage: release-contract.mjs assert-toolchain|assert-publish-context|assert-remote-ref|prepare|pack|verify-artifact|guard-publish|verify-registry|wait|finalize-check|ensure-github-release|verify-channel");
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);

@@ -249,3 +249,84 @@
     justify-content: flex-start;
   }
 }
+
+/* Phase 025 — provider cards + mono status chips (class contract frozen at
+   audit: .provider-card / .provider-card__head / .provider-chip--ok|warn|err). */
+.provider-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+.provider-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.provider-card__head h4 {
+  font-size: 13px;
+  font-weight: 600;
+}
+.provider-card__head .provider-chip {
+  margin-left: auto;
+}
+.provider-card__brand {
+  display: inline-flex;
+  color: var(--text-dim);
+  flex: none;
+}
+.provider-card__eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.provider-card p {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline-soft);
+  background: var(--control-bg);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.provider-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.provider-chip--ok {
+  color: var(--text);
+}
+.provider-chip--ok::before {
+  background: var(--green);
+}
+.provider-chip--warn::before {
+  background: var(--amber);
+}
+.provider-chip--err::before {
+  background: var(--red);
+}
+
+/* Settings-scoped kit sizing (worker test contract: .settings-row__control .ctl-select) */
+.settings-row__control .ctl-select {
+  min-width: 220px;
+}

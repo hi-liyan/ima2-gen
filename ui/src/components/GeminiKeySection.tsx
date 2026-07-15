@@ -3,6 +3,7 @@ import { ApiKeyInput } from "./ApiKeyInput";
 import { VertexJsonInput } from "./VertexJsonInput";
 import { useI18n } from "../i18n";
 import type { KeyStatus } from "../hooks/useKeyStatus";
+import { Select } from "./controls/Select";
 
 type GeminiKeySectionProps = {
   keyStatus: KeyStatus;
@@ -38,14 +39,14 @@ export function GeminiKeySection({ keyStatus, onSaved }: GeminiKeySectionProps) 
     <div className="gemini-key-section">
       <div className="gemini-key-section__header">
         <h5>{t("settings.apiKeys.gemini.label")}</h5>
-        <select
+        <Select
           value={authMode}
-          onChange={(e) => handleModeChange(e.target.value as "apikey" | "vertex")}
-          className="gemini-auth-mode-select"
-        >
-          <option value="apikey">{t("settings.apiKeys.vertex.authModeApiKey")}</option>
-          <option value="vertex">{t("settings.apiKeys.vertex.authModeVertex")}</option>
-        </select>
+          onChange={handleModeChange}
+          items={[
+            { value: "apikey", label: t("settings.apiKeys.vertex.authModeApiKey") },
+            { value: "vertex", label: t("settings.apiKeys.vertex.authModeVertex") },
+          ]}
+        />
       </div>
 
       {authMode === "apikey" ? (

@@ -52,6 +52,7 @@ export interface UpstreamErr {
   retryKind?: string;
   initialEventCount?: number;
   initialEventTypes?: unknown;
+  hadReferences?: boolean;
   referencesDroppedOnRetry?: boolean;
   developerPromptDroppedOnRetry?: boolean;
   webSearchDroppedOnRetry?: boolean;
@@ -163,6 +164,7 @@ function copyEmptyResponseMetadata(target: any, source: UpstreamErr | null | und
   if (source.retryKind) target.retryKind = source.retryKind;
   if (typeof source.initialEventCount === "number") target.initialEventCount = source.initialEventCount;
   if (source.initialEventTypes) target.initialEventTypes = source.initialEventTypes;
+  if (typeof source.hadReferences === "boolean") target.hadReferences = source.hadReferences;
   if (typeof source.referencesDroppedOnRetry === "boolean") target.referencesDroppedOnRetry = source.referencesDroppedOnRetry;
   if (typeof source.developerPromptDroppedOnRetry === "boolean") target.developerPromptDroppedOnRetry = source.developerPromptDroppedOnRetry;
   if (typeof source.webSearchDroppedOnRetry === "boolean") target.webSearchDroppedOnRetry = source.webSearchDroppedOnRetry;

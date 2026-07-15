@@ -22,6 +22,8 @@ Snapshot note, 2026-06-27 (v2.0.4): store facade `useAppStore.ts` is now ~507 li
 
 Snapshot note, 2026-06-29: Grok Video 1.5 uses canonical `grok-imagine-video-1.5` in UI state; persisted `grok-imagine-video-1.5-preview` values are migrated on load. `VideoControlsPanel` exposes `1080p` for 1.5 prompt-only text-to-video and image-to-video with one active image/frame source, auto-selects the 1.5 model when 1080p is clicked, and clamps unsupported Ref2V/multi-reference 1080p selections back to 720p. Prompt-only 1.5 T2V relies on the server-side white-canvas I2V shim, so the UI does not require a visible reference image for 1080p.
 
+Snapshot note, 2026-07-13: Phase 050 adds an `"assets"` `UIMode`, entered from the `NavRail` `#assets` route. It is a workspace-only mode: `AssetsWorkspace` replaces the center workspace while the generation `Sidebar`, `RightPanel`, and `HistoryStrip` are hidden. The workspace is implemented under `ui/src/components/assets/` with `AssetsFolderTree` for hierarchy and `AssetsGrid` for the filtered, cursor-paged catalog.
+
 ---
 
 ## Render Flow
@@ -34,6 +36,7 @@ graph TD
     APP --> SETTINGS["SettingsWorkspace"]
     APP --> CLASSIC["Canvas"]
     APP --> NODE["NodeCanvas"]
+    APP --> ASSETS["AssetsWorkspace"]
     APP --> RIGHT["RightPanel"]
     APP --> MODAL["GalleryModal"]
     STORE --> API["ui/src/lib/api.ts"]
@@ -42,7 +45,7 @@ graph TD
     NODEAPI --> SERVER
 ```
 
-`App.tsx` hydrates history, loads sessions, reconciles inflight jobs, starts polling on mount, and syncs theme preference. If settings are open, it renders `SettingsWorkspace` in the center slot. Otherwise, if UI mode is `classic`, it renders `Canvas`; if node mode is enabled and UI mode is `node`, it renders `NodeCanvas`. Node mode is enabled in packaged builds by default and can be hidden only by building with `VITE_IMA2_NODE_MODE=0`. Before unload or visibility changes, it flushes the graph save beacon.
+`App.tsx` hydrates history, loads sessions, reconciles inflight jobs, starts polling on mount, and syncs theme preference. If settings are open, it renders `SettingsWorkspace` in the center slot. Otherwise, it selects the workspace from `UIMode`: `classic` renders `Canvas`, enabled `node` renders `NodeCanvas`, and `assets` lazily renders `AssetsWorkspace`. `NavRail` maps the assets mode to `#assets`. Assets is workspace-only, so shell styling hides `Sidebar`, and `App.tsx` omits `RightPanel` and `HistoryStrip`. Node mode is enabled in packaged builds by default and can be hidden only by building with `VITE_IMA2_NODE_MODE=0`. Before unload or visibility changes, it flushes the graph save beacon.
 
 Settings are a workspace replacement, not a modal overlay. `SettingsButton` lives next to the `ima2-gen` title in the sidebar. The compact image model selector also lives in this header as a fast switcher, while Settings shows the same choice with full model names. `SettingsWorkspace` keeps the outer shell fixed so the header and `X` close button do not scroll away; only the section index and content pane scroll. Selecting an item jumps the center document to that section instead of replacing the content panel. `SettingsWorkspace` closes with `X` or Escape and returns to the previous canvas path without mutating generation state.
 
@@ -54,6 +57,7 @@ Settings are a workspace replacement, not a modal overlay. `SettingsButton` live
 | Left panel | `Sidebar.tsx`, `PromptComposer.tsx`, `SettingsButton.tsx` | Focused generation entry plus settings access |
 | Center workspace | `Canvas.tsx`, `NodeCanvas.tsx`, `SettingsWorkspace.tsx`, `ImageNode.tsx`, `card-news/CardNewsWorkspace.tsx` | Classic image display, graph canvas, settings, or dev-only card-news workspace |
 | Agent workspace | `components/agent/*`, `lib/agentApi.ts`, `hooks/useAgentWorkspaceLayout.ts` | Agent Mode conversational image workspace: sessions, turns, durable composer run status, durable queue panel, right-sidebar controls (`/api/agent/*`, no CLI) |
+| Assets workspace | `components/assets/AssetsWorkspace.tsx`, `AssetsFolderTree.tsx`, `AssetsGrid.tsx` | Workspace-only asset catalog with folder navigation, kind/tag/search filters, virtualized grid, and cursor paging |
 | Right panel | `RightPanel.tsx`, `SizePicker.tsx`, `CostEstimate.tsx`, `GenerationRequestLogPanel.tsx` | Quality, size, format, moderation, count; dev log tab for `GET /api/generation-requests` (#95) |
 | History | `HistoryStrip.tsx`, `GalleryModal.tsx`, `ResultActions.tsx`, `ResultMetadataModal.tsx` | Saved image browsing, favorite, restore, drag-out, metadata-restore, and per-result metadata inspector (#108) |
 | Status | `InFlightList.tsx`, `Toast.tsx`, `BillingBar.tsx`, `AccountSettings.tsx`, `settings/QuotaCard.tsx` | Pending jobs, notifications, billing/provider status, Grok quota bar + Switch Account |
@@ -74,6 +78,7 @@ Settings are a workspace replacement, not a modal overlay. `SettingsButton` live
 | Inflight | `useAppStore.ts` plus `/api/inflight` | localStorage-backed pending jobs and polling |
 | Node graph | `useAppStore.ts` plus sessions API | Nodes, edges, graphVersion, session actions, style sheet |
 | Prompt library | `useAppStore.ts` plus `/api/prompts/*` | Open/close, current folder, search query, favorite filter, in-flight loading |
+| Assets library | `storeAssetsImpl.ts` plus `ui/src/lib/api-assets.ts` | Assets, folders, tags, filters, cursor/loading state, catalog CRUD, and save-generated-result action |
 | Metadata restore | `useAppStore.ts` plus `/api/metadata/read` | Pending dropped image, parsed metadata, restore confirmation flow |
 | Card-news (dev-only) | `ui/src/store/cardNewsStore.ts` plus `/api/cardnews/*` | Topic/draft/template selection, manifest, jobs, regenerate/export state |
 | Settings workspace | `useAppStore.ts` | `settingsOpen` and active settings section |
@@ -102,6 +107,7 @@ Visible metadata should carry the selected model too. Current result metadata, h
 | `getInflight` | `GET /api/inflight` | Pending reconciliation |
 | `postMetadataRead` | `POST /api/metadata/read` | Drag-and-drop metadata restore dialog |
 | Prompt library helpers | `/api/prompts*` | List, create, update, delete, favorite, import, export, folders, prompt import preview/commit, curated sources/search/refresh, GitHub folder list/preview |
+| Assets library helpers | `/api/assets*` via `api-assets.ts` | List/create/update/delete assets and folders, list tags, and cursor-paged filtering |
 | Session style sheet helpers | `/api/sessions/:id/style-sheet*` | Get/save/enable/extract style sheet from a reference history image |
 | `getGenerationRequestLog` | `GET /api/generation-requests` | Dev log panel (`ui/src/lib/api-log.ts`) |
 | Card-news helpers | `/api/cardnews/*` (dev-only via `cardNewsApi.ts`) | Templates, role templates, sets, draft, generate, jobs, regenerate, export |
@@ -118,6 +124,9 @@ Visible metadata should carry the selected model too. Current result metadata, h
 | Classic | Default UI | `Canvas.tsx` | Sends prompt to `/api/generate`, then updates current image/history |
 | Node | Product feature enabled | `NodeCanvas.tsx` | Calls `/api/node/generate` per node, renders partial previews when streamed, and saves the graph to the session |
 | Card-news | Dev-only, gated by `VITE_IMA2_CARD_NEWS=1` or `VITE_IMA2_DEV=1` | `card-news/CardNewsWorkspace.tsx` | Drives the dev-only topic→draft→template→generate→export flow against `/api/cardnews/*` and `cardNewsStore` |
+| Assets | `UIMode === "assets"` / `#assets` | `assets/AssetsWorkspace.tsx` | Replaces the generation shell with folder tree and catalog grid; hides Sidebar, RightPanel, and HistoryStrip |
+
+Generated results can be cataloged without leaving their current surface. `resultChaining.ts` defines the shared `saveToAssets` action, `GalleryImageTile` executes it from gallery tiles, and `ResultActions` exposes it in the current-result action row. All three route through the store's `saveToAssets` action in `storeAssetsImpl.ts`, which creates an `image` or `video` catalog record using the generated filename; it does not move or copy the underlying file.
 
 Node mode uses `@xyflow/react`. Empty canvas creates a root node. Dragging an edge from an existing node can create a child node. Session loading displays a canvas overlay.
 
@@ -194,6 +203,7 @@ Error handling is centralized. API helpers preserve `err.code` where the server 
 - 2026-06-01: Recorded the Grok video UI contract: Classic "Continue here", gallery/history video drag, and Node parent-video generation attach the previous video's last frame and carry `videoContinuity` lineage; the video controls panel shows pending continuity context while Canvas shows selected-result lineage metadata.
 - 2026-06-27: v2.0.4 snapshot — refreshed line counts (`useAppStore` ~507 facade, `index.css` ~105, components ~17200), documented `GenerationRequestLogPanel`, `ResultMetadataModal`, `QuotaCard`, storyboard mode, and video frame copy.
 - 2026-06-29: Added the Grok Video 1.5 `1080p` UI contract: canonical model migration, conditional `VideoControlsPanel` enablement, 720p auto-clamp for unsupported states, and expanded active-source detection for provider URL and parent-video frame anchors.
+- 2026-07-13: Phase 050 — documented the `assets` UIMode and `#assets` navigation, workspace-only shell, assets component subtree, Zustand/API slice, and shared `saveToAssets` result-chaining action.
 
 Previous document: `[[03-server-api]]`
 

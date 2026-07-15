@@ -1,6 +1,6 @@
 ---
 created: 2026-04-23
-updated: 2026-07-11
+updated: 2026-07-12
 tags: [ima2-gen, devlog, roadmap]
 aliases: [ima2 active plan, image_gen current roadmap, ima2 개발계획]
 ---
@@ -27,6 +27,7 @@ Deferred / 미래 항목은 `_plan/` 직속이 아니라 `_plan/_future/`에 둔
 | 1 | `260515_fork-prompting-modularization-research/` | research | Prompt Builder/composer modularization reference. |
 | 2 | `260531_pr-issue-review-rebase-plan/` | reference | PR #81/#3 통합 계획 + 이슈 triage 문서. |
 | 3 | `260711_production-hardening/` | closeout 단계 | 프로덕션 하드닝 멀티 WP: devlog closeout, Agent(비디오) 탭 전면 개선, persistence 검증, 500줄 분할, 캔버스 G1, 하드닝 스캔/수정, 최종 검증. 상세는 레인 내 000/010/011/012/020/021/030/090 문서. |
+| 4 | `260712_higgsfield-ux-studio/` | plan 확정 | 힉스필드급 스튜디오 UX 개선. 스펙은 000~008, 실행은 phase 010(토큰)→020(컨트롤 킷)→030(레일)→040(체이닝)→050(Assets)→060(프리셋)→070(요소)→080(노드/비디오)→090(closeout+미결정 원장). 디자인 선행, 기능 후행. SaaS/협업은 non-goal. |
 
 Deferred (`_plan/_future/`): `260430_issue27-canvas-svg-export/`,
 `260430_issue28-canvas-pptx-export/`, `260430_issue31-provider-masked-edit/`,

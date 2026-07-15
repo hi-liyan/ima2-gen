@@ -49,7 +49,7 @@ describe("gallery viewer focusless navigation contract", () => {
     assert.match(canvas, /const restoreResultFocus = useCallback/);
     assert.match(canvas, /requestAnimationFrame\(\(\) => resultContainerRef\.current\?\.focus\(\)\)/);
     assert.match(canvas, /ref=\{resultContainerRef\}/);
-    assert.match(canvas, /<ResultActions onAfterDeleteFocus=\{restoreResultFocus\} \/>/);
+    assert.match(canvas, /<ResultActions onAfterDeleteFocus=\{restoreResultFocus\} privacyHold=\{privacyMode \? privacyHold : undefined\} \/>/);
     assert.match(canvas, /onMouseDown=\{handleViewerMouseDown\}/);
     assert.match(canvas, /onKeyDown=\{handleViewerKeyDown\}/);
     assert.match(canvas, /event\.key === "Delete" \|\| event\.key === "Backspace"/);

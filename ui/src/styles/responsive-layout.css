@@ -244,6 +244,7 @@
     grid-template-rows: auto auto 1fr;
     height: auto;
     overflow: visible;
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
   .app.app--settings-open {
     grid-template-rows: 1fr;

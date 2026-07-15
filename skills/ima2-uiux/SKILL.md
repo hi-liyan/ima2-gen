@@ -1,6 +1,6 @@
 ---
 name: ima2-uiux
-description: "Design direction discovery and UX judgment for ima2 users. Use for UI/UX direction and design judgment — vague visual briefs, onboarding, empty/error/loading states, layout vocabulary, typography breaks, favicons, logos, and brand identity choices. Pairs with ima2-front: this skill decides the design direction, then load cxc-dev-frontend to implement it. Triggers: make it look good, modern, clean, aesthetic, onboarding, empty state, error state, favicon, logo, design system, 깔끔하게, 모던하게, 감성적으로."
+description: "Design direction discovery and UX judgment for ima2 users. Use for UI/UX direction and design judgment — vague visual briefs, onboarding, empty/error/loading states, layout vocabulary, typography breaks, favicons, logos, and brand identity choices. Pairs with ima2-front: this skill decides the design direction, then load ima2-front to implement it. Triggers: make it look good, modern, clean, aesthetic, onboarding, empty state, error state, favicon, logo, design system, 깔끔하게, 모던하게, 감성적으로."
 metadata:
   last-verified: "2026-07-02"
   short-description: "ima2-powered design judgment for vague briefs, UX states, typography, layout patterns, logos, and brand vocabulary."

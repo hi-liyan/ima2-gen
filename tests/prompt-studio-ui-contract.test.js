@@ -20,8 +20,10 @@ describe("prompt studio UI contract", () => {
     const en = JSON.parse(readSource("ui/src/i18n/en.json"));
     const ko = JSON.parse(readSource("ui/src/i18n/ko.json"));
 
-    assert.match(settings, /"appearance",\s*"workspace",\s*"language"/);
+    assert.match(settings, /"providers",\s*"workspace",\s*"general"/);
     assert.match(settings, /workspace:\s*null/);
+    assert.match(settings, /providers:\s*null/);
+    assert.match(settings, /general:\s*null/);
     assert.match(settings, /WorkspaceProfileSettings/);
     assert.equal(typeof en.settings.sections.workspace.title, "string");
     assert.equal(typeof en.settings.sections.workspace.hint, "string");
@@ -216,4 +218,3 @@ describe("prompt studio UI contract", () => {
     assert.ok(lineCount("ui/src/styles/viewer-workflow.css") < 500);
   });
 });
-

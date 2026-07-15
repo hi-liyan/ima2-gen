@@ -44,7 +44,7 @@ describe("Agent Mode frontend shell contract", () => {
     const store = readSource("ui/src/store/useAppStore.ts");
     const app = readSource("ui/src/App.tsx");
     const main = readSource("ui/src/main.tsx");
-    const switcher = readSource("ui/src/components/UIModeSwitch.tsx");
+    const navRail = readSource("ui/src/components/NavRail.tsx");
 
     assert.match(devMode, /export const ENABLE_AGENT_MODE/);
     assert.match(devMode, /VITE_IMA2_AGENT_MODE !== "0"/);
@@ -57,8 +57,8 @@ describe("Agent Mode frontend shell contract", () => {
     assert.match(main, /window\.location\.hostname !== "localhost"/);
     assert.match(main, /next\.hostname = "127\.0\.0\.1"/);
     assert.match(main, /window\.location\.replace/);
-    assert.match(switcher, /ENABLE_AGENT_MODE/);
-    assert.match(switcher, /uiMode\.agent/);
+    assert.match(navRail, /\{ id: "agent", mode: "agent", icon: IconAgent, labelKey: "nav\.agent", enabled: ENABLE_AGENT_MODE \}/);
+    assert.match(navRail, /setUIMode\(item\.mode\)/);
   });
 
   it("mounts a lazy Agent workspace instead of Classic or Node surfaces", () => {

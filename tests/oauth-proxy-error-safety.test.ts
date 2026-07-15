@@ -103,6 +103,62 @@ test("generateViaOAuth labels reference inputs with detected MIME", async () => 
   }
 });
 
+test("generateViaOAuth no-image stream retry keeps reference images", async () => {
+  const bodies: string[] = [];
+  const imageB64 = Buffer.from("retry image").toString("base64");
+  const server = createServer((req, res) => {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+    });
+    req.on("end", () => {
+      bodies.push(raw);
+      if (bodies.length === 1) {
+        res.writeHead(200, { "Content-Type": "text/event-stream" });
+        res.end("data: {\"type\":\"response.completed\"}\n\n");
+        return;
+      }
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({
+        output: [{ type: "image_generation_call", result: imageB64 }],
+        usage: { total_tokens: 3 },
+      }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", () => resolve()));
+  const port = (server.address() as import("node:net").AddressInfo).port;
+  const jpegB64 = Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString("base64");
+
+  try {
+    const result = await generateViaOAuth("safe test", "medium", "1024x1024", "low", [jpegB64], "req_retry_refs", "auto", {
+      oauthUrl: `http://127.0.0.1:${port}`,
+    }) as {
+      b64: string;
+      retryKind?: string;
+      hadReferences?: boolean;
+      referencesDroppedOnRetry?: boolean;
+      developerPromptDroppedOnRetry?: boolean;
+    };
+    assert.equal(result.b64, imageB64);
+    assert.equal(result.retryKind, "references_json_image_tool");
+    assert.equal(result.hadReferences, true);
+    assert.equal(result.referencesDroppedOnRetry, false);
+    assert.equal(result.developerPromptDroppedOnRetry, true);
+    assert.equal(bodies.length, 2);
+    const retryBody = JSON.parse(bodies[1]);
+    assert.equal(retryBody.stream, false);
+    assert.equal(retryBody.input.length, 1);
+    assert.equal(retryBody.input[0].role, "user");
+    const retryContent = retryBody.input[0].content;
+    assert.ok(Array.isArray(retryContent), "retry user content keeps reference parts");
+    assert.equal(retryContent[0].type, "input_image");
+    assert.match(retryContent[0].image_url, /^data:image\/jpeg;base64,/);
+    assert.equal(retryContent[retryContent.length - 1].type, "input_text");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test("editViaOAuth no-image stream preserves empty response metadata", async () => {
   const server = createServer((_req, res) => {
     res.writeHead(200, { "Content-Type": "text/event-stream" });

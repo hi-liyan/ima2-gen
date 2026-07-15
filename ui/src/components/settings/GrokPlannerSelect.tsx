@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../i18n";
+import { Select } from "../controls";
 
 interface PlannerConfig {
   model: string;
@@ -37,15 +38,12 @@ export function GrokPlannerSelect() {
         <p>{t("settings.grokPlanner.body")}</p>
       </div>
       <div className="settings-row__control">
-        <select
+        <Select
+          items={config.options.map((model) => ({ value: model, label: model }))}
           value={config.model}
-          onChange={(e) => void onChange(e.target.value)}
-          aria-label={t("settings.grokPlanner.title")}
-        >
-          {config.options.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          onChange={(model) => void onChange(model)}
+          ariaLabel={t("settings.grokPlanner.title")}
+        />
       </div>
     </article>
   );

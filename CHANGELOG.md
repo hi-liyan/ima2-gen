@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.17] - 2026-07-13
+
+### Fixed
+
+- **Windows installer npm handling** — compose global npm lockfile path with nested `Join-Path` calls for PowerShell 5.1 compatibility; wrap npm invocations in `Invoke-Npm` with `Continue` error action preference so stderr warnings do not abort the installer (#110, #111).
+
 ## [Unreleased]
 
 ### Added

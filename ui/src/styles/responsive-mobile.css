@@ -72,7 +72,7 @@
     display: none;
   }
   .settings-mobile-nav {
-    grid-template-columns: repeat(5, minmax(104px, 1fr));
+    grid-template-columns: repeat(3, minmax(104px, 1fr));
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-inline: contain;

@@ -1,46 +1,5 @@
-import type { ReactNode } from "react";
-
-export type OptionItem<V extends string> = {
-  value: V;
-  label: ReactNode;
-  sub?: ReactNode;
-  color?: string;
-  disabled?: boolean;
-};
-
-type Props<V extends string> = {
-  title?: string;
-  help?: ReactNode;
-  items: ReadonlyArray<OptionItem<V>>;
-  value: V;
-  onChange: (v: V) => void;
-};
-
-export function OptionGroup<V extends string>({ title, help, items, value, onChange }: Props<V>) {
-  return (
-    <div className="option-group">
-      {title ? <div className="section-title">{title}</div> : null}
-      <div className="option-row">
-        {items.map((it) => (
-          <button
-            key={it.value}
-            className={`option-btn${it.value === value ? " active" : ""}`}
-            style={it.color ? { color: it.color } : undefined}
-            disabled={it.disabled}
-            onClick={() => onChange(it.value)}
-            type="button"
-          >
-            {it.label}
-            {it.sub ? (
-              <>
-                <br />
-                <span className="option-sub">{it.sub}</span>
-              </>
-            ) : null}
-          </button>
-        ))}
-      </div>
-      {help ? <p className="option-help">{help}</p> : null}
-    </div>
-  );
-}
+// Phase 020: OptionGroup is now a compatibility shim over the controls kit.
+// Segmented preserves the full legacy contract (props, generics, classnames)
+// and adds arrow-key navigation. New code should import from "./controls".
+export { Segmented as OptionGroup } from "./controls/Segmented";
+export type { SegmentedItem as OptionItem } from "./controls/Segmented";

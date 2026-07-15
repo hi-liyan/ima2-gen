@@ -43,7 +43,7 @@ import type { GalleryScope, GraphNode, GraphEdge, StoreSet, StoreGet } from "./s
 import type { ClientNodeId } from "../lib/graph";
 import type { ImaErrorCode } from "../lib/errorCodes";
 import type { CanvasExportBackground, HexColor } from "../types/canvas";
-import type { ThemePreference, ThemeFamily, HistoryStripLayout, UIMode } from "../types";
+import type { HistoryStripLayout, ThemeFamily, ThemePreference, UIMode } from "../types";
 import { abortFlight } from "./flightAbortRegistry";
 
 export async function cancelInFlightJobImpl(
