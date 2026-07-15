@@ -1028,17 +1028,25 @@
     "jumpTo": "Jump to {section}",
     "title": "Settings",
     "sections": {
-      "providers": {
-        "title": "Providers",
-        "hint": "Accounts, keys, models"
+      "account": {
+        "title": "Account",
+        "hint": "Provider and account"
+      },
+      "generation": {
+        "title": "Generation",
+        "hint": "Model defaults"
+      },
+      "appearance": {
+        "title": "Appearance",
+        "hint": "Theme and display"
       },
       "workspace": {
         "title": "Workspace",
         "hint": "Profile, layout, gallery"
       },
-      "general": {
-        "title": "General",
-        "hint": "Language"
+      "language": {
+        "title": "Language",
+        "hint": "Interface copy"
       },
       "logs": {
         "title": "Generation logs",

@@ -1028,17 +1028,25 @@
     "jumpTo": "{section} 섹션으로 이동",
     "title": "설정",
     "sections": {
-      "providers": {
-        "title": "프로바이더",
-        "hint": "계정 · 키 · 모델"
+      "account": {
+        "title": "계정",
+        "hint": "공급자 및 계정"
+      },
+      "generation": {
+        "title": "생성",
+        "hint": "모델 기본값"
+      },
+      "appearance": {
+        "title": "화면",
+        "hint": "테마 및 표시"
       },
       "workspace": {
         "title": "작업공간",
         "hint": "프로필 · 배치 · 갤러리"
       },
-      "general": {
-        "title": "일반",
-        "hint": "언어"
+      "language": {
+        "title": "언어",
+        "hint": "UI 문구"
       },
       "logs": {
         "title": "생성 로그",

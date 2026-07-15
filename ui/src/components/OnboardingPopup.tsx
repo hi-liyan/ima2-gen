@@ -46,7 +46,7 @@ export function OnboardingPopup() {
 
   const goLogin = () => {
     dismiss();
-    openSettings("providers");
+    openSettings("account");
   };
   const modalRef = useModalFocus<HTMLDivElement>(open, dismiss);
 

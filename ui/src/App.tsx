@@ -61,6 +61,12 @@ export default function App() {
   const startInFlightPolling = useAppStore((s) => s.startInFlightPolling);
   const reconcileInflight = useAppStore((s) => s.reconcileInflight);
   const syncFromStorage = useAppStore((s) => s.syncFromStorage);
+  const theme = useAppStore((s) => s.theme);
+  const resolvedTheme = useAppStore((s) => s.resolvedTheme);
+  const themeFamily = useAppStore((s) => s.themeFamily);
+  const syncThemeFromStorage = useAppStore((s) => s.syncThemeFromStorage);
+  const syncThemeFamilyFromStorage = useAppStore((s) => s.syncThemeFamilyFromStorage);
+  const refreshResolvedTheme = useAppStore((s) => s.refreshResolvedTheme);
   const settingsOpen = useAppStore((s) => s.settingsOpen);
   const unseenGeneratedCount = useAppStore((s) => s.unseenGeneratedCount);
   const historyStripLayout = useAppStore((s) => s.historyStripLayout);
@@ -83,7 +89,7 @@ export default function App() {
     uiMode === "classic" &&
     workspaceSettings.composerPlacement === "bottom" &&
     workspaceSettings.multimodeHistoryGrouping === "sequence";
-  const showHistoryStrip = !promptStudioClassic && !isAgentMode && !isAssetsMode && !isHomeMode;
+  const showHistoryStrip = !settingsOpen && !promptStudioClassic && !isAgentMode && !isAssetsMode && !isHomeMode;
 
   useBrowserAttentionBadge(unseenGeneratedCount);
 
@@ -108,11 +114,30 @@ export default function App() {
       if (!e.key) return;
       if (e.key === "ima2.inFlight" || e.key === "ima2.selectedFilename") {
         syncFromStorage();
+      } else if (e.key === "ima2:theme") {
+        syncThemeFromStorage();
+      } else if (e.key === "ima2:themeFamily") {
+        syncThemeFamilyFromStorage();
       }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [syncFromStorage]);
+  }, [syncFromStorage, syncThemeFromStorage, syncThemeFamilyFromStorage]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.theme = resolvedTheme;
+    root.dataset.themeMode = resolvedTheme;
+    root.dataset.themeFamily = themeFamily;
+    root.style.colorScheme = resolvedTheme;
+  }, [resolvedTheme, themeFamily]);
+
+  useEffect(() => {
+    if (theme !== "system") return;
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    media.addEventListener("change", refreshResolvedTheme);
+    return () => media.removeEventListener("change", refreshResolvedTheme);
+  }, [refreshResolvedTheme, theme]);
 
   useEffect(() => {
     const onHide = () => {

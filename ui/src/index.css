@@ -102,6 +102,44 @@
   color-scheme: dark;
 }
 
+:root[data-theme="light"] {
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #eef1f7;
+  --surface-3: #e1e7f0;
+  --border: #d9dee6;
+  --border-strong: #b8c1cf;
+  --text: #15181f;
+  --text-dim: #5b6573;
+  --text-muted: #5b6573;
+  --text-faint: #8a94a3;
+  --canvas-muted: #9ba4b1;
+  --accent: #1f2430;
+  --accent-bright: #0f131a;
+  --accent-soft: rgba(15, 19, 26, 0.08);
+  --accent-ink: #ffffff;
+  --accent-shadow: rgba(15, 19, 26, 0.16);
+  --focus-ring: rgba(15, 19, 26, 0.12);
+  --hairline: rgba(15, 19, 26, 0.16);
+  --hairline-soft: rgba(15, 19, 26, 0.07);
+  --control-bg: rgba(15, 19, 26, 0.035);
+  --control-hover: rgba(15, 19, 26, 0.08);
+  --scrim: rgba(15, 19, 26, 0.34);
+  --scrim-strong: rgba(15, 19, 26, 0.42);
+  --caption-scrim: rgba(15, 19, 26, 0.78);
+  --chip-scrim: rgba(15, 19, 26, 0.72);
+  --on-scrim: #f8fafc;
+  --shadow-soft: rgba(31, 36, 48, 0.14);
+  --shadow-strong: rgba(31, 36, 48, 0.22);
+  --green: #1a9a6c;
+  --amber: #b65f00;
+  --red: #d23333;
+  --blue: #2563eb;
+  --glass: rgba(15, 19, 26, 0.035);
+  --glass-line: rgba(15, 19, 26, 0.1);
+  color-scheme: light;
+}
+
 /* Site-texture layers: corner glow + film-grain noise (behind all content).
    Opaque surfaces (panels, viewers, canvas) naturally cover them, so media
    review areas stay clean. */
@@ -136,6 +174,7 @@ body::after {
   border-radius: 2px;
 }
 
+@import "./styles/theme-families.css";
 @import "./styles/themes.css";
 @import "./styles/controls.css";
 @import "./styles/nav-rail.css";

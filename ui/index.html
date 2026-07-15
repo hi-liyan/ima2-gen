@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <title>Image Gen</title>
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <link
       rel="icon"
       type="image/svg+xml"
@@ -34,6 +34,26 @@
       type="font/woff2"
       crossorigin
     />
+    <script>
+      (() => {
+        try {
+          const theme = localStorage.getItem("ima2:theme");
+          const family = localStorage.getItem("ima2:themeFamily");
+          const systemTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+          const resolvedTheme = theme === "light" || theme === "dark" ? theme : systemTheme;
+          const resolvedFamily = ["gpt", "claude", "gemini", "grok"].includes(family) ? family : "default";
+          document.documentElement.dataset.theme = resolvedTheme;
+          document.documentElement.dataset.themeMode = resolvedTheme;
+          document.documentElement.dataset.themeFamily = resolvedFamily;
+          document.documentElement.style.colorScheme = resolvedTheme;
+        } catch {
+          document.documentElement.dataset.theme = "dark";
+          document.documentElement.dataset.themeMode = "dark";
+          document.documentElement.dataset.themeFamily = "default";
+          document.documentElement.style.colorScheme = "dark";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

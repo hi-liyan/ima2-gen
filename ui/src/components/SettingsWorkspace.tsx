@@ -17,9 +17,11 @@ import type { SettingsSection } from "../types";
 import { Select } from "./controls";
 
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  "providers",
+  "account",
+  "generation",
+  "appearance",
   "workspace",
-  "general",
+  "language",
   "logs",
   "future",
 ];
@@ -61,13 +63,15 @@ export function SettingsWorkspace() {
   const privacyMode = useAppStore((s) => s.privacyMode);
   const setPrivacyMode = useAppStore((s) => s.setPrivacyMode);
   const provider = useAppStore((s) => s.provider);
-  const workspaceRef = useRef<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLElement | null>(null);
   const unlockTimerRef = useRef<number | null>(null);
   const isProgrammaticScroll = useRef(false);
   const sectionRefs = useRef<Record<SettingsSection, HTMLElement | null>>({
-    providers: null,
+    account: null,
+    generation: null,
+    appearance: null,
     workspace: null,
-    general: null,
+    language: null,
     logs: null,
     future: null,
   });
@@ -79,10 +83,13 @@ export function SettingsWorkspace() {
   const scrollToSection = (section: SettingsSection) => {
     setActive(section);
     isProgrammaticScroll.current = true;
-    sectionRefs.current[section]?.scrollIntoView({
-      behavior: "auto",
-      block: "start",
-    });
+    const content = contentRef.current;
+    const target = sectionRefs.current[section];
+    if (content && target) {
+      // 只滚动设置内容，避免分区导航影响外层工作区网格。
+      const offset = target.getBoundingClientRect().top - content.getBoundingClientRect().top;
+      content.scrollTo({ top: content.scrollTop + offset - 24, behavior: "auto" });
+    }
     if (unlockTimerRef.current !== null) {
       window.clearTimeout(unlockTimerRef.current);
     }
@@ -101,7 +108,7 @@ export function SettingsWorkspace() {
   }, [closeSettings]);
 
   useEffect(() => {
-    const root = workspaceRef.current;
+    const root = contentRef.current;
     if (!root || typeof IntersectionObserver !== "function") return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -131,7 +138,6 @@ export function SettingsWorkspace() {
 
   return (
     <main
-      ref={workspaceRef}
       className="settings-workspace"
       aria-labelledby="settings-title"
     >
@@ -185,8 +191,8 @@ export function SettingsWorkspace() {
             ))}
           </nav>
 
-          <section className="settings-content" aria-label={t("settings.contentAria")}>
-            <SettingsSectionBlock id="providers" setRef={setSectionRef}>
+          <section ref={contentRef} className="settings-content" aria-label={t("settings.contentAria")}>
+            <SettingsSectionBlock id="account" setRef={setSectionRef}>
               <AccountSettings />
               <article className="settings-row">
                 <div className="settings-row__copy">
@@ -199,6 +205,9 @@ export function SettingsWorkspace() {
                   </button>
                 </div>
               </article>
+            </SettingsSectionBlock>
+
+            <SettingsSectionBlock id="generation" setRef={setSectionRef}>
               <article className="settings-row">
                 <div className="settings-row__copy">
                   <h4>{t("settings.imageModel.title")}</h4>
@@ -250,6 +259,9 @@ export function SettingsWorkspace() {
                   </article>
                 </>
               )}
+            </SettingsSectionBlock>
+
+            <SettingsSectionBlock id="appearance" setRef={setSectionRef}>
               <article className="settings-row">
                 <div className="settings-row__copy">
                   <h4>{t("settings.appearance.themeTitle")}</h4>
@@ -257,6 +269,15 @@ export function SettingsWorkspace() {
                 </div>
                 <div className="settings-row__control">
                   <ThemeToggle />
+                </div>
+              </article>
+              <article className="settings-row">
+                <div className="settings-row__copy">
+                  <h4>{t("settings.appearance.historyStripLayoutTitle")}</h4>
+                  <p>{t("settings.appearance.historyStripLayoutBody")}</p>
+                </div>
+                <div className="settings-row__control">
+                  <HistoryStripLayoutToggle />
                 </div>
               </article>
               <article className="settings-row">
@@ -291,15 +312,6 @@ export function SettingsWorkspace() {
               </article>
               <article className="settings-row">
                 <div className="settings-row__copy">
-                  <h4>{t("settings.appearance.historyStripLayoutTitle")}</h4>
-                  <p>{t("settings.appearance.historyStripLayoutBody")}</p>
-                </div>
-                <div className="settings-row__control">
-                  <HistoryStripLayoutToggle />
-                </div>
-              </article>
-              <article className="settings-row">
-                <div className="settings-row__copy">
                   <h4>{t("settings.gallery.defaultScopeTitle")}</h4>
                   <p>{t("settings.gallery.defaultScopeBody")}</p>
                 </div>
@@ -317,7 +329,7 @@ export function SettingsWorkspace() {
               </article>
             </SettingsSectionBlock>
 
-            <SettingsSectionBlock id="general" setRef={setSectionRef}>
+            <SettingsSectionBlock id="language" setRef={setSectionRef}>
               <article className="settings-row">
                 <div className="settings-row__copy">
                   <h4>{t("settings.language.title")}</h4>

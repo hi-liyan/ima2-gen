@@ -292,12 +292,12 @@ trashPending: null,
   webSearchEnabled: loadWebSearchEnabled(),
 
   settingsOpen: false,
-  activeSettingsSection: "providers",
+  activeSettingsSection: "account",
   readinessPopupOpen: false,
-  openSettings: (section = "providers") =>
+  openSettings: (section = "account") =>
     set({ settingsOpen: true, activeSettingsSection: section }),
   closeSettings: () => set({ settingsOpen: false }),
-  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, activeSettingsSection: s.settingsOpen ? s.activeSettingsSection : "providers" })),
+  toggleSettings: () => set((s) => ({ settingsOpen: !s.settingsOpen, activeSettingsSection: s.settingsOpen ? s.activeSettingsSection : "account" })),
   setActiveSettingsSection: (section) => set({ activeSettingsSection: section }),
   openReadinessPopup: () => set({ readinessPopupOpen: true }),
   closeReadinessPopup: () => set({ readinessPopupOpen: false }),

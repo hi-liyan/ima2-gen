@@ -24,7 +24,7 @@ export function ProviderReadinessPopup() {
 
   const goAccount = () => {
     close();
-    openSettings("providers");
+    openSettings("account");
   };
 
   return (

@@ -1,5 +1,5 @@
 export type UIMode = "classic" | "node" | "card-news" | "agent" | "assets" | "home";
-export type SettingsSection = "providers" | "workspace" | "general" | "logs" | "future";
+export type SettingsSection = "account" | "generation" | "appearance" | "workspace" | "language" | "logs" | "future";
 export type HistoryStripLayout = "rail" | "horizontal" | "sidebar";
 export type ThemePreference = "system" | "dark" | "light";
 export type ResolvedTheme = "dark" | "light";
