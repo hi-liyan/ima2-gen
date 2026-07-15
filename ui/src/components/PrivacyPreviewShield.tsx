@@ -60,11 +60,14 @@ export function PrivacyPreviewShield({
 }: PrivacyPreviewShieldProps) {
   const localHold = usePrivacyPreviewHold(enabled);
   const activeHold = hold ?? localHold;
+  const { t } = useI18n();
 
   if (!enabled) return null;
 
   return (
     <div className={`privacy-preview-shield${activeHold.isRevealed ? " privacy-preview-shield--revealed" : ""}`}>
+      {/* 图片受遮挡时说明当前状态，不暴露任何预览内容。 */}
+      <p className="privacy-preview-shield__message">{t("privacyPreview.protected")}</p>
       {showControl ? <PrivacyPreviewRevealButton hold={activeHold} /> : null}
     </div>
   );

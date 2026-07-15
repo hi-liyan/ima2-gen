@@ -1490,7 +1490,8 @@
   },
   "privacyPreview": {
     "hold": "누르고 있는 동안 보기",
-    "holdAria": "미리보기를 표시하려면 길게 누르세요"
+    "holdAria": "미리보기를 표시하려면 길게 누르세요",
+    "protected": "프라이버시 모드가 켜져 있습니다"
   },
   "generationLog": {
     "title": "로그",

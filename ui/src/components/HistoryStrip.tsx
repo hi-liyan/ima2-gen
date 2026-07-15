@@ -127,6 +127,7 @@ export function HistoryStrip() {
   const openGallery = useAppStore((s) => s.openGallery);
   const inFlight = useAppStore((s) => s.inFlight);
   const multimodeSequences = useAppStore((s) => s.multimodeSequences);
+  const multimodePreviewFlightId = useAppStore((s) => s.multimodePreviewFlightId);
   const thumbRefs = useRef<Record<string, HTMLElement | null>>({});
   const [stripElement, setStripElement] = useState<HTMLDivElement | null>(null);
   const lazyThumbs = useLazyHistoryThumbs(stripElement);
@@ -175,8 +176,9 @@ export function HistoryStrip() {
     thumbRefs.current[activeKey]?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [activeKey, visibleHistory]);
 
-  const renderLazyThumb = (key: string, content: ReactNode) => {
+  const renderLazyThumb = (key: string, content: ReactNode, active = false) => {
     const shouldRender = lazyThumbs.supported ? lazyThumbs.visibleKeys.has(key) : true;
+    // 包装层仅恢复透明度，保留内层缩略图原有的选中边框。
     return (
       <div
         key={key}
@@ -184,7 +186,7 @@ export function HistoryStrip() {
           thumbRefs.current[key] = node;
           lazyThumbs.register(key, node);
         }}
-        className="history-thumb"
+        className={`history-thumb${active ? " history-thumb--active-wrapper" : ""}`}
         data-history-lazy-key={key}
         aria-hidden={shouldRender ? undefined : true}
         style={{ padding: 0, overflow: "hidden" }}
@@ -231,6 +233,7 @@ export function HistoryStrip() {
 
         if (item.sequenceId && completedSequences.has(item.sequenceId) && sequenceFirstKeys.has(key)) {
           const seqImages = completedSequences.get(item.sequenceId)!;
+          const collectionActive = multimodePreviewFlightId === `history:${item.sequenceId}`;
           return [
             renderLazyThumb(`coll-${item.sequenceId}`, (
               <CollectionThumb
@@ -238,7 +241,7 @@ export function HistoryStrip() {
                 images={seqImages}
                 hasUnseenImages={seqImages.some((seqItem) => isHistoryItemUnseen(seqItem, seenHistoryItemKeys))}
               />
-            )),
+            ), collectionActive),
             ...seqImages.map((seqItem) => {
               const seqKey = getGalleryItemKey(seqItem);
               const seqActive = activeKey === seqKey;
@@ -262,7 +265,7 @@ export function HistoryStrip() {
                     <span className="history-thumb__play-badge" aria-hidden="true">▶</span>
                     {seqUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
                   </div>
-                ));
+                ), seqActive);
               }
               return renderLazyThumb(seqKey, (
                 <div
@@ -277,7 +280,7 @@ export function HistoryStrip() {
                   <img src={seqItem.thumb || seqItem.url || seqItem.image} alt="" loading="lazy" decoding="async" />
                   {seqUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
                 </div>
-              ));
+              ), seqActive);
             }),
           ];
         }
@@ -306,7 +309,7 @@ export function HistoryStrip() {
               <span className="history-thumb__play-badge" aria-hidden="true">▶</span>
               {isUnseen ? <span className="history-thumb__new-badge">NEW</span> : null}
             </div>
-          ));
+          ), active);
         }
         return renderLazyThumb(key, (
           <div
@@ -321,7 +324,7 @@ export function HistoryStrip() {
             <img src={item.thumb || item.url || item.image} alt="" loading="lazy" decoding="async" />
             {isHistoryItemUnseen(item, seenHistoryItemKeys) ? <span className="history-thumb__new-badge">NEW</span> : null}
           </div>
-        ));
+        ), active);
       })}
     </div>
   );

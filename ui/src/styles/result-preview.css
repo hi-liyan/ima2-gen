@@ -56,9 +56,20 @@
   position: absolute;
   inset: 0;
   z-index: 8;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   background: var(--surface);
+}
+
+.privacy-preview-shield__message {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .privacy-preview-shield--revealed {

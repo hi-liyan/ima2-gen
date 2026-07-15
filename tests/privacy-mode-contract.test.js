@@ -44,3 +44,18 @@ test("privacy mode shields only the classic preview and restores shielding on re
   assert.match(hook, /document\.addEventListener\("visibilitychange"/);
   assert.match(hook, /document\.hidden/);
 });
+
+test("privacy shield explains that privacy mode is enabled while the preview is covered", () => {
+  const shield = read("ui/src/components/PrivacyPreviewShield.tsx");
+  const css = read("ui/src/styles/result-preview.css");
+  const zh = read("ui/src/i18n/zh-CN.json");
+  const en = read("ui/src/i18n/en.json");
+  const ko = read("ui/src/i18n/ko.json");
+
+  assert.match(shield, /t\("privacyPreview\.protected"\)/);
+  assert.match(shield, /className="privacy-preview-shield__message"/);
+  assert.match(css, /\.privacy-preview-shield__message\s*\{/);
+  assert.match(zh, /"protected": "防窥模式已开启"/);
+  assert.match(en, /"protected": "Privacy mode is on"/);
+  assert.match(ko, /"protected": "프라이버시 모드가 켜져 있습니다"/);
+});

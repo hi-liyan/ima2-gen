@@ -1492,7 +1492,8 @@
   },
   "privacyPreview": {
     "hold": "按住查看",
-    "holdAria": "按住以显示预览"
+    "holdAria": "按住以显示预览",
+    "protected": "防窥模式已开启"
   },
   "generationLog": {
     "title": "日志",

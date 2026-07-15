@@ -1509,7 +1509,8 @@
   },
   "privacyPreview": {
     "hold": "Press and hold to view",
-    "holdAria": "Press and hold to reveal preview"
+    "holdAria": "Press and hold to reveal preview",
+    "protected": "Privacy mode is on"
   },
   "generationLog": {
     "title": "Log",
