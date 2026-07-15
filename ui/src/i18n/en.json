@@ -1573,8 +1573,8 @@
     "renameFolder": "Rename folder",
     "deleteFolder": "Delete folder",
     "actionFailed": "Action failed",
-    "itemCount": "{count} items"
-  },
-  "assets.clearAll": "Clear all",
-  "assets.clearConfirm": "Delete all saved assets? This cannot be undone."
+    "itemCount": "{count} items",
+    "clearAll": "Clear all",
+    "clearConfirm": "Delete all saved assets? This cannot be undone."
+  }
 }

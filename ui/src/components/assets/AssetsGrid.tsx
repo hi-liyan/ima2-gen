@@ -41,7 +41,7 @@ function AssetTile({ item }: { item: AssetItem }) {
         {armed ? t("assets.confirmDelete") : "×"}
       </button>
     </div>
-    <div className="assets-tile__meta"><div className="assets-tile__title"><strong title={item.name}>{item.name}</strong><span>{item.kind}</span></div>
+    <div className="assets-tile__meta"><div className="assets-tile__title"><strong title={item.name}>{item.name}</strong><span>{t(`assets.kind${item.kind[0].toUpperCase()}${item.kind.slice(1)}`)}</span></div>
       {item.tags.length > 0 && <div className="assets-tile__tags">{item.tags.slice(0, 2).map((tag) => <span key={tag}>{tag}</span>)}
         {item.tags.length > 2 && <span>+{item.tags.length - 2}</span>}</div>}</div>
   </article>;
